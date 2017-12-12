@@ -1,0 +1,70 @@
+<html>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/handlebars.js/4.0.11/handlebars.min.js"></script>
+    <script language="javascript">
+        $.ajaxSetup({ cache: false });
+        var previous;
+        var current;
+        var channel_info;
+
+        /**
+            Structure
+            {
+                img1: "src"#
+                img2: "src"
+                data: {data}
+            }
+
+        **/
+
+        function getContents() {
+            channel_info.forEach(channel => {
+                $.getJSON(channel.data, function(json){
+                    var random = Math.random();
+                    d = {
+                        data: json,
+                    }
+                    $(`#channel-${channel.id}-img1`).attr("src",`${channel.img1}?${random}`);
+                    $(`#channel-${channel.id}-img2`).attr("src",`${channel.img2}?${random}`);
+                    var source = document.getElementById("data-template").innerHTML;
+                    var template = Handlebars.compile(source);
+                    var rendered = template(d);
+                    $(`#channel-${channel.id}`).html(rendered);
+                });
+            });
+            setTimeout('getContents()',500);
+        }
+
+        function BeginDebug(){
+
+            $.getScript("https://cdnjs.cloudflare.com/ajax/libs/handlebars.js/4.0.11/handlebars.min.js", function(){
+                $.getJSON("./Channel Info.json", function(json){
+                    channel_info = json;
+                    channel_info.forEach(element => {
+                        $("#render").append(`<div><img id ="channel-${element.id}-img1" src="" align="left"><img id ="channel-${element.id}-img2" src="" align="left"><div id ="channel-${element.id}"> </div> </div>`);
+                    });
+                    getContents();
+                });
+            })
+        }
+
+    </script>
+    <script id="data-template" type="text/x-handlebars-template">
+                <div>
+                    <p><b>{{data.channel}}</b></p>
+                    <p>Auto-Corellation Frequency: {{data.autocorr}}</p>
+                    <p>Zero-Crossing Frequency: {{data.zc}}</p>
+                    <p>FFT Frequency: {{data.fft}}</p>
+                    <p>Key (From Auto-Corellation): {{data.key}}</p>
+                    <p>Sub-Bass: {{data.bands.sub-bass}} Bass: {{data.bands.bass}} Low-Mid: {{data.bands.low-mid}} Mid : {{data.bands.mid}} Upper-Mid: {{data.bands.upper-mid}} Presence: {{data.bands.presence}} Brilliance: {{data.bands.brilliance}}</p>
+                </div>
+                <br>
+                <br>
+    </script>
+    <body onload="BeginDebug()">
+        <hr>
+        <div id="render"></div>
+        <br>
+        <hr>
+    </body>
+</html>

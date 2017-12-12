@@ -246,10 +246,10 @@ $RECYCLE.BIN/
 
 # Config files
 
-./config/*
+**/config/*
 !sample_config.json
 
 # Debug files
 
-./debug/*
+**/debug/*
 !index.html
