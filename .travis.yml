@@ -1,5 +1,7 @@
 language: python
 python:
   - "3.6"
+install:
+  - sudo apt install libasound-dev portaudio19-dev libportaudio2 libportaudiocpp0 ffmpeg libav-tools
 script:
   - python -m pytest -v --pyargs rtmaii
