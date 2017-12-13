@@ -210,7 +210,7 @@ class Rtmaii(object):
             }
         else:
             self.track = True
-            self.waveform = wave.open(self.config['audio_path'])
+            self.waveform = wave.open(track)
             self.config['sampling_rate'] = self.waveform.getframerate()
             self.config['channels'] = self.waveform.getnchannels()
             pyaudio_kwargs = {
