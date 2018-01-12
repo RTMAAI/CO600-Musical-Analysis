@@ -1,7 +1,0 @@
-{
-    "merge_channels": false,
-    "bands": {
-        "bass":[200,2000]
-    },
-    "fft_resolution": 44032
-}
