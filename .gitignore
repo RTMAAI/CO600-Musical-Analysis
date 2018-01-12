@@ -247,9 +247,10 @@ $RECYCLE.BIN/
 # Config files
 
 **/config/*
-!sample_config.json
+!configuration.py
 
 # Debug files
 
 **/debug/*
 !index.html
+!debugger.py
