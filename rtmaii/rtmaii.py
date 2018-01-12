@@ -6,8 +6,7 @@ import json
 import logging
 import os
 from rtmaii.coordinator import Coordinator
-from rtmaii.config import configuration
-from rtmaii.debug import debugger
+from rtmaii.configuration import Config
 from numpy import fromstring, int16
 from pydispatch import dispatcher
 import pyaudio
@@ -44,7 +43,7 @@ class Rtmaii(object):
     '''
     def __init__(self, callbacks: list, track: str = None, config: dict = None, mode: str = 'ERROR'):
 
-        self.config = configuration.Config(config)
+        self.config = Config(**config)
         self.audio = pyaudio.PyAudio()
         self.set_source(track)
         self.set_callbacks(callbacks)
