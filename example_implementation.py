@@ -9,11 +9,10 @@ def main():
     def spectrogram_callback(data):
         print("Spectrogram event happened")
 
-    # Default is sample_config
-    #config_path = r'.\config\sample_config.json'
-
     analyser = rtmaii.Rtmaii([{'function': frequency_callback, 'signal':'frequency'},
-                              {'function': spectrogram_callback, 'signal':'spectrogram'}])
+                              {'function': spectrogram_callback, 'signal':'spectrogram'}],
+                              track=r'.\test_data\saw_493.88.wav',
+                              mode='DEBUG')
 
     analyser.start()
 
