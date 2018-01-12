@@ -1,5 +1,5 @@
 exclude:
-- example_implementation.py
+- .*/example_implementation\.py
 languages:
 - python
 component_depth: 6
