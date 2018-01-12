@@ -4,8 +4,10 @@ from pydispatch import dispatcher
 class Spectrogram_thread(threading.Thread):
     def __init__(self, queue):
         threading.Thread.__init__(self, args=(), kwargs=None)
+        self.setDaemon(True)
         self.queue = queue
         self.ffts = []
+        self.start()
 
     def run(self):
 
