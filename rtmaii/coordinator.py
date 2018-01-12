@@ -1,5 +1,8 @@
 """
-  TODO: Fill in docstring
+  TODO: Fill in docstring.
+  TODO: Come up with a better name than coordinator.
+  TODO: Insert BPM Thread here.
+  TODO: Implement Spectrogram creation.
 """
 from queue import Queue
 import threading
@@ -16,7 +19,7 @@ DIR_PATH = os.path.dirname(PATH)
 
 class Base_Coordinator(threading.Thread):
     """
-        Conducts the generation of threads to analyse queued song data.
+        Conducts the initiliazation of coordinator threads to analyse queued song data.
     """
     def __init__(self, config):
         threading.Thread.__init__(self, args=(), kwargs=None)
@@ -29,6 +32,9 @@ class Base_Coordinator(threading.Thread):
         raise NotImplementedError("Run should be implemented")
 
 class Coordinator(Base_Coordinator):
+    """
+        Sends data to other analyzers.
+    """
     def __init__(self, config):
         Base_Coordinator.__init__(self, config)
         self.channels = []
@@ -48,8 +54,6 @@ class Coordinator(Base_Coordinator):
                     self.channels[channel].queue.put(None)
                 LOGGER.info('Finishing up')
                 break # No more data so cleanup and end thread
-
-            # TODO: Insert BPM Thread here.
 
             signal.extend(data) # Build up more data before doing Frequency Analysis
             if len(signal) >= fft_resolution * channels:
@@ -73,31 +77,31 @@ class FFT_Coordinator(Base_Coordinator):
         self.channel_name = channel_name
 
     def run(self):
-
+        spectrogram_thread = spectrogram.Spectrogram_thread(Queue())
         sampling_rate = self.config.get_config('sampling_rate')
         bands_of_interest = self.config.get_config('bands')
 
         while True:
             data = self.queue.get()
             if data is None:
-                LOGGER.info('Finishing up')
+                LOGGER.info('{} FFT Coordinator finishing up'.format(self.channel_name))
                 break # No more data so cleanup and end thread
-            spectrogram_thread = spectrogram.Spectrogram_thread(Queue())
 
             LOGGER.info('Thread %d started for channel %d!', threading.get_ident() ,self.channel_name)
 
             zero_crossings = pitch.pitch_from_zero_crossings(data, sampling_rate)
             frequency_spectrum, windowed_signal, filtered_signal = spectral.spectrum(data, sampling_rate)
-            spectrogram_thread.queue.put(frequency_spectrum)
-            convolved_spectrum = spectral.convolve_spectrum(data)
+
             fft_frequency = pitch.pitch_from_fft(frequency_spectrum, sampling_rate)
             frequency_bands = frequency.frequency_bands(abs(frequency_spectrum), bands_of_interest)
+
+            spectrogram_thread.queue.put(frequency_spectrum) # Push frequency_spectrum to spectrogram_thread for further processing.
+
+            convolved_spectrum = spectral.convolve_spectrum(data)
             auto_correlation = pitch.pitch_from_auto_correlation(convolved_spectrum, sampling_rate)
             estimated_key = key.note_from_pitch(auto_correlation)
-            #freq, time, Sxx = spectral.spectro(sig, sampling_rate) TODO: Implement Spectrogram creation.
 
             # Write Anaylsis to JSON file for debugging
-            # TODO: Use UI for debugging instead of web server. Super slow.
             debug_file = '{}/debug/channel-{} data.json'.format(DIR_PATH, self.channel_name)
 
             try:
@@ -121,6 +125,21 @@ class FFT_Coordinator(Base_Coordinator):
 
             dispatcher.send(signal='frequency', sender=self.channel_name, data=estimated_key)
 
-            # plot(timespan[::100], data, sampling_rate, frequency_spectrum,
-            #     windowed_signal[::100], self.channel_name) # Currently hangs here a lot due to locking
             LOGGER.debug('%d finished!', threading.get_ident())
+
+
+class BPM_Coordinator(Base_Coordinator):
+    def __init__(self, config):
+        Base_Coordinator.__init__(self, config)
+
+    def run(self):
+        beats = [] # List of beat intervals
+        bpm = 0
+        while True:
+            pass
+            # data = self.queue.get()
+            # checkForBeat
+            #   if beat:
+            #       dispatcher.send(signal='bpm', sender=self)
+            #       add timeinterval from previous occurence of a beat to beats list.
+            #       bpm = calculate average time interval
