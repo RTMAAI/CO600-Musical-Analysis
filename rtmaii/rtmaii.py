@@ -1,4 +1,6 @@
-# RUNS MAIN LOOP RECORDING AND ORCHESTRATING PYAUDIO STREAM
+'''
+    Main script that is imported with the library.
+'''
 import wave
 import json
 import logging
@@ -19,18 +21,18 @@ class Rtmaii(object):
     ''' Interface for real-time musical analysis library.
 
         **Args**
-            - Callbacks: A list of dicts containing a 'callback' and the 'signal' that will trigger it.
-            - Track: The path of a track to be played, defaults to microphone input.
-            - Config: Dict of settings to change.
-            - Mode: Logging mode, options = {'DEBUG','WARNING','CRITICAL','INFO','ERROR'}
+            - `Callbacks`: List of dicts with a `callback` and the `signal` to will trigger it.
+            - `Track`: The path of a track to be played, defaults to microphone input.
+            - `Config`: Dict of settings to change.
+            - `Mode`: Logging mode, options = {'DEBUG','WARNING','CRITICAL','INFO','ERROR'}
 
         **Example**
             ```python
-                track = r'.\Tracks\LetItGo.wav'
+                track = r'.\\Tracks\\LetItGo.wav'
                 callbacks = [{'function': callback_function, 'signal':'frequency'}]
                 config = {
                     "bands": {
-                        "bass": [200, 2000]
+                        "bass": {min: 200, max: 2000}
                     }
                 }
                 analyser = rtmaii.Rtmaii(callbacks, track, config)
@@ -55,7 +57,7 @@ class Rtmaii(object):
         self.stream = self.audio.open(**pyaudio_settings)
         self.coordinator = Coordinator(self.config)
 
-        LOGGER.debug('Coordinator Initialized')
+        LOGGER.debug('RTMAII Initiliazed')
 
     def __stream_callback__(self, in_data, frame_count, time_info, status):
         '''
@@ -66,7 +68,7 @@ class Rtmaii(object):
             dtype=int16) if hasattr(self, 'waveform') else in_data
 
         self.coordinator.queue.put(data)
-        if status == 4: # Send finish request to coordinator when stream is ended.
+        if status == 4: # Push finish request to coordinator when stream has ended.
             self.coordinator.queue.put(None)
         return (data, pyaudio.paContinue)
 
