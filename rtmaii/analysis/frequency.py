@@ -10,24 +10,15 @@ def constrain_bands(bands):
     """ Constrain Frequency bands to sum to 1 """
     pass
 
-def frequency_bands(spectrum, bands=None):
+def frequency_bands(spectrum, bands):
     """
         Creates a Dictionary of the amplitude balance between each input frequency band.
         The sum of all values adds up to 1.
     """
-    if not bands:
-        # Default frequency bands
-        bands = {"sub-bass":[20, 60],
-                 "bass":[60, 250],
-                 "low-mid":[250, 500],
-                 "mid":[500, 2000],
-                 "upper-mid":[2000, 4000],
-                 "presence":[4000, 6000],
-                 "brilliance":[6000, 20000]}
-    filtered_spectrum = remove_noise(spectrum, 1)
+    filtered_spectrum = remove_noise(spectrum, 0.5)
     band_width = 19980 # Should be configurable
     # TODO: Scale values to add up to 1, remove noise i.e. frequencies with minute amplitudes
-    band_presence = {band: sum(filtered_spectrum[int(values[0]):int(values[1])]) / band_width
+    band_presence = {band: sum(filtered_spectrum[int(values[0]):int(values[1])])
                      for band, values in bands.items()}
     return band_presence
 

@@ -13,16 +13,15 @@ class Config(object):
         self.defaults = {
             "merge_channels": False,
             "bands": {
-                "bass":[200, 2000]
+                "bass": [60, 250],
+                "low-mid": [250, 500],
+                "mid": [500, 2000]
             },
-            "fft_resolution": 10240
+            "fft_resolution": 20480
         }
 
-        if kwargs is None:
-            self.settings = self.defaults
-        else:
-            self.settings = self.defaults
-            self.set_config(**kwargs)
+        self.settings = self.defaults
+        self.set_config(**kwargs)
 
     def set_config(self, **kwargs):
         """
