@@ -6,16 +6,20 @@
 """
 class Config(object):
     """
-        
+        TODO: Docstring
     """
     def __init__(self, **kwargs):
 
         self.defaults = {
             "merge_channels": False,
             "bands": {
-                "bass": [60, 250],
-                "low-mid": [250, 500],
-                "mid": [500, 2000]
+                "sub-bass":[20, 60],
+                 "bass":[60, 250],
+                 "low-mid":[250, 500],
+                 "mid":[500, 2000],
+                 "upper-mid":[2000, 4000],
+                 "presence":[4000, 6000],
+                 "brilliance":[6000, 20000]
             },
             "fft_resolution": 20480
         }
