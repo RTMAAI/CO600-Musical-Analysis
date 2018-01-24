@@ -7,6 +7,7 @@ import logging
 import os
 from rtmaii.coordinator import Coordinator
 from rtmaii.configuration import Config
+from rtmaii.debugger import Locator, Debugger
 from numpy import fromstring, int16
 from pydispatch import dispatcher
 import pyaudio
@@ -41,13 +42,11 @@ class Rtmaii(object):
                     pass #Keep main thread running.
             ```
     '''
-    def __init__(self, callbacks: list, track: str = None, config: dict = None, mode: str = 'ERROR'):
-
+    def __init__(self, callbacks: list, track: str = None, config: dict = {}, mode: str = 'ERROR'):
         self.config = Config(**config)
         self.audio = pyaudio.PyAudio()
         self.set_source(track)
         self.set_callbacks(callbacks)
-
         LOGGER.setLevel(mode)
 
         pyaudio_settings = self.config.get_config('pyaudio_settings')
@@ -63,8 +62,8 @@ class Rtmaii(object):
             Convert raw stream data into signal bin and put data on the coordinator's queue.
         '''
         data = fromstring(
-            self.waveform.readframes(frame_count),
-            dtype=int16) if hasattr(self, 'waveform') else in_data
+            self.waveform.readframes(frame_count) if hasattr(self, 'waveform') else in_data,
+            dtype=int16)
 
         self.coordinator.queue.put(data)
         if status == 4: # Push finish request to coordinator when stream has ended.
