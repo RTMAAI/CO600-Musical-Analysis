@@ -18,7 +18,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s]: %(m
 LOGGER = logging.getLogger(__name__)
 
 class Rtmaii(object):
-    ''' Interface for real-time musical analysis library.
+    """ Interface for real-time musical analysis library.
 
         **Args**
             - `Callbacks`: List of dicts with a `callback` and the `signal` to will trigger it.
@@ -41,7 +41,7 @@ class Rtmaii(object):
                 while analyser.is_active():
                     pass #Keep main thread running.
             ```
-    '''
+    """
     def __init__(self, callbacks: list, track: str = None, config: dict = {}, mode: str = 'ERROR'):
         self.config = Config(**config)
         self.audio = pyaudio.PyAudio()
@@ -58,9 +58,9 @@ class Rtmaii(object):
         LOGGER.debug('RTMAII Initiliazed')
 
     def __stream_callback__(self, in_data, frame_count, time_info, status):
-        '''
+        """
             Convert raw stream data into signal bin and put data on the coordinator's queue.
-        '''
+        """
         data = fromstring(
             self.waveform.readframes(frame_count) if hasattr(self, 'waveform') else in_data,
             dtype=int16)
@@ -71,15 +71,15 @@ class Rtmaii(object):
         return (data, pyaudio.paContinue)
 
     def is_active(self):
-        ''' Check that coordinator thread is still running.
+        """ Check that coordinator thread is still running.
 
             **Returns**
                 - bool: True is alive, False otherwise.
-        '''
+        """
         return self.coordinator.is_alive()
 
     def start(self):
-        ''' Set up debugger and '''
+        """ Set up debugger and start audio stream. """
         self.stream.start_stream()
 
         debug_info = open('{}/debug/Channel Info.json'.format(DIR_PATH), 'w')
@@ -94,18 +94,18 @@ class Rtmaii(object):
         LOGGER.info('Stream started')
 
     def stop(self):
-        ''' Stop the stream & close the track (if set) '''
+        """ Stop the stream & close the track (if set) """
         self.stream.stop_stream()
         self.stream.close()
         if hasattr(self, 'waveform'):
             self.waveform.close()
 
     def set_config(self, **kwargs):
-        ''' Change configuration options, i.e. what bands should be look at. '''
+        """ Change configuration options, i.e. what bands should be look at. """
         self.config.set_config(**kwargs)
 
     def set_source(self, source=None, sampling_rate=None, channels=None):
-        ''' Change the analyzed source '''
+        """ Change the analyzed source """
         # Stop stream, reinitialize with new settings, fire kill command to coordinator.
 
         if source is None:
@@ -128,10 +128,10 @@ class Rtmaii(object):
             self.config.set_source(pyaudio_kwargs)
 
     def set_callbacks(self, callbacks):
-        '''
+        """
             Attach supplied callbacks to signals on the dispatcher.
             Dispatcher is a loose form of the observer pattern.
             When the dispatcher is sent a signal, each observee will have their callback run.
-        '''
+        """
         for callback in callbacks:
             dispatcher.connect(callback['function'], callback['signal'], sender=dispatcher.Any)
