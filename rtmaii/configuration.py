@@ -5,10 +5,31 @@
         - Handle adding to existing settings i.e. bands of interest/removal?
 """
 class Config(object):
+    """ Configuration class to be passed around and read during program execution.
+
+        **Attributes**:
+            - **settings** (dict): contains each setting detailed below.
+                    - **bands** (dict): frequency bands that the user is interested in.
+                      In the form of "name": [minFrequency, maxFrequency].
+
+                    - **merge_channels** (bool): analyze all channel signals as a single signal.
+
+                    - **fft_resolution** (int): the size a sample needs to be before fft analysis.
+
+                    - **pitch_algorithm** (string): the frequency algorithm to be performed.
+                      Please see the pitch module for more information on the algorithms.
+
+        TODO: Finish docstring and add other settings
     """
-        TODO: Docstring
-    """
-    def __init__(self, **kwargs):
+    def __init__(self: object, **kwargs: dict):
+        """ Inititialize a configuration object to hold runtime library settings.
+
+            **Args**:
+                - kwargs: the initial settings to configure.
+=
+            **Note**:
+                - Please see the base Config class docstring for more information on settings.
+        """
 
         self.defaults = {
             "merge_channels": False,
@@ -21,15 +42,19 @@ class Config(object):
                  "presence":[4000, 6000],
                  "brilliance":[6000, 20000]
             },
-            "fft_resolution": 20480
+            "fft_resolution": 20480,
+            "pitch_algorithm": "hps",
         }
 
         self.settings = self.defaults
         self.set_config(**kwargs)
 
-    def set_config(self, **kwargs):
+    def set_config(self: object, **kwargs: dict):
         """
             Given a set of keyword arguments, update the config settings.
+
+            **Args**:
+                - kwargs: a dictionary of settings to configure.
 
             **Example**
             ```python
@@ -38,6 +63,9 @@ class Config(object):
                     'fft_resolution': 5120
                 })
             ```
+
+            **Note**:
+                - See the base config class for possible config settings.
         """
         for key, value in kwargs.items():
             if hasattr(self.settings, key):
@@ -45,16 +73,25 @@ class Config(object):
             else:
                 raise KeyError("{} is not a valid configuration setting".format(key))
 
-    def get_config(self, setting):
+    def get_config(self: object, setting: str):
         """
             Retreive a setting from the config object.
+
+            **Args**:
+                - setting: the key of the setting.
         """
         return self.settings[setting]
 
-    def set_source(self, args):
+    def set_source(self: object, source_config: dict):
         """
-            Change the audio source settings.
+            Change the processing related settings based on the audio source set.
+
+            I.e. different audio sources have different sampling_rates and channel counts.
+            *RTMAII's* processing needs to know this before analysis.
+
+            **Args**:
+                - source_config: the source configuration settings.
         """
-        self.settings['pyaudio_settings'] = args
-        self.settings['sampling_rate'] = args['rate']
-        self.settings['channels'] = args['channels']
+        self.settings['pyaudio_settings'] = source_config
+        self.settings['sampling_rate'] = source_config['rate']
+        self.settings['channels'] = source_config['channels']
