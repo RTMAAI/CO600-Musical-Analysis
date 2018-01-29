@@ -19,7 +19,8 @@ DIR_PATH = os.path.dirname(PATH)
 
 class BaseCoordinator(threading.Thread):
     """
-        Conducts the initiliazation of coordinator threads to analyse queued song data.
+        Conducts the initiliazation of coordinator threads to analyse queued input data.
+
     """
     def __init__(self, config):
         threading.Thread.__init__(self, args=(), kwargs=None)
@@ -47,16 +48,18 @@ class Coordinator(BaseCoordinator):
 
         while True:
             data = self.queue.get()
+
+            dispatcher.send(signal='signal', data=data) #TODO: Move to a locator.
+
             if data is None:
                 for channel in range(channels):
                     self.channels[channel].queue.put(None)
                 LOGGER.info('Finishing up')
                 break # No more data so cleanup and end thread
-
             # BPM Thread creation, passing through data.
             # Send
 
-            # Merge channels
+            # TODO: Merge channels
             # 1024 standard frame count
             time_step = 1.0/float(len(data)/channels) # sampling interval
             time_span = arange(0, 1, time_step) # time vector
@@ -80,11 +83,14 @@ class FrequencyCoordinator(BaseCoordinator):
         pass
 
     def run(self):
+
+        # Abstract to just a basic call to get_pitch and get_frequency_bands.
         fft_resolution = self.config.get_config('fft_resolution')
         start_analysis = False
         signal = []
         sampling_rate = self.config.get_config('sampling_rate')
         bands_of_interest = self.config.get_config('bands')
+        pitch_algorithm = self.config.get_config('pitch_algorithm')
 
         while not start_analysis:
             signal.extend(self.queue.get())
@@ -101,43 +107,35 @@ class FrequencyCoordinator(BaseCoordinator):
 
             LOGGER.info('Thread %d started for channel %d!', threading.get_ident() ,self.channel_name)
 
-            zero_crossings = pitch.pitch_from_zero_crossings(signal, sampling_rate)
             frequency_spectrum = spectral.spectrum(signal, sampling_rate)
 
-            fft_frequency = pitch.pitch_from_fft(frequency_spectrum, sampling_rate)
+            dispatcher.send(signal='spectrum', sender=self.channel_name, data=frequency_spectrum) #TODO: Move to a locator.
+
+            # TODO: Shouldn't be in a loop should be initialized to use a certain algorithm.
+            if pitch_algorithm == 'zero-crossings':
+                estimated_pitch = pitch.pitch_from_zero_crossings(signal, sampling_rate)
+            elif pitch_algorithm == 'hps':
+                estimated_pitch = pitch.pitch_from_hps(frequency_spectrum, sampling_rate, 5)
+            elif pitch_algorithm == 'auto-correlation':
+                convolved_spectrum = spectral.convolve_spectrum(signal)
+                estimated_pitch = pitch.pitch_from_auto_correlation(convolved_spectrum, sampling_rate)
+            elif pitch_algorithm == 'fft':
+                estimated_pitch = pitch.pitch_from_fft(frequency_spectrum, sampling_rate)
+
+            dispatcher.send(signal='pitch', sender=self.channel_name, data=estimated_pitch) #TODO: Move to a locator.
+
             frequency_bands = frequency.frequency_bands(abs(frequency_spectrum), bands_of_interest)
 
             self.spectrogram_thread.queue.put(frequency_spectrum) # Push frequency_spectrum to spectrogram_thread for further processing.
 
-            convolved_spectrum = spectral.convolve_spectrum(signal)
-            auto_correlation = pitch.pitch_from_auto_correlation(convolved_spectrum, sampling_rate)
-            hps = pitch.pitch_from_hps(frequency_spectrum, sampling_rate, 5)
-            estimated_key = key.note_from_pitch(auto_correlation)
-
-
-            # Write Anaylsis to JSON file for debugging
-            debug_file = '{}/debug/channel-{} data.json'.format(DIR_PATH, self.channel_name)
-
-            try:
-                with open(debug_file, 'w') as json_data:
-                    json_data.write(json.dumps({'channel': self.channel_name,
-                                                'key': estimated_key,
-                                                'zc': str(zero_crossings),
-                                                'fft': str(fft_frequency),
-                                                'autocorr': str(auto_correlation),
-                                                'bands': frequency_bands}))
-            except IOError:
-                LOGGER.error('Could not open debug file: %s', debug_file, exc_info=True)
+            estimated_key = key.note_from_pitch(estimated_pitch)
 
             LOGGER.info('Channel %d Results:', self.channel_name)
-            LOGGER.info(' FFT Frequency: %d', fft_frequency)
-            LOGGER.info(' Zero-Crossings Frequency: %f', zero_crossings)
-            LOGGER.info(' Auto-Corellation Frequency: %f', auto_correlation)
-            LOGGER.info(' HPS Frequency: %f', hps)
+            LOGGER.info(' Pitch: %f', estimated_pitch)
             LOGGER.info(' Bands: %s', frequency_bands)
-            LOGGER.info(' Pitch: %s', estimated_key)
+            LOGGER.info(' Key: %s', estimated_key)
 
-            dispatcher.send(signal='frequency', sender=self.channel_name, data=estimated_key)
+            dispatcher.send(signal='key', sender=self.channel_name, data=estimated_key) #TODO: Move to a locator.
 
             LOGGER.debug('%d finished!', threading.get_ident())
 
