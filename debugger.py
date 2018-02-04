@@ -16,7 +16,7 @@ matplotlib.pyplot.ion()
 CHUNK_LENGTH = 1024
 SPECTRUM_LENGTH = int(CHUNK_LENGTH/2)
 SAMPLING_RATE = 44100
-FRAME_DELAY = 0.2 # How long between each frame update (ms)
+FRAME_DELAY = 200 # How long between each frame update (ms)
 
 class Listener(threading.Thread):
 
@@ -105,7 +105,7 @@ class Debugger(tk.Tk):
         self.signal_frame = Figure(figsize=(5, 5), dpi=30)
         self.signal_plot = self.signal_frame.add_subplot(111)
         self.signal_plot.plot(self.timeframe, self.timeframe)
-        self.signal_plot.set_ylim([100,20000])
+        self.signal_plot.set_ylim([100, 20000])
         self.signal_canvas = FigureCanvasTkAgg(self.signal_frame, self)
         self.signal_canvas.show()
         self.signal_canvas.get_tk_widget().pack(side=tk.BOTTOM, fill=tk.BOTH, expand=True)
@@ -115,7 +115,7 @@ class Debugger(tk.Tk):
         self.spectrum_frame = Figure(figsize=(15, 5), dpi=100)
         self.spectrum_plot = self.spectrum_frame.add_subplot(111)
         self.spectrum_plot.plot(self.frequencies, self.frequencies)
-        self.spectrum_plot.set_xlim([0,20000]) # TODO Fix this
+        self.spectrum_plot.set_xlim([0, 20000]) # TODO Fix this
         self.spectrum_canvas = FigureCanvasTkAgg(self.spectrum_frame, self)
         self.spectrum_canvas.show()
         self.spectrum_canvas.get_tk_widget().pack(side=tk.BOTTOM, fill=tk.BOTH, expand=True)
