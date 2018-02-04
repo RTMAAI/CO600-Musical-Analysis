@@ -12,7 +12,7 @@ import os
 from rtmaii.analysis import frequency, pitch, key, spectral, spectrogram
 from rtmaii.debugger import Locator
 from pydispatch import dispatcher
-from numpy import arange
+from numpy import arange, mean, int16
 LOGGER = logging.getLogger(__name__)
 PATH = os.path.abspath(__file__)
 DIR_PATH = os.path.dirname(PATH)
@@ -37,37 +37,58 @@ class Coordinator(BaseCoordinator):
         Sends data to other analyzers.
     """
     def __init__(self, config):
-        BaseCoordinator.__init__(self, config)
         self.channels = []
-        for channel in range(config.get_config('channels')):
-            self.channels.append(FrequencyCoordinator(config, channel))
+        BaseCoordinator.__init__(self, config)
 
-    def run(self):
-        channels = self.config.get_config('channels')
-        merge_channels = self.config.get_config('merge_channels')
+    def single_channel(self, config, channels):
+        self.channels.append(FrequencyCoordinator(config, 1))
 
         while True:
             data = self.queue.get()
-
-            dispatcher.send(signal='signal', data=data) #TODO: Move to a locator.
 
             if data is None:
                 for channel in range(channels):
                     self.channels[channel].queue.put(None)
                 LOGGER.info('Finishing up')
-                break # No more data so cleanup and end thread
-            # BPM Thread creation, passing through data.
-            # Send
+                break # No more data so cleanup and end thread.
 
-            # TODO: Merge channels
-            # 1024 standard frame count
-            time_step = 1.0/float(len(data)/channels) # sampling interval
-            time_span = arange(0, 1, time_step) # time vector
+            channel_signals = []
 
             for channel in range(channels):
+                    channel_signals.append(data[channel::channels])
+
+            averaged_signal = mean(channel_signals, axis=0, dtype=int16)
+
+            dispatcher.send(signal='signal', sender=channel, data=averaged_signal) #TODO: Move to a locator.
+            self.channels[0].queue.put(averaged_signal)
+
+    def multi_channel(self, config, channels):
+        for channel in range(config.get_config('channels')):
+            self.channels.append(FrequencyCoordinator(config, channel))
+
+        while True:
+            data = self.queue.get()
+
+            if data is None:
+                for channel in range(channels):
+                    self.channels[channel].queue.put(None)
+                LOGGER.info('Finishing up')
+                break # No more data so cleanup and end thread.
+
+            # BPM Thread creation, passing through data.
+            for channel in range(channels):
                 channel_signal = data[channel::channels]
+                dispatcher.send(signal='signal', sender=channel, data=channel_signal) #TODO: Move to a locator.
                 self.channels[channel].queue.put(channel_signal)
 
+    def run(self):
+        channels = self.config.get_config('channels')
+        merge_channels = self.config.get_config('merge_channels')
+
+        if merge_channels:
+            self.single_channel(self.config, channels)
+        else:
+            self.multi_channel(self.config, channels)
 
 class FrequencyCoordinator(BaseCoordinator):
     def __init__(self, config, channel_name):
@@ -75,12 +96,38 @@ class FrequencyCoordinator(BaseCoordinator):
         self.spectrogram_thread = SpectrogramCoordinator(config)
         self.channel_name = channel_name
         self.debugger = Locator.get_debugger()
+        # Decorate run method based on what is actually needed?
 
+    def get_spectrum(self, signal, sampling_rate):
+        # If hps, fft, bands or genre enabled:
+        frequency_spectrum = spectral.spectrum(signal, sampling_rate)
+        dispatcher.send(signal='spectrum', sender=self.channel_name, data=frequency_spectrum) #TODO: Move to a locator.
+        return frequency_spectrum
 
-    def analyze_pitch(self):
-        pass
-    def analyze_frequencies(self):
-        pass
+    def get_pitch(self, signal, spectrum, sampling_rate, pitch_algorithm):
+        # TODO: Shouldn't be in a loop should be initialized to use a certain algorithm.
+        if pitch_algorithm == 'zero-crossings':
+            estimated_pitch = pitch.pitch_from_zero_crossings(signal, sampling_rate)
+        elif pitch_algorithm == 'hps':
+            estimated_pitch = pitch.pitch_from_hps(spectrum, sampling_rate, 5)
+        elif pitch_algorithm == 'auto-correlation':
+            convolved_spectrum = spectral.convolve_spectrum(signal)
+            estimated_pitch = pitch.pitch_from_auto_correlation(convolved_spectrum, sampling_rate)
+        elif pitch_algorithm == 'fft':
+            estimated_pitch = pitch.pitch_from_fft(spectrum, sampling_rate)
+
+        dispatcher.send(signal='pitch', sender=self.channel_name, data=estimated_pitch) #TODO: Move to a locator.
+        return estimated_pitch
+
+    def get_bands(self, spectrum, bands_of_interest):
+        bands = frequency.frequency_bands(abs(spectrum), bands_of_interest)
+        dispatcher.send(signal='bands', sender=self.channel_name, data=bands) #TODO: Move to a locator.
+        return bands
+
+    def get_key(self, pitch):
+        estimated_key = key.note_from_pitch(pitch)
+        dispatcher.send(signal='key', sender=self.channel_name, data=estimated_key) #TODO: Move to a locator.
+        return estimated_key
 
     def run(self):
 
@@ -98,37 +145,20 @@ class FrequencyCoordinator(BaseCoordinator):
                 start_analysis = True
 
         while start_analysis:
+
             data = self.queue.get()
             if data is None:
                 LOGGER.info('{} FFT Coordinator finishing up'.format(self.channel_name))
                 break # No more data so cleanup and end thread
             signal.extend(data)
             signal = signal[-fft_resolution:]
-
             LOGGER.info('Thread %d started for channel %d!', threading.get_ident() ,self.channel_name)
 
-            frequency_spectrum = spectral.spectrum(signal, sampling_rate)
-
-            dispatcher.send(signal='spectrum', sender=self.channel_name, data=frequency_spectrum) #TODO: Move to a locator.
-
-            # TODO: Shouldn't be in a loop should be initialized to use a certain algorithm.
-            if pitch_algorithm == 'zero-crossings':
-                estimated_pitch = pitch.pitch_from_zero_crossings(signal, sampling_rate)
-            elif pitch_algorithm == 'hps':
-                estimated_pitch = pitch.pitch_from_hps(frequency_spectrum, sampling_rate, 5)
-            elif pitch_algorithm == 'auto-correlation':
-                convolved_spectrum = spectral.convolve_spectrum(signal)
-                estimated_pitch = pitch.pitch_from_auto_correlation(convolved_spectrum, sampling_rate)
-            elif pitch_algorithm == 'fft':
-                estimated_pitch = pitch.pitch_from_fft(frequency_spectrum, sampling_rate)
-
-            dispatcher.send(signal='pitch', sender=self.channel_name, data=estimated_pitch) #TODO: Move to a locator.
-
-            frequency_bands = frequency.frequency_bands(abs(frequency_spectrum), bands_of_interest)
-
-            self.spectrogram_thread.queue.put(frequency_spectrum) # Push frequency_spectrum to spectrogram_thread for further processing.
-
-            estimated_key = key.note_from_pitch(estimated_pitch)
+            spectrum = self.get_spectrum(data, sampling_rate)
+            estimated_pitch = self.get_pitch(data, spectrum, sampling_rate, pitch_algorithm)
+            frequency_bands = self.get_bands(abs(spectrum), bands_of_interest)
+            estimated_key = self.get_key(estimated_pitch)
+            self.spectrogram_thread.queue.put(spectrum) # Push frequency_spectrum to spectrogram_thread for further processing.
 
             LOGGER.info('Channel %d Results:', self.channel_name)
             LOGGER.info(' Pitch: %f', estimated_pitch)
