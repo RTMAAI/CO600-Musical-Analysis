@@ -14,7 +14,7 @@ import pyaudio
 
 PATH = os.path.abspath(__file__)
 DIR_PATH = os.path.dirname(PATH)
-logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s]: %(message)s')
+logging.basicConfig(format='%(asctime)s [%(levelname)s]: %(message)s')
 LOGGER = logging.getLogger(__name__)
 
 class Rtmaii(object):
@@ -48,13 +48,6 @@ class Rtmaii(object):
         self.set_source(track)
         self.set_callbacks(callbacks)
         LOGGER.setLevel(mode)
-
-        pyaudio_settings = self.config.get_config('pyaudio_settings')
-        pyaudio_settings['stream_callback'] = self.__stream_callback__
-
-        self.stream = self.audio.open(**pyaudio_settings)
-        self.coordinator = Coordinator(self.config)
-
         LOGGER.debug('RTMAII Initiliazed')
 
     def __stream_callback__(self, in_data, frame_count, time_info, status):
@@ -79,7 +72,13 @@ class Rtmaii(object):
         return self.coordinator.is_alive()
 
     def start(self):
-        """ Set up debugger and start audio stream. """
+        """ Start audio stream. """
+
+        pyaudio_settings = self.config.get_config('pyaudio_settings')
+        pyaudio_settings['stream_callback'] = self.__stream_callback__
+
+        self.stream = self.audio.open(**pyaudio_settings)
+        self.coordinator = Coordinator(self.config)
         self.stream.start_stream()
 
         debug_info = open('{}/debug/Channel Info.json'.format(DIR_PATH), 'w')
