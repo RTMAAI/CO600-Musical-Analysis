@@ -1,13 +1,20 @@
-""" DEBUGGER IMPLEMENTATION """
-from time import sleep
-import tkinter as tk
-import matplotlib
-matplotlib.use("TkAgg")
+""" NAIVE DEBUGGER IMPLEMENTATION
 
+    TODO: library controls
+    TODO: rewinding of analysis
+    TODO: resetting analysis
+    TODO: bpm debugging
+    TODO: spectrogram debugging
+    TODO: genre labels
+
+"""
 import threading
+import tkinter as tk
 from rtmaii import rtmaii # Replace with just import rtmaii in actual implementation.
 from numpy import arange
 
+import matplotlib
+matplotlib.use("TkAgg")
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 
@@ -19,7 +26,9 @@ SAMPLING_RATE = 44100
 FRAME_DELAY = 200 # How long between each frame update (ms)
 
 class Listener(threading.Thread):
-
+    """ Starts analysis and holds a state of analysed results.
+        TODO: Store state over time to allow for rewinding through results.
+    """
     def __init__(self):
         self.signal = []
         self.spectrum = arange(SPECTRUM_LENGTH)
@@ -34,7 +43,6 @@ class Listener(threading.Thread):
             {'function': self.key_callback, 'signal':'key'},
             {'function': self.bands_callback, 'signal':'bands'}
             ],
-                                      track=r'.\test_data\sine_493.88.wav',
                                       mode='CRITICAL')
 
         threading.Thread.__init__(self, args=(), kwargs=None)
@@ -42,47 +50,64 @@ class Listener(threading.Thread):
         self.start()
 
     def start(self):
+        """ Start analysis and clear existing state. """
         self.analyser.start()
 
     def is_active(self):
+        """ Check that analyser is still running. """
         return self.analyser.is_active()
 
     def run(self):
+        """ Keep thread alive. """
         while True:
-            pass # Keep thread alive.
+            pass
 
     def frequency_callback(self, data):
-        self.spectrum = data[:SPECTRUM_LENGTH] # Spectrum should probably be halfed in actual library
-
-    def signal_callback(self, data):
-        self.signal = data
-
-    def pitch_callback(self, data):
-        self.pitch = data
-
-    def key_callback(self, data):
-        self.key = data
-
-    def bands_callback(self, data):
-        self.bands = data
+        """ Update frequency bin value """
+        # Spectrum should probably be halfed in actual library
+        self.spectrum = data[:SPECTRUM_LENGTH]
 
     def get_spectrum(self):
+        """ Get spectrum bin """
         return self.spectrum
 
+    def signal_callback(self, data):
+        """ Update signal bin value """
+        self.signal = data
+
     def get_signal(self):
+        """ Get signal bin """
         return self.signal
 
+    def pitch_callback(self, data):
+        """ Update pitch value """
+        self.pitch = data
+
     def get_pitch(self):
+        """ Get pitch value """
         return self.pitch
 
+    def key_callback(self, data):
+        """ Update key value """
+        self.key = data
+
     def get_key(self):
+        """ Get key value """
         return self.key
 
+    def bands_callback(self, data):
+        """ Update bands """
+        self.bands = data
+
     def get_bands(self):
+        """ Get bands """
         return self.bands
 
 
 class Debugger(tk.Tk):
+    """ Setup debugger UI to display analysis results from rtmaii.
+
+    """
     def __init__(self, *args, **kwargs):
         tk.Tk.__init__(self, *args, **kwargs)
         self.listener = Listener()
@@ -90,6 +115,7 @@ class Debugger(tk.Tk):
         self.update()
 
     def setup(self):
+        """Create UI elements and assign configurable elements. """
         # --- INIT SETUP --- #
         self.timeframe = arange(0, CHUNK_LENGTH) # split x axis up to 1
 
@@ -98,25 +124,25 @@ class Debugger(tk.Tk):
         play.pack()
 
         # --- BASE LABEL --- #
-        self.channel_label = tk.Label(self, text=str('channel 1'))
-        self.channel_label.pack()
+        channel_label = tk.Label(self, text=str('channel 1'))
+        channel_label.pack()
 
         # --- SIGNAL GRAPH --- #
-        self.signal_frame = Figure(figsize=(5, 5), dpi=30)
-        self.signal_plot = self.signal_frame.add_subplot(111)
+        signal_frame = Figure(figsize=(5, 5), dpi=30)
+        self.signal_plot = signal_frame.add_subplot(111)
         self.signal_plot.plot(self.timeframe, self.timeframe)
         self.signal_plot.set_ylim([100, 20000])
-        self.signal_canvas = FigureCanvasTkAgg(self.signal_frame, self)
+        self.signal_canvas = FigureCanvasTkAgg(signal_frame, self)
         self.signal_canvas.show()
         self.signal_canvas.get_tk_widget().pack(side=tk.BOTTOM, fill=tk.BOTH, expand=True)
 
         # --- SPECTRUM GRAPH --- #
         self.frequencies = arange(SPECTRUM_LENGTH)/(CHUNK_LENGTH/SAMPLING_RATE) # Possible range of frequencies
-        self.spectrum_frame = Figure(figsize=(15, 5), dpi=100)
-        self.spectrum_plot = self.spectrum_frame.add_subplot(111)
+        spectrum_frame = Figure(figsize=(15, 5), dpi=100)
+        self.spectrum_plot = spectrum_frame.add_subplot(111)
         self.spectrum_plot.plot(self.frequencies, self.frequencies)
         self.spectrum_plot.set_xlim([0, 20000]) # TODO Fix this
-        self.spectrum_canvas = FigureCanvasTkAgg(self.spectrum_frame, self)
+        self.spectrum_canvas = FigureCanvasTkAgg(spectrum_frame, self)
         self.spectrum_canvas.show()
         self.spectrum_canvas.get_tk_widget().pack(side=tk.BOTTOM, fill=tk.BOTH, expand=True)
 
@@ -134,15 +160,15 @@ class Debugger(tk.Tk):
         key_value = tk.Label(self, textvariable=self.key)
         key_value.pack()
 
-        # --- KEY LABEL --- #
+        # --- BANDS LABEL --- #
         self.bands = tk.StringVar()
         bands_label = tk.Label(self, text=str('Bands'))
         bands_label.pack()
         bands_label = tk.Label(self, textvariable=self.bands)
         bands_label.pack()
 
-    def update(self): # Update each UI Component value
-
+    def update(self):
+        """ Update UI every FRAME_DELAY milliseconds """
         # --- UPDATE GRAPHS --- #
         self.signal_plot.clear()
         self.signal_plot.plot(self.timeframe, self.listener.get_signal())
