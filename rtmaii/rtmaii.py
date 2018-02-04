@@ -81,15 +81,6 @@ class Rtmaii(object):
         self.coordinator = Coordinator(self.config)
         self.stream.start_stream()
 
-        debug_info = open('{}/debug/Channel Info.json'.format(DIR_PATH), 'w')
-
-        channel_info = [{'id': '{}'.format(channel),
-                         'img1':'Channel {}.png'.format(channel),
-                         'img2': 'Channel {}-filtered.png'.format(channel),
-                         'data':'Channel {} data.json'.format(channel)}
-                        for channel in range(1, self.config.get_config('channels') + 1)]
-
-        debug_info.write(json.dumps(channel_info))
         LOGGER.info('Stream started')
 
     def stop(self):
