@@ -46,7 +46,7 @@ def convolve_spectrum(signal: list):
 def spectrum_transform(signal: list):
     """ Performs FFT on input signal """
     signal_length = len(signal)
-    return fft(signal, n=int(signal_length/2)) / signal_length # Normalization
+    return rfft(signal, n=int(signal_length/2)) / signal_length # Normalization
 
 def spectrum(signal: list,
              sampling_rate: int,
