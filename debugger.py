@@ -35,9 +35,18 @@ class Listener(threading.Thread):
         self.state = {
             'pitch': 0,
             'key': "A",
-            'bands': {},
+            'bands': { #TODO: Should build labels initially based on config bands.
+                'sub-bass': 0,
+                'bass': 0,
+                'low-mid': 0,
+                'mid': 0,
+                'upper-mid': 0,
+                'presence': 0,
+                'brilliance': 0
+            },
             'spectrum': zeros(SPECTRUM_LENGTH),
             'signal': zeros(CHUNK_LENGTH),
+
         }
 
         callbacks = []
@@ -153,13 +162,19 @@ class Debugger(tk.Tk):
         key_value.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT)
 
         # --- BANDS LABEL --- #
-        self.bands = tk.StringVar()
-        pitch_frame = tk.Frame(value_frame, borderwidth=1)
-        pitch_frame.pack(padx=10)
-        bands_label = tk.Label(pitch_frame, text=str('Bands:'))
-        bands_label.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT)
-        bands_label = tk.Label(pitch_frame, textvariable=self.bands)
-        bands_label.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT)
+        self.bands = {}
+        chosen_bands = self.listener.get_item('bands')
+        bands_frame = tk.LabelFrame(value_frame, borderwidth=1, text="Analysed Bands")
+        bands_frame.pack(padx=10)
+
+        for key, _ in chosen_bands.items():
+            self.bands[key] = tk.IntVar()
+            band_frame = tk.Frame(bands_frame, borderwidth=1)
+            band_frame.pack()
+            key_label = tk.Label(band_frame, text='{}: '.format(key))
+            key_label.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT)
+            value_label = tk.Label(band_frame, textvariable=self.bands[key])
+            value_label.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT)
 
     def update(self):
         """ Update UI every FRAME_DELAY milliseconds """
@@ -176,7 +191,10 @@ class Debugger(tk.Tk):
         # --- UPDATE LABELS --- #
         self.pitch.set(self.listener.get_item('pitch'))
         self.key.set(self.listener.get_item('key'))
-        self.bands.set(self.listener.get_item('bands'))
+        bands = self.listener.get_item('bands')
+        # Update each band value.
+        for key, value in bands.items():
+            self.bands[key].set(value)
 
         self.after(FRAME_DELAY, self.update)
 
