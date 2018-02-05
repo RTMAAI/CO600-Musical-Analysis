@@ -10,7 +10,7 @@
 """
 import threading
 from rtmaii import rtmaii # Replace with just import rtmaii in actual implementation.
-from numpy import arange
+from numpy import arange, zeros
 
 import matplotlib
 matplotlib.use("TkAgg") # Fastest plotter backend.
@@ -30,28 +30,35 @@ class Listener(threading.Thread):
         TODO: Store state over time to allow for rewinding through results.
     """
     def __init__(self):
-        self.signal = []
-        self.spectrum = arange(SPECTRUM_LENGTH)
-        self.pitch = 0
-        self.key = "A"
-        self.bands = {}
 
-        self.analyser = rtmaii.Rtmaii([
-            {'function': self.signal_callback, 'signal':'signal'},
-            {'function': self.frequency_callback, 'signal':'spectrum'},
-            {'function': self.pitch_callback, 'signal':'pitch'},
-            {'function': self.key_callback, 'signal':'key'},
-            {'function': self.bands_callback, 'signal':'bands'}
-            ],
-                                      mode='CRITICAL')
+        self.state = {
+            'pitch': 0,
+            'key': "A",
+            'bands': {},
+            'spectrum': zeros(SPECTRUM_LENGTH),
+            'signal': zeros(CHUNK_LENGTH),
+        }
+
+        callbacks = []
+        for key, _ in self.state.items():
+            callbacks.append({'function': self.callback, 'signal': key})
+
+        self.analyser = rtmaii.Rtmaii(callbacks,
+                                      track=r'.\test_data\sine_493.88.wav',
+                                      mode='CRITICAL',
+                                     )
 
         threading.Thread.__init__(self, args=(), kwargs=None)
 
         self.start()
 
-    def start(self):
-        """ Start analysis and clear existing state. """
+    def start_analysis(self):
+        """ Start analysis """
         self.analyser.start()
+
+    def stop_analysis(self):
+        """ Stop analysis and clear existing state. """
+        self.analyser.stop()
 
     def is_active(self):
         """ Check that analyser is still running. """
@@ -62,46 +69,14 @@ class Listener(threading.Thread):
         while True:
             pass
 
-    def frequency_callback(self, data):
-        """ Update frequency bin value """
-        # Spectrum should probably be halfed in actual library
-        self.spectrum = data
+    def callback(self, data, **kwargs):
+        """ Set data for signal event. """
+        signal = kwargs['signal']
+        self.state[signal] = data
 
-    def get_spectrum(self):
-        """ Get spectrum bin """
-        return self.spectrum
-
-    def signal_callback(self, data):
-        """ Update signal bin value """
-        self.signal = data
-
-    def get_signal(self):
-        """ Get signal bin """
-        return self.signal
-
-    def pitch_callback(self, data):
-        """ Update pitch value """
-        self.pitch = data
-
-    def get_pitch(self):
-        """ Get pitch value """
-        return self.pitch
-
-    def key_callback(self, data):
-        """ Update key value """
-        self.key = data
-
-    def get_key(self):
-        """ Get key value """
-        return self.key
-
-    def bands_callback(self, data):
-        """ Update bands """
-        self.bands = data
-
-    def get_bands(self):
-        """ Get bands """
-        return self.bands
+    def get_item(self, item):
+        """ Get the latest value. """
+        return self.state[item]
 
 
 class Debugger(tk.Tk):
@@ -120,8 +95,11 @@ class Debugger(tk.Tk):
         self.timeframe = arange(0, CHUNK_LENGTH) # split x axis up to 1
 
         # --- CONTROLS --- #
-        play = tk.Button(self, text="PLAY", command=self.listener.start)
-        play.pack()
+        play = tk.Button(self, text="PLAY", command=self.listener.start_analysis)
+        play.pack(padx=10, side=tk.LEFT)
+
+        stop = tk.Button(self, text="STOP", command=self.listener.stop_analysis)
+        stop.pack(padx=10, side=tk.RIGHT)
 
         # --- BASE LABEL --- #
         channel_label = tk.Label(self, text=str('channel 1'))
@@ -149,9 +127,9 @@ class Debugger(tk.Tk):
         # --- PITCH LABEL --- #
         self.pitch = tk.StringVar()
         pitch_label = tk.Label(self, text=str('Pitch'))
-        pitch_label.pack()
+        pitch_label.pack(padx=5, side=tk.LEFT)
         pitch_value = tk.Label(self, textvariable=self.pitch)
-        pitch_value.pack()
+        pitch_value.pack(padx=5, side=tk.LEFT)
 
         # --- KEY LABEL --- #
         self.key = tk.StringVar()
@@ -171,18 +149,18 @@ class Debugger(tk.Tk):
         """ Update UI every FRAME_DELAY milliseconds """
         # --- UPDATE GRAPHS --- #
         self.signal_plot.clear()
-        self.signal_plot.plot(self.timeframe, self.listener.get_signal())
+        self.signal_plot.plot(self.timeframe, self.listener.get_item('signal'))
 
         self.spectrum_plot.clear()
-        self.spectrum_plot.plot(self.frequencies, self.listener.get_spectrum())
+        self.spectrum_plot.plot(self.frequencies, self.listener.get_item('spectrum'))
 
         self.signal_canvas.draw()
         self.spectrum_canvas.draw()
 
         # --- UPDATE LABELS --- #
-        self.pitch.set(self.listener.get_pitch())
-        self.key.set(self.listener.get_key())
-        self.bands.set(self.listener.get_bands())
+        self.pitch.set(self.listener.get_item('pitch'))
+        self.key.set(self.listener.get_item('key'))
+        self.bands.set(self.listener.get_item('bands'))
 
         self.after(FRAME_DELAY, self.update)
 
