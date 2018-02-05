@@ -9,20 +9,20 @@
 
 """
 import threading
-import tkinter as tk
 from rtmaii import rtmaii # Replace with just import rtmaii in actual implementation.
 from numpy import arange
 
 import matplotlib
-matplotlib.use("TkAgg")
+matplotlib.use("TkAgg") # Fastest plotter backend.
+import tkinter as tk
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 
-matplotlib.pyplot.ion()
+matplotlib.pyplot.ion() # Enables interactive plotting.
 
-CHUNK_LENGTH = 1024
-SPECTRUM_LENGTH = int(CHUNK_LENGTH/2)
-SAMPLING_RATE = 44100
+CHUNK_LENGTH = 1024 # Length of sampled data
+SPECTRUM_LENGTH = int(CHUNK_LENGTH/2) # Only need half of a spectrum to get all frequencies present.
+SAMPLING_RATE = 44100 # Default sampling rate 44.1 khz
 FRAME_DELAY = 200 # How long between each frame update (ms)
 
 class Listener(threading.Thread):
@@ -65,7 +65,7 @@ class Listener(threading.Thread):
     def frequency_callback(self, data):
         """ Update frequency bin value """
         # Spectrum should probably be halfed in actual library
-        self.spectrum = data[:SPECTRUM_LENGTH]
+        self.spectrum = data
 
     def get_spectrum(self):
         """ Get spectrum bin """
