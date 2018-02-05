@@ -87,6 +87,7 @@ class Rtmaii(object):
         """ Stop the stream & close the track (if set) """
         self.stream.stop_stream()
         self.stream.close()
+        self.coordinator.queue.put(None)
         if hasattr(self, 'waveform'):
             self.waveform.close()
 
