@@ -40,13 +40,13 @@ def window_signal(signal: list, window: object):
 def convolve_spectrum(signal: list):
     """ Apply convolution to the input signal. """
     convol = fftconvolve(signal, signal[::-1], mode='full')
-    convol = convol[len(convol)//2:]
+    convol = convol[len(convol)//2:] # Split bin in half removing negatives.
     return convol
 
 def spectrum_transform(signal: list):
     """ Performs FFT on input signal """
     signal_length = len(signal)
-    return fft(signal)/signal_length
+    return fft(signal, n=int(signal_length/2)) / signal_length # Normalization
 
 def spectrum(signal: list,
              sampling_rate: int,
@@ -71,7 +71,7 @@ def spectrum(signal: list,
                                        sampling_rate,
                                        order)
     frequency_spectrum = spectrum_transform(filtered_signal)
-    return frequency_spectrum, windowed_signal, filtered_signal
+    return frequency_spectrum
 
 
 def spectro(signal, sampling_rate):
