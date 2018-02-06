@@ -31,7 +31,7 @@ Github for the CO600 project on real-time musical analysis.
 
 ### Example implementation
 
-Please see the file example_implementation.py for an example implementation using the libaries API.
+Please see the file example_implementation.py for an example implementation using the libraries API.
 
 ### Debugger
 
