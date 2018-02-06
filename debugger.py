@@ -55,6 +55,7 @@ class Listener(threading.Thread):
 
         self.analyser = rtmaii.Rtmaii(callbacks,
                                       mode='CRITICAL',
+                                      track=r'.\test_data\sine_493.88.wav',
                                      )
 
         threading.Thread.__init__(self, args=(), kwargs=None)
@@ -121,23 +122,23 @@ class Debugger(tk.Tk):
         graph_frame.pack(side=tk.LEFT)
 
         # --- SIGNAL GRAPH --- #
-        signal_frame = Figure(figsize=(5, 5), dpi=100)
+        signal_frame = Figure(figsize=(10, 4), dpi=100)
         self.signal_plot = signal_frame.add_subplot(111)
         self.signal_plot.plot(self.timeframe, self.timeframe)
         self.signal_plot.set_ylim([100, 20000])
         self.signal_canvas = FigureCanvasTkAgg(signal_frame, graph_frame)
         self.signal_canvas.show()
-        self.signal_canvas.get_tk_widget().pack()
+        self.signal_canvas.get_tk_widget().pack(padx=XPADDING)
 
         # --- SPECTRUM GRAPH --- #
         self.frequencies = arange(SPECTRUM_LENGTH)/(CHUNK_LENGTH/SAMPLING_RATE) # Possible range of frequencies
-        spectrum_frame = Figure(figsize=(5, 5), dpi=100)
+        spectrum_frame = Figure(figsize=(10, 4), dpi=100)
         self.spectrum_plot = spectrum_frame.add_subplot(111)
         self.spectrum_plot.plot(self.frequencies, self.frequencies)
         self.spectrum_plot.set_xlim([0, 20000]) # TODO Fix this
         self.spectrum_canvas = FigureCanvasTkAgg(spectrum_frame, graph_frame)
         self.spectrum_canvas.show()
-        self.spectrum_canvas.get_tk_widget().pack()
+        self.spectrum_canvas.get_tk_widget().pack(padx=XPADDING)
 
         # --- VALUE FRAME --- #
         value_frame = tk.LabelFrame(self, borderwidth=1, width=500, height=500, text="Analysed Values")
@@ -180,9 +181,15 @@ class Debugger(tk.Tk):
         """ Update UI every FRAME_DELAY milliseconds """
         # --- UPDATE GRAPHS --- #
         self.signal_plot.clear()
+        self.signal_plot.set_title('Signal')
+        self.signal_plot.set_xlabel('Time (Arbitary)')
+        self.signal_plot.set_ylabel('Amplitude')
         self.signal_plot.plot(self.timeframe, self.listener.get_item('signal'))
 
         self.spectrum_plot.clear()
+        self.spectrum_plot.set_title('Spectrum')
+        self.spectrum_plot.set_xlabel('Frequency (Hz)')
+        self.spectrum_plot.set_ylabel('Power')
         self.spectrum_plot.plot(self.frequencies, self.listener.get_item('spectrum'))
 
         self.signal_canvas.draw()
