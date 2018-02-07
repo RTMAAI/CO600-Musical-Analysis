@@ -15,55 +15,6 @@ class BaseWorker(threading.Thread):
 
     def run(self):
         raise NotImplementedError("Run should be implemented")
-
-
-class Frequency_Worker(threading.Thread):
-
-    def __init__(self, data, config, channel_name):
-        initial = time.time()
-        sampling_rate = config.get_config('sampling_rate')
-        bands_of_interest = config.get_config('bands')
-        pitch_algorithm = config.get_config('pitch_algorithm')
-        spectrum = self.get_spectrum(data, sampling_rate)
-        dispatcher.send(signal='spectrum', sender=channel_name, data=spectrum) #TODO: Move to a locator.
-        estimated_pitch = self.get_pitch(data, spectrum, sampling_rate, pitch_algorithm)
-        dispatcher.send(signal='pitch', sender=channel_name, data=estimated_pitch) #TODO: Move to a locator.
-        frequency_bands = self.get_bands(abs(spectrum), bands_of_interest)
-        dispatcher.send(signal='bands', sender=channel_name, data=frequency_bands) #TODO: Move to a locator.
-        # estimated_key = self.get_key(estimated_pitch)
-        # dispatcher.send(signal='key', sender=channel_name, data=estimated_key) #TODO: Move to a locator.
-        print("Worker took {} seconds".format(time.time() - initial))
-        # LOGGER.info(' Channel %d Results:', self.channel_name)
-        # LOGGER.info(' Pitch: %f', estimated_pitch)
-        # LOGGER.info(' Bands: %s', frequency_bands)
-        # LOGGER.info(' Key: %s', estimated_key)
-
-    def get_spectrum(self, signal, sampling_rate):
-        # If hps, fft, bands or genre enabled:
-        frequency_spectrum = spectral.spectrum(signal, sampling_rate)
-        return frequency_spectrum
-
-    def get_pitch(self, signal, spectrum, sampling_rate, pitch_algorithm):
-        # TODO: Shouldn't be in a loop should be initialized to use a certain algorithm.
-        if pitch_algorithm == 'zero-crossings':
-            estimated_pitch = pitch.pitch_from_zero_crossings(signal, sampling_rate)
-        elif pitch_algorithm == 'hps':
-            estimated_pitch = pitch.pitch_from_hps(spectrum, sampling_rate, 5)
-        elif pitch_algorithm == 'auto-correlation':
-            convolved_spectrum = spectral.convolve_spectrum(signal)
-            estimated_pitch = pitch.pitch_from_auto_correlation(convolved_spectrum, sampling_rate)
-        elif pitch_algorithm == 'fft':
-            estimated_pitch = pitch.pitch_from_fft(spectrum, sampling_rate)
-        return estimated_pitch
-
-    def get_bands(self, spectrum, bands_of_interest):
-        bands = frequency.frequency_bands(abs(spectrum), bands_of_interest)
-        return bands
-
-    def get_key(self, pitch):
-        estimated_key = key.note_from_pitch(pitch)
-        return estimated_key
-
 class BandsWorker(BaseWorker):
 
     def __init__(self, bands_of_interest, channel_name):
