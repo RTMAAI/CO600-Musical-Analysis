@@ -21,7 +21,7 @@ from matplotlib.figure import Figure
 matplotlib.pyplot.ion() # Enables interactive plotting.
 
 CHUNK_LENGTH = 1024 # Length of sampled data
-SPECTRUM_LENGTH = int(CHUNK_LENGTH/2) # Only need half of a spectrum to get all frequencies present.
+SPECTRUM_LENGTH = int(CHUNK_LENGTH*10) # Default config is set to wait until 10*1024 before analysing the spectrum.
 SAMPLING_RATE = 44100 # Default sampling rate 44.1 khz
 FRAME_DELAY = 200 # How long between each frame update (ms)
 XPADDING = 20
@@ -54,7 +54,7 @@ class Listener(threading.Thread):
             callbacks.append({'function': self.callback, 'signal': key})
 
         self.analyser = rtmaii.Rtmaii(callbacks,
-                                      mode='CRITICAL',
+                                      mode='INFO',
                                       track=r'.\test_data\sine_493.88.wav',
                                      )
 
@@ -184,7 +184,8 @@ class Debugger(tk.Tk):
         self.signal_plot.set_title('Signal')
         self.signal_plot.set_xlabel('Time (Arbitary)')
         self.signal_plot.set_ylabel('Amplitude')
-        self.signal_plot.plot(self.timeframe, self.listener.get_item('signal'))
+        signal = self.listener.get_item('signal') #TODO: Shouldn't need to splice timeframe to len of sig.
+        self.signal_plot.plot(self.timeframe[:len(signal)], signal)
 
         self.spectrum_plot.clear()
         self.spectrum_plot.set_title('Spectrum')
