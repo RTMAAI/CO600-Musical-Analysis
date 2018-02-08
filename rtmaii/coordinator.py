@@ -10,7 +10,7 @@ import json
 import logging
 import os
 from rtmaii.analysis import spectral, spectrogram
-from rtmaii.tasks import worker
+from rtmaii.worker import FFTWorker, AutoCorrelationWorker, BandsWorker, HPSWorker, ZeroCrossingWorker
 from rtmaii.debugger import Locator
 from pydispatch import dispatcher
 from numpy import arange, mean, int16, resize, fft
@@ -63,13 +63,14 @@ class Coordinator(BaseCoordinator):
         BaseCoordinator.__init__(self, config)
 
     def single_channel(self, config: object, channels: int):
-        self.channels.append(FrequencyCoordinator(config, 1))
+        self.peer_list.append(FrequencyCoordinator(config, 1))
+        # self.peer_list.append(BPMCoordinator(config, 1))
 
         while True:
             data = self.queue.get()
 
             if data is None:
-                self.channels[0].queue.put(None)
+                self.message_peers(None)
                 LOGGER.info('Coordinator Finishing Up.')
                 break # No more data so cleanup and end thread.
 
@@ -81,11 +82,12 @@ class Coordinator(BaseCoordinator):
             averaged_signal = mean(channel_signals, axis=0, dtype=int16)
 
             dispatcher.send(signal='signal', sender=channel, data=averaged_signal) #TODO: Move to a locator.
-            self.channels[0].queue.put(averaged_signal)
+            self.message_peers(averaged_signal)
 
     def multi_channel(self, config: object, channels: int):
         for channel in range(config.get_config('channels')):
-            self.channels.append(FrequencyCoordinator(config, channel))
+            self.peer_list.append(FrequencyCoordinator(config, channel))
+            # self.peer_list.append(BPMCoordinator(config, channel))
 
         while True:
             data = self.queue.get()
@@ -97,10 +99,10 @@ class Coordinator(BaseCoordinator):
                 break # No more data so cleanup and end thread.
 
             # BPM Thread creation, passing through data.
-            for channel in range(channels):
+            for channel in range(1, channels + 1):
                 channel_signal = data[channel::channels]
                 dispatcher.send(signal='signal', sender=channel, data=channel_signal) #TODO: Move to a locator.
-                self.channels[channel].queue.put(channel_signal)
+                self.message_peers(channel_signal)
 
     def run(self):
         channels = self.config.get_config('channels')
@@ -118,9 +120,9 @@ class FrequencyCoordinator(BaseCoordinator):
         pitch_method = config.get_config('pitch_algorithm')
 
         if pitch_method == 'zero-crossings':
-            self.peer_list.append(worker.ZeroCrossingWorker(sampling_rate, channel_name))
+            self.peer_list.append(ZeroCrossingWorker(sampling_rate, channel_name))
         elif pitch_method == 'auto-corellation':
-            self.peer_list.append(worker.AutoCorrelationWorker(sampling_rate, channel_name))
+            self.peer_list.append(AutoCorrelationWorker(sampling_rate, channel_name))
 
         self.peer_list.append(SpectrumCoordinator(config, channel_name))
         self.channel_name = channel_name
@@ -140,10 +142,10 @@ class FrequencyCoordinator(BaseCoordinator):
             data = self.queue.get()
             if data is None:
                 LOGGER.info('{} Frequency Coordinator finishing up'.format(self.channel_name))
+                self.message_peers(None)
                 break # No more data so cleanup and end thread
+            signal = signal[1024:]
             signal.extend(data)
-            signal = signal[-fft_resolution:]
-            print(len(signal))
             self.message_peers(signal)
 
 class SpectrumCoordinator(BaseCoordinator):
@@ -152,29 +154,36 @@ class SpectrumCoordinator(BaseCoordinator):
         self.sampling_rate = config.get_config('sampling_rate')
         pitch_method = config.get_config('pitch_algorithm')
         bands_of_interest = config.get_config('bands')
+        tasks = config.get_config('tasks')
         self.channel_name = channel_name
+        fft_resolution = self.config.get_config('fft_resolution')
 
         if pitch_method == 'hps':
-            self.peer_list.append(worker.HPSWorker(self.sampling_rate, channel_name))
+            self.peer_list.append(HPSWorker(self.sampling_rate, channel_name))
         elif pitch_method == 'fft':
-            self.peer_list.append(worker.FFTWorker(self.sampling_rate, channel_name))
+            self.peer_list.append(FFTWorker(self.sampling_rate, channel_name))
+        if tasks['genre']:
+            self.peer_list.append(SpectrogramCoordinator(config, channel_name))
+        if tasks['bands']:
+            self.peer_list.append(BandsWorker(bands_of_interest, channel_name))
 
-        self.peer_list.append(worker.BandsWorker(bands_of_interest, channel_name))
+        self.window = spectral.new_window(fft_resolution, 'blackmanharris')
+        self.filter = spectral.butter_bandpass(10, 20000, self.sampling_rate, 5)
 
     def run(self):
         while True:
             signal = self.queue.get()
             if signal is None:
+                self.message_peers(None)
                 break
             initial = time.time()
-            frequency_spectrum = spectral.spectrum(signal, self.sampling_rate)
+            frequency_spectrum = spectral.spectrum(signal, self.window, self.filter)
             print("spectrum conversion took {}".format(time.time()-initial))
             self.message_peers(frequency_spectrum)
             dispatcher.send(signal='spectrum', sender=self.channel_name, data=frequency_spectrum)
 
-
 class SpectrogramCoordinator(BaseCoordinator):
-    def __init__(self, config):
+    def __init__(self, config, channel_name):
         BaseCoordinator.__init__(self, config)
 
     def run(self):
@@ -183,6 +192,7 @@ class SpectrogramCoordinator(BaseCoordinator):
         while True:
             fft = self.queue.get()
             if fft is None:
+                self.message_peers(None)
                 break
             ffts.append(fft)
             ffts = ffts[-spectrogram_resolution:]
@@ -193,9 +203,8 @@ class SpectrogramCoordinator(BaseCoordinator):
             # dispatcher.send(signal='spectrogram', sender='spectrogram', data=ffts)
             # Create spectrogram when enough FFTs generated
 
-
 class BPMCoordinator(BaseCoordinator):
-    def __init__(self, config):
+    def __init__(self, config, channel_name):
         BaseCoordinator.__init__(self, config)
 
     def run(self):
