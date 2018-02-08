@@ -1,24 +1,34 @@
 import threading
 from queue import Queue
-import time
 from rtmaii.analysis import frequency, pitch, key, spectral, spectrogram
 from pydispatch import dispatcher
 from numpy import arange, mean, int16, resize
 
-class BaseWorker(threading.Thread):
-    def __init__(self, channel_name):
+class Worker(threading.Thread):
+    """ Base worker class, responsible for initializing shared attributes.
+
+        **Attributes**:
+            - `queue`: queue of data to be processed by a worker.
+            - `channel_id`: id of channel being analysed.
+    """
+    def __init__(self, channel_id: int):
         threading.Thread.__init__(self, args=(), kwargs=None)
-        self.channel_name = channel_name
+        self.channel_id = channel_id
         self.setDaemon(True)
         self.queue = Queue()
         self.start()
 
     def run(self):
         raise NotImplementedError("Run should be implemented")
-class BandsWorker(BaseWorker):
+class BandsWorker(Worker):
+    """ Worker responsible for analysing interesting frequency bands.
 
-    def __init__(self, bands_of_interest, channel_name):
-        BaseWorker.__init__(self, channel_name)
+        **Args**:
+            - `bands_of_interest`: dictionary of frequency bands to analyse.
+            - `channel_id`: id of channel being analysed.
+    """
+    def __init__(self, bands_of_interest: dict, channel_id: int):
+        Worker.__init__(self, channel_id)
         self.bands_of_interest = bands_of_interest
 
     def run(self):
@@ -28,12 +38,17 @@ class BandsWorker(BaseWorker):
                 break # No more data so cleanup and end thread.
 
             frequency_bands = frequency.frequency_bands(abs(spectrum), self.bands_of_interest)
-            dispatcher.send(signal='bands', sender=self.channel_name, data=frequency_bands) #TODO: Move to a locator.
+            dispatcher.send(signal='bands', sender=self.channel_id, data=frequency_bands) #TODO: Move to a locator.
 
-class ZeroCrossingWorker(BaseWorker):
+class ZeroCrossingWorker(Worker):
+    """ Worker responsible for analysing the fundamental pitch using the zero-crossings method.
 
-    def __init__(self, sampling_rate, channel_name):
-        BaseWorker.__init__(self, channel_name)
+        **Args**:
+            - `sampling_rate`: sampling_rate of source being analysed.
+            - `channel_id`: id of channel being analysed.
+    """
+    def __init__(self, sampling_rate: int, channel_id: int):
+        Worker.__init__(self, channel_id)
         self.sampling_rate = sampling_rate
 
     def run(self):
@@ -43,12 +58,17 @@ class ZeroCrossingWorker(BaseWorker):
                 break # No more data so cleanup and end thread.
 
             estimated_pitch = pitch.pitch_from_zero_crossings(signal, self.sampling_rate)
-            dispatcher.send(signal='pitch', sender=self.channel_name, data=estimated_pitch)
+            dispatcher.send(signal='pitch', sender=self.channel_id, data=estimated_pitch)
 
-class AutoCorrelationWorker(BaseWorker):
+class AutoCorrelationWorker(Worker):
+    """ Worker responsible for analysing the fundamental pitch using the auto-corellation method.
 
-    def __init__(self, sampling_rate, channel_name):
-        BaseWorker.__init__(self, channel_name)
+        **Args**:
+            - `sampling_rate`: sampling_rate of source being analysed.
+            - `channel_id`: id of channel being analysed.
+    """
+    def __init__(self, sampling_rate: int, channel_id: int):
+        Worker.__init__(self, channel_id)
         self.sampling_rate = sampling_rate
 
     def run(self):
@@ -59,12 +79,17 @@ class AutoCorrelationWorker(BaseWorker):
 
             convolved_spectrum = spectral.convolve_spectrum(signal)
             estimated_pitch = pitch.pitch_from_auto_correlation(convolved_spectrum, self.sampling_rate)
-            dispatcher.send(signal='pitch', sender=self.channel_name, data=estimated_pitch)
+            dispatcher.send(signal='pitch', sender=self.channel_id, data=estimated_pitch)
 
-class HPSWorker(BaseWorker):
+class HPSWorker(Worker):
+    """ Worker responsible for analysing the fundamental pitch using the harmonic-product-spectrum method.
 
-    def __init__(self, sampling_rate, channel_name):
-        BaseWorker.__init__(self, channel_name)
+        **Args**:
+            - `sampling_rate`: sampling_rate of source being analysed.
+            - `channel_id`: id of channel being analysed.
+    """
+    def __init__(self, sampling_rate: int, channel_id: int):
+        Worker.__init__(self, channel_id)
         self.sampling_rate = sampling_rate
 
     def run(self):
@@ -74,12 +99,17 @@ class HPSWorker(BaseWorker):
                 break # No more data so cleanup and end thread.
 
             estimated_pitch = pitch.pitch_from_hps(spectrum, self.sampling_rate, 5)
-            dispatcher.send(signal='pitch', sender=self.channel_name, data=estimated_pitch)
+            dispatcher.send(signal='pitch', sender=self.channel_id, data=estimated_pitch)
 
-class FFTWorker(BaseWorker):
+class FFTWorker(Worker):
+    """ Worker responsible for analysing the fundamental pitch using the FFT method.
 
-    def __init__(self, sampling_rate, channel_name):
-        BaseWorker.__init__(self, channel_name)
+        **Args**:
+            - `sampling_rate`: sampling_rate of source being analysed.
+            - `channel_id`: id of channel being analysed.
+    """
+    def __init__(self, sampling_rate: int, channel_id: int):
+        Worker.__init__(self, channel_id)
         self.sampling_rate = sampling_rate
 
     def run(self):
@@ -89,4 +119,4 @@ class FFTWorker(BaseWorker):
                 break # No more data so cleanup and end thread.
 
             estimated_pitch = pitch.pitch_from_fft(spectrum, self.sampling_rate)
-            dispatcher.send(signal='pitch', sender=self.channel_name, data=estimated_pitch)
+            dispatcher.send(signal='pitch', sender=self.channel_id, data=estimated_pitch)
