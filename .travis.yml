@@ -5,4 +5,4 @@ install:
   - sudo apt-get install -y portaudio19-dev
   - pip install -r requirements.txt
 script:
-  - python -m unittest discover rtmaii.tests "*_test.py" -v
+  - python -m unittest discover rtmaii.test -v
