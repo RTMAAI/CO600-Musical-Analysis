@@ -25,7 +25,6 @@ def butter_bandpass(low_cut_off: int, high_cut_off: int, sampling_rate: int, ord
 
 def band_pass_filter(signal: list, numerator: list, denominator: list):
     """ Cut out any frequencies out of the range we are interested in. """
-    print(numerator)
     filtered_signal = lfilter(numerator, denominator, signal)
     return filtered_signal
 
