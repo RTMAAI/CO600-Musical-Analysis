@@ -47,6 +47,7 @@ class Rtmaii(object):
         self.audio = pyaudio.PyAudio()
         self.set_source(track)
         self.set_callbacks(callbacks)
+        self.coordinator = Coordinator(self.config)
         LOGGER.setLevel(mode)
         LOGGER.debug('RTMAII Initiliazed')
 
@@ -78,13 +79,12 @@ class Rtmaii(object):
         pyaudio_settings['stream_callback'] = self.__stream_callback__
 
         self.stream = self.audio.open(**pyaudio_settings)
-        self.coordinator = Coordinator(self.config)
         self.stream.start_stream()
 
         LOGGER.info('Stream started')
 
     def stop(self):
-        """ Stop the stream & close the track (if set) """
+        """ Stop the stream & close the track (if set). """
         self.stream.stop_stream()
         self.stream.close()
         self.coordinator.queue.put(None)
