@@ -32,15 +32,21 @@ class Config(object):
         """
 
         self.defaults = {
-            "merge_channels": False,
+            "merge_channels": True,
             "bands": {
-                "sub-bass":[20, 60],
+                 "sub-bass":[20, 60],
                  "bass":[60, 250],
                  "low-mid":[250, 500],
                  "mid":[500, 2000],
                  "upper-mid":[2000, 4000],
                  "presence":[4000, 6000],
                  "brilliance":[6000, 20000]
+            },
+            "tasks": {
+                "pitch": True,
+                "genre": True,
+                "beat": True,
+                "bands": True
             },
             "fft_resolution": 20480,
             "pitch_algorithm": "hps",
