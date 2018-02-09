@@ -41,14 +41,13 @@ def new_window(N: int, window: str):
 def convolve_spectrum(signal: list):
     """ Apply convolution to the input signal. """
     convol = fftconvolve(signal, signal[::-1], mode='full')
-    convol = convol[len(convol)//2:] # Split bin in half removing negatives.
-    return convol
+    return convol[len(convol) // 2:] # Split bin in half removing negatives.
 
 def spectrum_transform(signal: list):
     """ Performs FFT on input signal """
     signal_length = len(signal)
     normalized_spectrum = fft(signal) / signal_length # Normalization
-    return abs(normalized_spectrum[:int(signal_length/2)]) # Only need half of fft
+    return abs(normalized_spectrum[:signal_length // 2]) # Only need half of fft
 
 def spectrum(signal: list,
              window: list,
@@ -58,7 +57,7 @@ def spectrum(signal: list,
     **Args**
         - `signal`: the temporal signal to be converted to a spectrum.
         - `window`: the smoothing window to be applied.
-        - `bp_filter`: the bandpass filter polynomials to apply to the signal.
+        - `bp_filter`: the bandpass filter polynomial coefficents to apply to the signal.
              In the form of {'numerator': list, 'denominator': list}
     """
     windowed_signal = signal * window
