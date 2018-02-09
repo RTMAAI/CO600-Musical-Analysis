@@ -23,7 +23,7 @@ matplotlib.pyplot.ion() # Enables interactive plotting.
 CHUNK_LENGTH = 1024 # Length of sampled data
 SPECTRUM_LENGTH = int(CHUNK_LENGTH*10) # Default config is set to wait until 10*1024 before analysing the spectrum.
 SAMPLING_RATE = 44100 # Default sampling rate 44.1 khz
-FRAME_DELAY = 200 # How long between each frame update (ms)
+FRAME_DELAY = 500 # How long between each frame update (ms)
 XPADDING = 20
 
 class Listener(threading.Thread):
@@ -131,7 +131,7 @@ class Debugger(tk.Tk):
         self.signal_canvas.get_tk_widget().pack(padx=XPADDING)
 
         # --- SPECTRUM GRAPH --- #
-        self.frequencies = arange(SPECTRUM_LENGTH)/(CHUNK_LENGTH/SAMPLING_RATE) # Possible range of frequencies
+        self.frequencies = arange(SPECTRUM_LENGTH)/(CHUNK_LENGTH/SAMPLING_RATE)/2 # Possible range of frequencies
         spectrum_frame = Figure(figsize=(10, 4), dpi=100)
         self.spectrum_plot = spectrum_frame.add_subplot(111)
         self.spectrum_plot.plot(self.frequencies, self.frequencies)
