@@ -26,6 +26,7 @@ class BaseCoordinator(threading.Thread):
     """
     def __init__(self, config: object):
         threading.Thread.__init__(self, args=(), kwargs=None)
+
         self.setDaemon(True)
         self.queue = Queue()
         self.peer_list = []
@@ -52,9 +53,10 @@ class Coordinator(BaseCoordinator):
             - channels (List): list of channel threads to transmit signal to.
     """
     def __init__(self, config: object):
-        self.channels = []
         LOGGER.info('Coordinator Initialized.')
         BaseCoordinator.__init__(self, config)
+
+        self.channels = []
 
     def single_channel(self, config: object, channels: int):
         """ Task configuration to handle analysis of an averaged single channel.
@@ -78,7 +80,6 @@ class Coordinator(BaseCoordinator):
 
             for channel in range(channels):
                     channel_signals.append(data[channel::channels])
-
             averaged_signal = mean(channel_signals, axis=0, dtype=int16) # Average all channels.
 
             self.message_peers(averaged_signal)
@@ -134,13 +135,13 @@ class FrequencyCoordinator(BaseCoordinator):
         sampling_rate = config.get_config('sampling_rate')
         pitch_method = config.get_config('pitch_algorithm')
 
-        if pitch_method == 'zero-crossings':
-            self.peer_list.append(ZeroCrossingWorker(sampling_rate, channel_id))
-        elif pitch_method == 'auto-corellation':
-            self.peer_list.append(AutoCorrelationWorker(sampling_rate, channel_id))
-
         self.peer_list.append(SpectrumCoordinator(config, channel_id))
         self.channel_id = channel_id
+
+        if pitch_method == 'zero-crossings':
+            self.peer_list.append(ZeroCrossingWorker(sampling_rate, channel_id))
+        elif pitch_method == 'auto-correlation':
+            self.peer_list.append(AutoCorrelationWorker(sampling_rate, channel_id))
 
     def run(self):
         """ Extend signal data to configured resolution before transmitting to peers. """
@@ -178,12 +179,15 @@ class SpectrumCoordinator(BaseCoordinator):
     def __init__(self, config, channel_id):
         BaseCoordinator.__init__(self, config)
 
-        self.sampling_rate = config.get_config('sampling_rate')
         pitch_method = config.get_config('pitch_algorithm')
         bands_of_interest = config.get_config('bands')
         tasks = config.get_config('tasks')
-        self.channel_id = channel_id
         fft_resolution = self.config.get_config('fft_resolution')
+
+        self.sampling_rate = config.get_config('sampling_rate')
+        self.channel_id = channel_id
+        self.window = spectral.new_window(fft_resolution, 'blackmanharris')
+        self.filter = spectral.butter_bandpass(10, 20000, self.sampling_rate, 5)
 
         if pitch_method == 'hps':
             self.peer_list.append(HPSWorker(self.sampling_rate, channel_id))
@@ -193,9 +197,6 @@ class SpectrumCoordinator(BaseCoordinator):
             self.peer_list.append(SpectrogramCoordinator(config, channel_id))
         if tasks['bands']:
             self.peer_list.append(BandsWorker(bands_of_interest, channel_id))
-
-        self.window = spectral.new_window(fft_resolution, 'blackmanharris')
-        self.filter = spectral.butter_bandpass(10, 20000, self.sampling_rate, 5)
 
     def run(self):
         while True:
