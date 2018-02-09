@@ -20,6 +20,16 @@ class Worker(threading.Thread):
 
     def run(self):
         raise NotImplementedError("Run should be implemented")
+
+class PitchWorker(Worker):
+    """ Specialised worker that has a method to analyse the key given the pitch. """
+    def __init__(self, channel_id: int):
+        Worker.__init__(self, args=(), kwargs=None)
+
+    def analyse_key(self, pitch):
+        estimated_key = key.note_from_pitch(pitch)
+        dispatcher.send(signal='key', sender=self.channel_id, data=estimated_key)
+
 class BandsWorker(Worker):
     """ Worker responsible for analysing interesting frequency bands.
 
@@ -40,7 +50,7 @@ class BandsWorker(Worker):
             frequency_bands = frequency.frequency_bands(abs(spectrum), self.bands_of_interest)
             dispatcher.send(signal='bands', sender=self.channel_id, data=frequency_bands) #TODO: Move to a locator.
 
-class ZeroCrossingWorker(Worker):
+class ZeroCrossingWorker(PitchWorker):
     """ Worker responsible for analysing the fundamental pitch using the zero-crossings method.
 
         **Args**:
@@ -59,8 +69,9 @@ class ZeroCrossingWorker(Worker):
 
             estimated_pitch = pitch.pitch_from_zero_crossings(signal, self.sampling_rate)
             dispatcher.send(signal='pitch', sender=self.channel_id, data=estimated_pitch)
+            self.analyse_key(estimated_pitch)
 
-class AutoCorrelationWorker(Worker):
+class AutoCorrelationWorker(PitchWorker):
     """ Worker responsible for analysing the fundamental pitch using the auto-corellation method.
 
         **Args**:
@@ -80,8 +91,10 @@ class AutoCorrelationWorker(Worker):
             convolved_spectrum = spectral.convolve_spectrum(signal)
             estimated_pitch = pitch.pitch_from_auto_correlation(convolved_spectrum, self.sampling_rate)
             dispatcher.send(signal='pitch', sender=self.channel_id, data=estimated_pitch)
+            print(estimated_pitch)
+            self.analyse_key(estimated_pitch)
 
-class HPSWorker(Worker):
+class HPSWorker(PitchWorker):
     """ Worker responsible for analysing the fundamental pitch using the harmonic-product-spectrum method.
 
         **Args**:
@@ -98,10 +111,11 @@ class HPSWorker(Worker):
             if spectrum is None:
                 break # No more data so cleanup and end thread.
 
-            estimated_pitch = pitch.pitch_from_hps(spectrum, self.sampling_rate, 5)
+            estimated_pitch = pitch.pitch_from_hps(spectrum, self.sampling_rate, 7)
             dispatcher.send(signal='pitch', sender=self.channel_id, data=estimated_pitch)
+            self.analyse_key(estimated_pitch)
 
-class FFTWorker(Worker):
+class FFTWorker(PitchWorker):
     """ Worker responsible for analysing the fundamental pitch using the FFT method.
 
         **Args**:
@@ -120,3 +134,4 @@ class FFTWorker(Worker):
 
             estimated_pitch = pitch.pitch_from_fft(spectrum, self.sampling_rate)
             dispatcher.send(signal='pitch', sender=self.channel_id, data=estimated_pitch)
+            self.analyse_key(estimated_pitch)
