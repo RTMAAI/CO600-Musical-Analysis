@@ -7,7 +7,6 @@ import logging
 import os
 from rtmaii.coordinator import Coordinator
 from rtmaii.configuration import Config
-from rtmaii.debugger import Locator, Debugger
 from numpy import fromstring, int16
 from pydispatch import dispatcher
 import pyaudio
