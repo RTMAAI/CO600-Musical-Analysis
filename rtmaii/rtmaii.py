@@ -70,7 +70,7 @@ class Rtmaii(object):
             **Returns**
                 - bool: True is alive, False otherwise.
         """
-        return self.coordinator.is_alive()
+        return hasattr(self, 'stream') and self.stream.is_active()
 
     def start(self):
         """ Start audio stream. """
