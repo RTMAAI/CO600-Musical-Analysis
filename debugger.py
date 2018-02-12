@@ -18,7 +18,9 @@ import tkinter as tk
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 
-matplotlib.pyplot.ion() # Enables interactive plotting.
+from matplotlib import pyplot
+pyplot.ion() # Enables interactive plotting.
+
 CHUNK_LENGTH = 1024 # Length of sampled data
 SPECTRUM_LENGTH = int(CHUNK_LENGTH*10) # Default config is set to wait until 10*1024 before analysing the spectrum.
 SAMPLING_RATE = 44100 # Default sampling rate 44.1 khz
@@ -64,7 +66,7 @@ class Listener(threading.Thread):
                                      )
 
         threading.Thread.__init__(self, args=(), kwargs=None)
-
+        self.setDaemon(True)
         self.start()
 
     def start_analysis(self):
@@ -221,12 +223,12 @@ class Debugger(tk.Tk):
         self.spectrogram_canvas.draw()
 
         # --- UPDATE LABELS --- #
-        self.pitch.set(self.listener.get_item('pitch'))
+        self.pitch.set("{0:.2f}".format(self.listener.get_item('pitch')))
         self.key.set(self.listener.get_item('key'))
         bands = self.listener.get_item('bands')
         # Update each band value.
         for key, value in bands.items():
-            self.bands[key].set(value)
+            self.bands[key].set("{0:.2f}".format(value))
 
         # --- UPDATE PLAY --- #
         if self.listener.is_active():
