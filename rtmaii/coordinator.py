@@ -8,9 +8,10 @@ from queue import Queue
 import threading
 import logging
 from rtmaii.analysis import spectral, spectrogram
-from rtmaii.worker import FFTWorker, AutoCorrelationWorker, BandsWorker, HPSWorker, ZeroCrossingWorker
+from rtmaii.worker import FFTWorker, AutoCorrelationWorker, BandsWorker, HPSWorker, ZeroCrossingWorker, SpectogramWorker
 from pydispatch import dispatcher
 from numpy import mean, int16
+
 LOGGER = logging.getLogger(__name__)
 class BaseCoordinator(threading.Thread):
     """ Parent class of all coordinator threads.
@@ -177,6 +178,8 @@ class SpectrumCoordinator(BaseCoordinator):
     """
     def __init__(self, config, channel_id):
         BaseCoordinator.__init__(self, config)
+        LOGGER.debug('BaseCoordinator Initiliazed')
+        
 
         pitch_method = config.get_config('pitch_algorithm')
         bands_of_interest = config.get_config('bands')
@@ -211,22 +214,29 @@ class SpectrumCoordinator(BaseCoordinator):
 class SpectrogramCoordinator(BaseCoordinator):
     def __init__(self, config, channel_id):
         BaseCoordinator.__init__(self, config)
+        self.sampling_rate = config.get_config('sampling_rate')
+        self.channel_id = channel_id
 
     def run(self):
+        print("Spectrogram Coordinator Initialized.")
+
         ffts = []
-        spectrogram_resolution = 10
+
+        spectrogram_resolution = 128
         while True:
             fft = self.queue.get()
             if fft is None:
                 self.message_peers(None)
                 break
             ffts.append(fft)
-            ffts = ffts[-spectrogram_resolution:]
 
             if len(ffts) > spectrogram_resolution:
+                ffts = ffts[-spectrogram_resolution:]            
+                self.peer_list.append(SpectogramWorker( self.sampling_rate, self.channel_id))
+                self.message_peers(ffts)
                 dispatcher.send(signal='spectrogram', sender='spectrogram', data=ffts)
             # Also need to remove previous set of FFTs once there is enough data
-            # dispatcher.send(signal='spectrogram', sender='spectrogram', data=ffts)
+            #dispatcher.send(signal='spectrogram', sender='spectrogram', data=ffts)
             # Create spectrogram when enough FFTs generated
 
 class BPMCoordinator(BaseCoordinator):
