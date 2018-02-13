@@ -18,7 +18,7 @@ import tkinter as tk
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 
-matplotlib.pyplot.ion() # Enables interactive plotting.
+#matplotlib.pyplot.ion() # Enables interactive plotting.
 CHUNK_LENGTH = 1024 # Length of sampled data
 SPECTRUM_LENGTH = int(CHUNK_LENGTH*10) # Default config is set to wait until 10*1024 before analysing the spectrum.
 SAMPLING_RATE = 44100 # Default sampling rate 44.1 khz
@@ -51,6 +51,7 @@ class Listener(threading.Thread):
             },
             'spectrum': zeros(SPECTRUM_LENGTH),
             'signal': zeros(CHUNK_LENGTH),
+            'spectogram':zeros([128,128,128])
 
         }
 
@@ -60,7 +61,7 @@ class Listener(threading.Thread):
 
         self.analyser = rtmaii.Rtmaii(callbacks,
                                       mode='INFO',
-                                      track=r'.\test_data\sine_493.88.wav',
+                                      track=r'.\test_data\spectogramTest.wav',
                                      )
 
         threading.Thread.__init__(self, args=(), kwargs=None)
@@ -215,6 +216,13 @@ class Debugger(tk.Tk):
         self.spectrogram_plot.set_title('Spectrogram')
         self.spectrogram_plot.set_xlabel('Time')
         self.spectrogram_plot.set_ylabel('Frequency (Hz)')
+        data = self.listener.get_item('spectogram')
+        
+        print(len(data[0]), 'time')
+        print(len(data[1]), 'freq')
+        print(len(data[2]), 'intensity')
+
+        self.spectrogram_plot.pcolormesh(data[0],data[1],data[2], vmin=-120, vmax=0)
 
         self.signal_canvas.draw()
         self.spectrum_canvas.draw()
