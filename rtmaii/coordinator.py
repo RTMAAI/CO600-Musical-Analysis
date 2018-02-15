@@ -8,11 +8,10 @@ from queue import Queue
 import threading
 import logging
 from rtmaii.analysis import spectral, spectrogram
-from rtmaii.worker import FFTWorker, AutoCorrelationWorker, BandsWorker, HPSWorker, ZeroCrossingWorker
 from pydispatch import dispatcher
 from numpy import mean, int16
 LOGGER = logging.getLogger(__name__)
-class BaseCoordinator(threading.Thread):
+class Coordinator(threading.Thread):
     """ Parent class of all coordinator threads.
 
         Conducts the initiliazation of coordinator threads and their *required* attributes.
@@ -23,12 +22,12 @@ class BaseCoordinator(threading.Thread):
             - `config` (Config): Configuration options to use.
 
     """
-    def __init__(self, config: object):
+    def __init__(self, config: object, peer_list: list):
         threading.Thread.__init__(self, args=(), kwargs=None)
 
         self.setDaemon(True)
         self.queue = Queue()
-        self.peer_list = []
+        self.peer_list = peer_list
         self.config = config
         self.start()
 
@@ -45,15 +44,19 @@ class BaseCoordinator(threading.Thread):
         for peer in self.peer_list:
             peer.queue.put(data)
 
-class Coordinator(BaseCoordinator):
+    @staticmethod
+    def factory(type, **kwargs):
+        return type(kwargs)
+
+class RootCoordinator(Coordinator):
     """ First-line coordinator responsible for sending signal data to other threads.
 
         **Attributes**:
             - channels (List): list of channel threads to transmit signal to.
     """
-    def __init__(self, config: object):
+    def __init__(self, config: object, peer_list: list):
         LOGGER.info('Coordinator Initialized.')
-        BaseCoordinator.__init__(self, config)
+        Coordinator.__init__(self, config, peer_list)
 
         self.channels = []
 
@@ -64,8 +67,6 @@ class Coordinator(BaseCoordinator):
                 - `config` : configuration to be passed to peers.
                 - `channels` : number of channels of input source.
         """
-        self.peer_list.append(FrequencyCoordinator(config, 1))
-        # self.peer_list.append(BPMCoordinator(config, 1)) PLACEHOLDER
 
         while True:
             data = self.queue.get()
@@ -92,10 +93,6 @@ class Coordinator(BaseCoordinator):
                 - `channels` : number of channels of input source.
         """
 
-        for channel in range(config.get_config('channels')):
-            self.peer_list.append(FrequencyCoordinator(config, channel))
-            # self.peer_list.append(BPMCoordinator(config, channel)) PLACEHOLDER
-
         while True:
             data = self.queue.get()
 
@@ -118,7 +115,7 @@ class Coordinator(BaseCoordinator):
         else:
             self.multi_channel(self.config, channels)
 
-class FrequencyCoordinator(BaseCoordinator):
+class FrequencyCoordinator(Coordinator):
     """ Frequency coordinator responsible for extending signal data before further analysis.
 
         **Attributes**:
@@ -129,18 +126,12 @@ class FrequencyCoordinator(BaseCoordinator):
         **Notes**:
             - `Peers` created are dependent on configured tasks and algorithms.
     """
-    def __init__(self, config: object, channel_id: int):
-        BaseCoordinator.__init__(self, config)
+    def __init__(self, config: object, peer_list: list, channel_id: int):
+        Coordinator.__init__(self, config, peer_list)
         sampling_rate = config.get_config('sampling_rate')
         pitch_method = config.get_config('pitch_algorithm')
 
-        self.peer_list.append(SpectrumCoordinator(config, channel_id))
         self.channel_id = channel_id
-
-        if pitch_method == 'zero-crossings':
-            self.peer_list.append(ZeroCrossingWorker(sampling_rate, channel_id))
-        elif pitch_method == 'auto-correlation':
-            self.peer_list.append(AutoCorrelationWorker(sampling_rate, channel_id))
 
     def run(self):
         """ Extend signal data to configured resolution before transmitting to peers. """
@@ -160,11 +151,11 @@ class FrequencyCoordinator(BaseCoordinator):
                 LOGGER.info('{} Frequency Coordinator finishing up'.format(self.channel_id))
                 self.message_peers(None)
                 break # No more data so cleanup and end thread
-            signal = signal[1024:]
+            signal = signal[len(data):]
             signal.extend(data)
             self.message_peers(signal)
 
-class SpectrumCoordinator(BaseCoordinator):
+class SpectrumCoordinator(Coordinator):
     """ Spectrum coordinator responsible for creating spectrum data and transmitting to dependants.
 
         **Attributes**:
@@ -175,8 +166,8 @@ class SpectrumCoordinator(BaseCoordinator):
         **Notes**:
             - `Peers` created are dependent on configured tasks and algorithms.
     """
-    def __init__(self, config, channel_id):
-        BaseCoordinator.__init__(self, config)
+    def __init__(self, config: object, peer_list: list, channel_id: int):
+        Coordinator.__init__(self, config)
 
         pitch_method = config.get_config('pitch_algorithm')
         bands_of_interest = config.get_config('bands')
@@ -187,15 +178,6 @@ class SpectrumCoordinator(BaseCoordinator):
         self.channel_id = channel_id
         self.window = spectral.new_window(fft_resolution, 'blackmanharris')
         self.filter = spectral.butter_bandpass(10, 20000, self.sampling_rate, 5)
-
-        if pitch_method == 'hps':
-            self.peer_list.append(HPSWorker(self.sampling_rate, channel_id))
-        elif pitch_method == 'fft':
-            self.peer_list.append(FFTWorker(self.sampling_rate, channel_id))
-        if tasks['genre']:
-            self.peer_list.append(SpectrogramCoordinator(config, channel_id))
-        if tasks['bands']:
-            self.peer_list.append(BandsWorker(bands_of_interest, channel_id))
 
     def run(self):
         while True:
@@ -208,30 +190,30 @@ class SpectrumCoordinator(BaseCoordinator):
             self.message_peers(frequency_spectrum)
             dispatcher.send(signal='spectrum', sender=self.channel_id, data=frequency_spectrum)
 
-class SpectrogramCoordinator(BaseCoordinator):
-    def __init__(self, config, channel_id):
-        BaseCoordinator.__init__(self, config)
+class SpectrogramCoordinator(Coordinator):
+    def __init__(self, config, peer_list: list, channel_id):
+        Coordinator.__init__(self, config)
 
     def run(self):
-        ffts = []
+        spectrum_list = []
         spectrogram_resolution = 10
         while True:
-            fft = self.queue.get()
-            if fft is None:
+            spectrum = self.queue.get()
+            if spectrum is None:
                 self.message_peers(None)
                 break
-            ffts.append(fft)
-            ffts = ffts[-spectrogram_resolution:]
+            spectrum_list.append(spectrum)
 
-            if len(ffts) > spectrogram_resolution:
-                dispatcher.send(signal='spectrogram', sender='spectrogram', data=ffts)
+            if len(spectrum_list) > spectrogram_resolution:
+                spectrum_list = spectrum_list[-spectrogram_resolution:]
+                dispatcher.send(signal='spectrogram', sender='spectrogram', data=spectrum_list)
             # Also need to remove previous set of FFTs once there is enough data
             # dispatcher.send(signal='spectrogram', sender='spectrogram', data=ffts)
             # Create spectrogram when enough FFTs generated
 
-class BPMCoordinator(BaseCoordinator):
-    def __init__(self, config, channel_id):
-        BaseCoordinator.__init__(self, config)
+class BPMCoordinator(Coordinator):
+    def __init__(self, config, peer_list: list, channel_id):
+        Coordinator.__init__(self, config)
 
     def run(self):
         beats = [] # List of beat intervals
