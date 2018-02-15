@@ -9,7 +9,6 @@ import threading
 import logging
 from rtmaii.analysis import spectral, spectrogram
 from rtmaii.worker import FFTWorker, AutoCorrelationWorker, BandsWorker, HPSWorker, ZeroCrossingWorker
-from rtmaii.debugger import Locator
 from pydispatch import dispatcher
 from numpy import mean, int16
 LOGGER = logging.getLogger(__name__)
