@@ -1,8 +1,5 @@
 """
   TODO: Fill in docstring.
-  TODO: Come up with a better name than coordinator.
-  TODO: Insert BPM Thread here.
-  TODO: Implement Spectrogram creation.
 """
 from queue import Queue
 import threading
@@ -44,15 +41,12 @@ class Coordinator(threading.Thread):
         for peer in self.peer_list:
             peer.queue.put(data)
 
-    @staticmethod
-    def factory(type, **kwargs):
-        return type(kwargs)
-
 class RootCoordinator(Coordinator):
     """ First-line coordinator responsible for sending signal data to other threads.
 
         **Attributes**:
             - channels (List): list of channel threads to transmit signal to.
+            - `peer_list` (list): List of peer threads to communicate processed data with.
     """
     def __init__(self, config: object, peer_list: list):
         LOGGER.info('Coordinator Initialized.')
@@ -128,8 +122,6 @@ class FrequencyCoordinator(Coordinator):
     """
     def __init__(self, config: object, peer_list: list, channel_id: int):
         Coordinator.__init__(self, config, peer_list)
-        sampling_rate = config.get_config('sampling_rate')
-        pitch_method = config.get_config('pitch_algorithm')
 
         self.channel_id = channel_id
 
@@ -167,11 +159,7 @@ class SpectrumCoordinator(Coordinator):
             - `Peers` created are dependent on configured tasks and algorithms.
     """
     def __init__(self, config: object, peer_list: list, channel_id: int):
-        Coordinator.__init__(self, config)
-
-        pitch_method = config.get_config('pitch_algorithm')
-        bands_of_interest = config.get_config('bands')
-        tasks = config.get_config('tasks')
+        Coordinator.__init__(self, config, peer_list)
         fft_resolution = self.config.get_config('fft_resolution')
 
         self.sampling_rate = config.get_config('sampling_rate')
@@ -192,7 +180,7 @@ class SpectrumCoordinator(Coordinator):
 
 class SpectrogramCoordinator(Coordinator):
     def __init__(self, config, peer_list: list, channel_id):
-        Coordinator.__init__(self, config)
+        Coordinator.__init__(self, config, peer_list)
 
     def run(self):
         spectrum_list = []
@@ -213,7 +201,7 @@ class SpectrogramCoordinator(Coordinator):
 
 class BPMCoordinator(Coordinator):
     def __init__(self, config, peer_list: list, channel_id):
-        Coordinator.__init__(self, config)
+        Coordinator.__init__(self, config, peer_list)
 
     def run(self):
         beats = [] # List of beat intervals
