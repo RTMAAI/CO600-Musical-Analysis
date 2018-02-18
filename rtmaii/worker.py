@@ -48,10 +48,8 @@ class SpectogramWorker(Worker):
             ffts = self.queue.get()
             if ffts is None:
                 break # No more data so cleanup and end thread.
-
-            fft_resolution = 20480
             
-            self.window = len(spectral.new_window(fft_resolution, 'blackmanharris'))
+            self.window = 1024
             
             ffts = column_stack(ffts)
             ffts = absolute(ffts) * 2.0 / self.window
@@ -60,25 +58,33 @@ class SpectogramWorker(Worker):
 
             time = arange(0, ffts.shape[1], dtype=float) * self.window / self.sampling_rate / 2
             frequecy = arange(0, self.window / 2, dtype=float) * self.sampling_rate / self.window
+            
             smallerFFTS = []
             smallerF = []
 
-            for i in range(0, len(ffts), 80):
-                if i + 80 > len(ffts):
+            for i in range(0, len(ffts), 4):
+                if i + 4 > len(ffts):
                     break
 
                 meanF = 0
                 meanFFTS = 0
 
-                for j in range(i,i+80):
+                for j in range(i , i + 3):
                     meanF = meanF + frequecy[j] 
                     meanFFTS = meanFFTS + ffts[j]
+
+                meanF = meanF + frequecy[j]/4 
+                meanFFTS = meanFFTS + ffts[j]/4
 
                 smallerF.append(meanF)
                 smallerFFTS.append(meanFFTS)
 
-            spectroData = [time, smallerF, smallerF]
-            dispatcher.send(signal='spectogram', sender=self.channel_id, data=spectroData)
+            #ax = plt.subplot(111)
+            #plt.pcolormesh(time, smallerF, smallerF, vmin=-120, vmax=0)
+
+            spectroData = [time, smallerF, smallerFFTS]
+
+            dispatcher.send(signal='spectogramData', sender=self.channel_id, data=spectroData)
 
 
 class BandsWorker(Worker):

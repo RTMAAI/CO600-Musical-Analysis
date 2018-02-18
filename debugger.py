@@ -51,7 +51,7 @@ class Listener(threading.Thread):
             },
             'spectrum': zeros(SPECTRUM_LENGTH),
             'signal': zeros(CHUNK_LENGTH),
-            'spectogram':zeros([128,128,128])
+            'spectogramData':zeros([128,128,128])
 
         }
 
@@ -154,7 +154,7 @@ class Debugger(tk.Tk):
         # --- SPECTROGRAM GRAPH --- #
         spectrogram_frame = Figure(figsize=(10, 4), dpi=100)
         self.spectrogram_plot = spectrogram_frame.add_subplot(111)
-        self.spectrogram_plot.plot(self.frequencies, self.frequencies)
+        #self.spectrogram_plot.plot(self.frequencies, self.frequencies)
         self.spectrogram_canvas = FigureCanvasTkAgg(spectrogram_frame, right_frame)
         self.spectrogram_canvas.show()
         self.spectrogram_canvas.get_tk_widget().pack(padx=XPADDING, side=tk.BOTTOM)
@@ -216,13 +216,13 @@ class Debugger(tk.Tk):
         self.spectrogram_plot.set_title('Spectrogram')
         self.spectrogram_plot.set_xlabel('Time')
         self.spectrogram_plot.set_ylabel('Frequency (Hz)')
-        data = self.listener.get_item('spectogram')
+        data = self.listener.get_item('spectogramData')
         
-        print(len(data[0]), 'time')
-        print(len(data[1]), 'freq')
-        print(len(data[2]), 'intensity')
+        #self.spectrogram_plot.pcolormesh(data[0],data[1],data[2], vmin=-120, vmax=0)
+        self.spectrogram_plot.pcolormesh( data[0], data[1], data[2])
 
-        self.spectrogram_plot.pcolormesh(data[0],data[1],data[2], vmin=-120, vmax=0)
+        self.spectrogram_plot.set_xlim(0, 1.5)
+        self.spectrogram_plot.set_ylim(0, 20000)
 
         self.signal_canvas.draw()
         self.spectrum_canvas.draw()
