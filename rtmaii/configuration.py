@@ -50,6 +50,7 @@ class Config(object):
             },
             "fft_resolution": 20480,
             "pitch_algorithm": "hps",
+            "frames_per_sample": 1024,
         }
 
         self.settings = self.defaults
