@@ -69,12 +69,6 @@ class Coordinator(BaseCoordinator):
 
         while True:
             data = self.queue.get()
-
-            if data is None:
-                self.message_peers(None)
-                LOGGER.info('Coordinator Finishing Up.')
-                break # No more data so cleanup and end thread.
-
             channel_signals = []
 
             for channel in range(channels):
@@ -103,11 +97,6 @@ class Coordinator(BaseCoordinator):
 
         while True:
             data = self.queue.get()
-
-            if data is None:
-                self.message_peers(None)
-                LOGGER.info('Coordinator Finishing Up.')
-                break # No more data so cleanup and end thread.
 
             for channel in range(1, channels + 1):
                 channel_signal = data[channel::channels]
@@ -161,10 +150,6 @@ class FrequencyCoordinator(BaseCoordinator):
 
         while start_analysis:
             data = self.queue.get()
-            if data is None:
-                LOGGER.info('{} Frequency Coordinator finishing up'.format(self.channel_id))
-                self.message_peers(None)
-                break # No more data so cleanup and end thread
             signal = signal[1024:]
             signal.extend(data)
             self.message_peers(signal)
@@ -205,10 +190,6 @@ class SpectrumCoordinator(BaseCoordinator):
     def run(self):
         while True:
             signal = self.queue.get()
-            if signal is None:
-                self.message_peers(None)
-                break
-
             frequency_spectrum = spectral.spectrum(signal, self.window, self.filter)
             self.message_peers(frequency_spectrum)
             dispatcher.send(signal='spectrum', sender=self.channel_id, data=frequency_spectrum)
@@ -222,9 +203,6 @@ class SpectrogramCoordinator(BaseCoordinator):
         spectrogram_resolution = 10
         while True:
             fft = self.queue.get()
-            if fft is None:
-                self.message_peers(None)
-                break
             ffts.append(fft)
             ffts = ffts[-spectrogram_resolution:]
 
