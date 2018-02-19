@@ -57,10 +57,7 @@ class Rtmaii(object):
         data = fromstring(
             self.waveform.readframes(frame_count) if hasattr(self, 'waveform') else in_data,
             dtype=int16)
-
         self.coordinator.queue.put(data)
-        if status == 4: # Push finish request to coordinator when stream has ended.
-            self.coordinator.queue.put(None)
         return (data, pyaudio.paContinue)
 
     def is_active(self):
@@ -85,8 +82,6 @@ class Rtmaii(object):
     def stop(self):
         """ Stop the stream & close the track (if set). """
         self.stream.stop_stream()
-        self.stream.close()
-        self.coordinator.queue.put(None)
         if hasattr(self, 'waveform'):
             self.waveform.close()
 
