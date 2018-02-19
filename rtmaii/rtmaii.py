@@ -74,6 +74,9 @@ class Rtmaii(object):
         pyaudio_settings = self.config.get_config('pyaudio_settings')
         pyaudio_settings['stream_callback'] = self.__stream_callback__
 
+        if hasattr(self, 'waveform'):
+            self.waveform.setpos(0) # Reset wave file to initial position.
+
         self.stream = self.audio.open(**pyaudio_settings)
         self.stream.start_stream()
 
