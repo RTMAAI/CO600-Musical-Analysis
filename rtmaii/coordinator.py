@@ -10,7 +10,7 @@ import logging
 from rtmaii.analysis import spectral, spectrogram
 from rtmaii.worker import FFTWorker, AutoCorrelationWorker, BandsWorker, HPSWorker, ZeroCrossingWorker
 from pydispatch import dispatcher
-from numpy import mean, int16
+from numpy import mean, int16, zeros, append
 LOGGER = logging.getLogger(__name__)
 class BaseCoordinator(threading.Thread):
     """ Parent class of all coordinator threads.
@@ -54,7 +54,7 @@ class Coordinator(BaseCoordinator):
     def __init__(self, config: object):
         LOGGER.info('Coordinator Initialized.')
         BaseCoordinator.__init__(self, config)
-
+        self.frames_per_sample = self.config.get_config('frames_per_sample')
         self.channels = []
 
     def single_channel(self, config: object, channels: int):
@@ -78,7 +78,12 @@ class Coordinator(BaseCoordinator):
             channel_signals = []
 
             for channel in range(channels):
-                    channel_signals.append(data[channel::channels])
+                    # Extract individual channel signals.
+                    signal_data = data[channel::channels]
+                    # Zero pad array as the data length is not always guaranteed to be == frames_per_sample (i.e. end of recording.)
+                    padded_signal_data = append(signal_data, zeros(self.frames_per_sample - len(signal_data)))
+                    channel_signals.append(padded_signal_data)
+
             averaged_signal = mean(channel_signals, axis=0, dtype=int16) # Average all channels.
 
             self.message_peers(averaged_signal)
