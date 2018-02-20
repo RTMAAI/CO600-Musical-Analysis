@@ -50,7 +50,7 @@ class RootCoordinator(Coordinator):
     """
     def __init__(self, config: object, peer_list: list):
         LOGGER.info('Coordinator Initialized.')
-        BaseCoordinator.__init__(self, config)
+        Coordinator.__init__(self, config)
         self.frames_per_sample = self.config.get_config('frames_per_sample')
         self.channels = []
 
@@ -173,8 +173,7 @@ class SpectrogramCoordinator(Coordinator):
         spectrogram_resolution = 10
         while True:
             fft = self.queue.get()
-            ffts.append(fft)
-            ffts = ffts[-spectrogram_resolution:]
+            spectrum_list.append(fft)
 
             if len(spectrum_list) > spectrogram_resolution:
                 spectrum_list = spectrum_list[-spectrogram_resolution:]

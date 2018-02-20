@@ -57,7 +57,7 @@ class Rtmaii(object):
         data = fromstring(
             self.waveform.readframes(frame_count) if hasattr(self, 'waveform') else in_data,
             dtype=int16)
-        self.coordinator.queue.put(data)
+        self.root.queue.put(data)
         return (data, pyaudio.paContinue)
 
     def is_active(self):
