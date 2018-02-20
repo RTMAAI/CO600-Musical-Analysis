@@ -5,7 +5,7 @@ import wave
 import json
 import logging
 import os
-from rtmaii.coordinator import Coordinator
+from rtmaii.hierarchy import new_hierarchy
 from rtmaii.configuration import Config
 from numpy import fromstring, int16
 from pydispatch import dispatcher
@@ -46,7 +46,7 @@ class Rtmaii(object):
         self.audio = pyaudio.PyAudio()
         self.set_source(track)
         self.set_callbacks(callbacks)
-        self.coordinator = Coordinator(self.config)
+        self.root = new_hierarchy(self.config)
         LOGGER.setLevel(mode)
         LOGGER.debug('RTMAII Initiliazed')
 
