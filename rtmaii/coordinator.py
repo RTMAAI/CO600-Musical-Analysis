@@ -6,7 +6,7 @@ import threading
 import logging
 from rtmaii.analysis import spectral, spectrogram
 from pydispatch import dispatcher
-from numpy import mean, int16
+from numpy import mean, int16, zeros, append
 LOGGER = logging.getLogger(__name__)
 class Coordinator(threading.Thread):
     """ Parent class of all coordinator threads.
@@ -50,8 +50,8 @@ class RootCoordinator(Coordinator):
     """
     def __init__(self, config: object, peer_list: list):
         LOGGER.info('Coordinator Initialized.')
-        Coordinator.__init__(self, config, peer_list)
-
+        BaseCoordinator.__init__(self, config)
+        self.frames_per_sample = self.config.get_config('frames_per_sample')
         self.channels = []
 
     def single_channel(self, config: object, channels: int):
@@ -64,16 +64,15 @@ class RootCoordinator(Coordinator):
 
         while True:
             data = self.queue.get()
-
-            if data is None:
-                self.message_peers(None)
-                LOGGER.info('Coordinator Finishing Up.')
-                break # No more data so cleanup and end thread.
-
             channel_signals = []
 
             for channel in range(channels):
-                    channel_signals.append(data[channel::channels])
+                    # Extract individual channel signals.
+                    signal_data = data[channel::channels]
+                    # Zero pad array as the data length is not always guaranteed to be == frames_per_sample (i.e. end of recording.)
+                    padded_signal_data = append(signal_data, zeros(self.frames_per_sample - len(signal_data)))
+                    channel_signals.append(padded_signal_data)
+
             averaged_signal = mean(channel_signals, axis=0, dtype=int16) # Average all channels.
 
             self.message_peers(averaged_signal)
@@ -89,11 +88,6 @@ class RootCoordinator(Coordinator):
 
         while True:
             data = self.queue.get()
-
-            if data is None:
-                self.message_peers(None)
-                LOGGER.info('Coordinator Finishing Up.')
-                break # No more data so cleanup and end thread.
 
             for channel in range(1, channels + 1):
                 channel_signal = data[channel::channels]
@@ -139,10 +133,6 @@ class FrequencyCoordinator(Coordinator):
 
         while start_analysis:
             data = self.queue.get()
-            if data is None:
-                LOGGER.info('{} Frequency Coordinator finishing up'.format(self.channel_id))
-                self.message_peers(None)
-                break # No more data so cleanup and end thread
             signal = signal[len(data):]
             signal.extend(data)
             self.message_peers(signal)
@@ -170,10 +160,6 @@ class SpectrumCoordinator(Coordinator):
     def run(self):
         while True:
             signal = self.queue.get()
-            if signal is None:
-                self.message_peers(None)
-                break
-
             frequency_spectrum = spectral.spectrum(signal, self.window, self.filter)
             self.message_peers(frequency_spectrum)
             dispatcher.send(signal='spectrum', sender=self.channel_id, data=frequency_spectrum)
@@ -186,11 +172,9 @@ class SpectrogramCoordinator(Coordinator):
         spectrum_list = []
         spectrogram_resolution = 10
         while True:
-            spectrum = self.queue.get()
-            if spectrum is None:
-                self.message_peers(None)
-                break
-            spectrum_list.append(spectrum)
+            fft = self.queue.get()
+            ffts.append(fft)
+            ffts = ffts[-spectrogram_resolution:]
 
             if len(spectrum_list) > spectrogram_resolution:
                 spectrum_list = spectrum_list[-spectrogram_resolution:]
