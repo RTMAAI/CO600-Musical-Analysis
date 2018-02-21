@@ -50,7 +50,7 @@ class RootCoordinator(Coordinator):
     """
     def __init__(self, config: object, peer_list: list):
         LOGGER.info('Coordinator Initialized.')
-        Coordinator.__init__(self, config)
+        Coordinator.__init__(self, config, peer_list)
         self.frames_per_sample = self.config.get_config('frames_per_sample')
         self.channels = []
 
