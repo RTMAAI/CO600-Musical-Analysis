@@ -20,7 +20,8 @@ def new_hierarchy(config: object):
     # Need to create root node, if merge_channels not enabled do a loop. Creating a hierarchy for each channel.
 
     # Create multiple first contact peer trees.
-    for channel_id in range(channels):
+    channel_count = 1 if config.get_config('merge_channels') else channels
+    for channel_id in range(channel_count):
         freq_list = []
         spectrum_list = []
         spectrogram_list = []
@@ -57,7 +58,7 @@ def new_hierarchy(config: object):
             spectrum_list.append(new_coordinator('Spectrogram', {'config': config, 'peer_list': [], 'channel_id': channel_id}))
 
         if len(spectrum_list) > 0:
-            freq_list.append(new_coordinator('Spectrum', {'config': config, 'peer_list': [], 'channel_id': channel_id}))
+            freq_list.append(new_coordinator('Spectrum', {'config': config, 'peer_list': spectrum_list, 'channel_id': channel_id}))
 
         if len(freq_list) > 0:
             root_peers.append(new_coordinator('Frequency', {'config': config, 'peer_list': freq_list, 'channel_id': channel_id}))
