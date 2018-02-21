@@ -49,7 +49,8 @@ class Config(object):
                 "bands": True
             },
             "fft_resolution": 20480,
-            "pitch_algorithm": "hps",
+            "pitch_algorithm": "auto-correlation",
+            "frames_per_sample": 1024,
         }
 
         self.settings = self.defaults
