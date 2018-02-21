@@ -1,16 +1,23 @@
 from rtmaii.coordinator import Coordinator
 from rtmaii.worker import Worker
 
-# Need to build tree structure given a config file.
+# TODO: Clean up structure, classify
+# TODO: Allow for restructuring of existing hierarchy.
+# NOTE: I don't particulary like the way a worker/coordinator has their type added to their class name i.e. BPMCoordinator, these might change to just BPM etc.
 
-def new_hierarchy(config):
+def new_hierarchy(config: object):
+    """ Create a new hierarchy of communication for the libraries analysis.
+
+        **Args**:
+            - Config: a complex object containing configured settings. (Please refer to the configuration module for more information.)
+    """
     # Root node is always constructed.
     # Still requires a lot checks.
-    tasks = config.get_config('tasks')
+    tasks = config.get_config('tasks') # The tasks that have been enabled.
     root_peers = []
     channels = config.get_config('channels')
     sampling_rate = config.get_config('sampling_rate')
-    # Need to create root node, if merge_channels not enabled do a loop.
+    # Need to create root node, if merge_channels not enabled do a loop. Creating a hierarchy for each channel.
 
     # Create multiple first contact peer trees.
     for channel_id in range(channels):
@@ -18,8 +25,9 @@ def new_hierarchy(config):
         spectrum_list = []
         spectrogram_list = []
 
-        #--- LEAF NODES (Workers) - Any endpoints must be created first to be attached to their peer. --#
+        #--- LEAF NODES (WORKERS) - Any endpoints must be created first in order be attached to their peer at creation. --#
         if tasks['beat']:
+            # TODO: CREATE NECESSARY beat detection workers/coordinators here. (Coordinator creation shouldn't probably be here.)
             root_peers.append(new_coordinator('BPM', {'config': config, 'peer_list': [], 'channel_id': channel_id}))
 
         if tasks['pitch']:
@@ -34,16 +42,17 @@ def new_hierarchy(config):
                 spectrum_list.append(new_worker('Auto-Corellation', {'sampling_rate' : sampling_rate, 'channel_id': channel_id}))
 
         if tasks['genre']:
+            # TODO: CREATE NECESSARY genre detection worker here.
             # spectrogram_list.append(Worker.factory('Spectrogram', {}))
             pass
 
         if tasks['bands']:
             bands_of_interest = config.get_config('bands')
-            spectrum_list.append(new_worker('Bands', {'bands_of_interest' : sampling_rate, 'channel_id': channel_id}))
+            spectrum_list.append(new_worker('Bands', {'bands_of_interest' : bands_of_interest, 'channel_id': channel_id}))
 
 
         #--- Root Nodes (Coordinators) - Created last in order so that peers can be injected. ---#
-
+        # This simply avoids creation of u
         if len(spectrogram_list) > 0:
             spectrum_list.append(new_coordinator('Spectrogram', {'config': config, 'peer_list': [], 'channel_id': channel_id}))
 
