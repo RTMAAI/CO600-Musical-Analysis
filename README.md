@@ -53,3 +53,8 @@ This library requires a few pre-requisites in order to run as expected.
 * All packages within requirements.txt must be installed. (This can be accomplished using the init script)
 
 ## TODOs:
+* Add rewind functionality to debugger
+* Add source configuration to debugger
+* Fix HPS
+* Update hierarchy
+* Tinker with configurable settings
