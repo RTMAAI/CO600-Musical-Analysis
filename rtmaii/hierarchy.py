@@ -36,7 +36,7 @@ def new_hierarchy(config: object):
             if algorithm == 'hps':
                 spectrum_list.append(new_worker('HPS', {'sampling_rate' : sampling_rate, 'channel_id': channel_id}))
             elif algorithm == 'zero-crossings':
-                freq_list.append(new_worker('ZeroCrossings', {'sampling_rate' : sampling_rate, 'channel_id': channel_id}))
+                freq_list.append(new_worker('ZeroCrossing', {'sampling_rate' : sampling_rate, 'channel_id': channel_id}))
             elif algorithm == 'fft':
                 spectrum_list.append(new_worker('FFT', {'sampling_rate' : sampling_rate, 'channel_id': channel_id}))
             else:
