@@ -24,7 +24,7 @@ pyplot.ion() # Enables interactive plotting.
 CHUNK_LENGTH = 1024 # Length of sampled data
 SPECTRUM_LENGTH = int(CHUNK_LENGTH*10) # Default config is set to wait until 10*1024 before analysing the spectrum.
 SAMPLING_RATE = 44100 # Default sampling rate 44.1 khz
-FRAME_DELAY = 1000 # How long between each frame update (ms)
+FRAME_DELAY = 200 # How long between each frame update (ms)
 XPADDING = 20
 BACKGROUND_COLOR = '#3366cc'
 ACCENT_COLOR = '#6633cc'
@@ -32,6 +32,7 @@ TEXT_COLOR = '#fff'
 TRIM_COLOR = '#33cc99'
 HEADER_SIZE = 20
 VALUE_SIZE = 15
+Y_PADDING = 0.1 # Amount to pad the maximum Y value of a graph by. (Percentage i.e. 0.1 = 10% padding.)
 
 class Listener(threading.Thread):
     """ Starts analysis and holds a state of analysed results.
@@ -112,7 +113,6 @@ class Debugger(tk.Tk):
         # --- INIT SETUP --- #
         self.timeframe = arange(0, CHUNK_LENGTH) # split x axis up to 1
         self.title("RTMAII DEBUGGER")
-        #self.pack_propagate(0) # Disables auto-resizing of elements.
 
         # --- CONTROL FRAME --- #
         control_frame = tk.Frame(self, borderwidth=1, bg=BACKGROUND_COLOR, highlightbackground=TRIM_COLOR, highlightthickness=4)
@@ -132,8 +132,10 @@ class Debugger(tk.Tk):
         # --- SIGNAL GRAPH --- #
         signal_frame = Figure(figsize=(10, 4), dpi=100)
         self.signal_plot = signal_frame.add_subplot(111)
-        self.signal_plot.plot(self.timeframe, self.timeframe)
-        self.signal_plot.set_ylim([100, 20000])
+        self.signal_line, = self.signal_plot.plot(self.timeframe, self.timeframe)
+        self.signal_plot.set_title('Signal')
+        self.signal_plot.set_xlabel('Time (Arbitary)')
+        self.signal_plot.set_ylabel('Amplitude')
         self.signal_canvas = FigureCanvasTkAgg(signal_frame, left_frame)
         self.signal_canvas.show()
         self.signal_canvas.get_tk_widget().pack(padx=XPADDING)
@@ -142,8 +144,10 @@ class Debugger(tk.Tk):
         self.frequencies = arange(SPECTRUM_LENGTH)/(CHUNK_LENGTH/SAMPLING_RATE)/2 # Possible range of frequencies
         spectrum_frame = Figure(figsize=(10, 4), dpi=100)
         self.spectrum_plot = spectrum_frame.add_subplot(111)
-        self.spectrum_plot.plot(self.frequencies, self.frequencies)
-        self.spectrum_plot.set_xlim([0, 20000]) # TODO Fix this
+        self.spectrum_line, = self.spectrum_plot.plot(self.frequencies, self.frequencies)
+        self.spectrum_plot.set_title('Spectrum')
+        self.spectrum_plot.set_xlabel('Frequency (Hz)')
+        self.spectrum_plot.set_ylabel('Power')
         self.spectrum_canvas = FigureCanvasTkAgg(spectrum_frame, left_frame)
         self.spectrum_canvas.show()
         self.spectrum_canvas.get_tk_widget().pack(padx=XPADDING)
@@ -200,18 +204,14 @@ class Debugger(tk.Tk):
     def update(self):
         """ Update UI every FRAME_DELAY milliseconds """
         # --- UPDATE GRAPHS --- #
-        self.signal_plot.clear()
-        self.signal_plot.set_title('Signal')
-        self.signal_plot.set_xlabel('Time (Arbitary)')
-        self.signal_plot.set_ylabel('Amplitude')
-        signal = self.listener.get_item('signal') #TODO: Shouldn't need to splice timeframe to len of sig.
-        self.signal_plot.plot(self.timeframe[:len(signal)], signal)
+        signal = self.listener.get_item('signal')
+        signal_y_max = max(signal) * (1 + Y_PADDING)
+        self.signal_line.set_ydata(signal)
+        self.signal_plot.set_ylim([-signal_y_max, signal_y_max])
 
-        self.spectrum_plot.clear()
-        self.spectrum_plot.set_title('Spectrum')
-        self.spectrum_plot.set_xlabel('Frequency (Hz)')
-        self.spectrum_plot.set_ylabel('Power')
-        self.spectrum_plot.plot(self.frequencies, self.listener.get_item('spectrum'))
+        spectrum = self.listener.get_item('spectrum')
+        self.spectrum_line.set_ydata(spectrum)
+        self.spectrum_plot.set_ylim([0, max(spectrum) * (1 + Y_PADDING)])
 
         self.spectrogram_plot.clear()
         self.spectrogram_plot.set_title('Spectrogram')
