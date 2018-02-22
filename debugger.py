@@ -13,7 +13,7 @@ from rtmaii import rtmaii # Replace with just import rtmaii in actual implementa
 from numpy import arange, zeros
 
 import matplotlib
-matplotlib.use("TkAgg") # Fastest plotter backend.
+matplotlib.use("Agg") # Fastest plotter backend.
 import tkinter as tk
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
@@ -24,7 +24,7 @@ pyplot.ion() # Enables interactive plotting.
 CHUNK_LENGTH = 1024 # Length of sampled data
 SPECTRUM_LENGTH = int(CHUNK_LENGTH*10) # Default config is set to wait until 10*1024 before analysing the spectrum.
 SAMPLING_RATE = 44100 # Default sampling rate 44.1 khz
-FRAME_DELAY = 1000 # How long between each frame update (ms)
+FRAME_DELAY = 5000 # How long between each frame update (ms)
 XPADDING = 20
 BACKGROUND_COLOR = '#3366cc'
 ACCENT_COLOR = '#6633cc'
@@ -77,6 +77,10 @@ class Listener(threading.Thread):
         """ Stop analysis and clear existing state. """
         self.analyser.stop()
 
+    def set_source(self, track):
+        """ Change the source. """
+        self.analyser.set_source(track)
+
     def is_active(self):
         """ Check that analyser is still running. """
         return self.analyser.is_active()
@@ -107,6 +111,10 @@ class Debugger(tk.Tk):
         self.setup()
         self.update()
 
+    def changetrack(self):
+        self.track = tk.filedialog.askopenfilename(initialdir = "/", title = "Select track", filetypes = (("wave files","*.wav"),("all files","*.*")))
+        self.listener.set_source(self.track)
+
     def setup(self):
         """Create UI elements and assign configurable elements. """
         # --- INIT SETUP --- #
@@ -119,11 +127,14 @@ class Debugger(tk.Tk):
         control_frame.pack(side=tk.TOP, pady=10)
 
         # --- CONTROLS --- #
-        self.play = tk.Button(control_frame, text="PLAY", command=self.listener.start_analysis, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, HEADER_SIZE))
+        self.play = tk.Button(control_frame, text="Play", command=self.listener.start_analysis, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, HEADER_SIZE))
         self.play.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT)
 
-        self.stop = tk.Button(control_frame, text="STOP", command=self.listener.stop_analysis, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, HEADER_SIZE))
+        self.stop = tk.Button(control_frame, text="Stop", command=self.listener.stop_analysis, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, HEADER_SIZE))
         self.stop.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT)
+
+        self.browse = tk.Button(control_frame, text="Browse", command=self.changetrack, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, HEADER_SIZE))
+        self.browse.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT)
 
         # --- LEFT FRAME---- #
         left_frame = tk.Frame(self, borderwidth=1, width=500, height=500, bg=BACKGROUND_COLOR, highlightbackground='#33cc99', highlightthickness=2)
