@@ -8,10 +8,11 @@
     TODO: genre labels
 
 """
+import time
 import threading
+from scipy.signal import resample
 from rtmaii import rtmaii # Replace with just import rtmaii in actual implementation.
 from numpy import arange, zeros
-import time
 
 import matplotlib
 matplotlib.use("TkAgg") # Fastest plotter backend.
@@ -22,6 +23,7 @@ from matplotlib.figure import Figure
 CHUNK_LENGTH = 1024 # Length of sampled data
 SPECTRUM_LENGTH = int(CHUNK_LENGTH*10) # Default config is set to wait until 10*1024 before analysing the spectrum.
 SAMPLING_RATE = 44100 # Default sampling rate 44.1 khz
+DOWNSAMPLE_RATE = 2 # Amount to downsample length of signals by (For performance.)
 FRAME_DELAY = 200 # How long between each frame update (ms)
 XPADDING = 20
 BACKGROUND_COLOR = '#3366cc'
@@ -61,7 +63,6 @@ class Listener(threading.Thread):
 
         self.analyser = rtmaii.Rtmaii(callbacks,
                                       mode='INFO',
-                                      track=r'.\test_data\sine_493.88.wav',
                                      )
 
         threading.Thread.__init__(self, args=(), kwargs=None)
@@ -109,7 +110,7 @@ class Debugger(tk.Tk):
     def setup(self):
         """Create UI elements and assign configurable elements. """
         # --- INIT SETUP --- #
-        self.timeframe = arange(0, CHUNK_LENGTH) # split x axis up to 1
+        self.timeframe = arange(0, CHUNK_LENGTH/2) # split x axis up to 1
         self.title("RTMAII DEBUGGER")
 
         # --- CONTROL FRAME --- #
@@ -137,11 +138,12 @@ class Debugger(tk.Tk):
         self.signal_plot.set_title('Signal')
         self.signal_plot.set_xlabel('Time (Arbitary)')
         self.signal_plot.set_ylabel('Amplitude')
+        self.signal_plot.get_yaxis().set_ticks([])
         self.signal_canvas.get_tk_widget().pack(padx=XPADDING)
         SignalPlotter(self.listener, self.signal_plot, self.signal_line)
 
         # --- SPECTRUM GRAPH --- #
-        self.frequencies = arange(SPECTRUM_LENGTH)/(CHUNK_LENGTH/SAMPLING_RATE)/2 # Possible range of frequencies
+        self.frequencies = arange(SPECTRUM_LENGTH // DOWNSAMPLE_RATE)/(CHUNK_LENGTH/SAMPLING_RATE)/2 # Possible range of frequencies
         spectrum_frame = Figure(figsize=(8, 4), dpi=100)
         self.spectrum_plot = spectrum_frame.add_subplot(111)
         self.spectrum_canvas = FigureCanvasTkAgg(spectrum_frame, left_frame)
@@ -151,6 +153,7 @@ class Debugger(tk.Tk):
         self.spectrum_plot.set_title('Spectrum')
         self.spectrum_plot.set_xlabel('Frequency (Hz)')
         self.spectrum_plot.set_ylabel('Power')
+        self.spectrum_plot.get_yaxis().set_ticks([])
         self.spectrum_canvas.get_tk_widget().pack(padx=XPADDING)
         SpectrumPlotter(self.listener, self.spectrum_plot, self.spectrum_line)
 
@@ -206,15 +209,16 @@ class Debugger(tk.Tk):
     def update(self):
         """ Update UI every FRAME_DELAY milliseconds """
         # --- UPDATE GRAPHS --- #
-        currtime = time.time()
+        sigtime = time.time()
         self.signal_canvas.restore_region(self.signal_background)
         self.signal_plot.draw_artist(self.signal_line)
         self.signal_canvas.blit(self.signal_plot.bbox)
+        print('{} sig'.format(time.time() - sigtime))
+        spectime = time.time()
         self.spectrum_canvas.restore_region(self.signal_background)
         self.spectrum_plot.draw_artist(self.spectrum_line)
         self.spectrum_canvas.blit(self.spectrum_plot.bbox)
-        print(time.time() - currtime)
-
+        print('{} spec'.format(time.time() - spectime))
         # --- UPDATE LABELS --- #
         self.pitch.set("{0:.2f}".format(self.listener.get_item('pitch')))
         self.key.set(self.listener.get_item('key'))
@@ -245,9 +249,9 @@ class SignalPlotter(threading.Thread):
     def run(self):
         while True:
             signal = self.listener.get_item('signal')
-            signal_y_max = max(signal) * (1 + Y_PADDING)
-            self.line.set_ydata(signal)
+            signal_y_max = max(abs(signal)) * (1 + Y_PADDING)
             self.plot.set_ylim([-signal_y_max, signal_y_max])
+            self.line.set_ydata(resample(signal, len(signal) // DOWNSAMPLE_RATE))
 
 class SpectrumPlotter(threading.Thread):
     def __init__(self, listener, plot, line):
@@ -262,7 +266,7 @@ class SpectrumPlotter(threading.Thread):
     def run(self):
         while True:
             spectrum = self.listener.get_item('spectrum')
-            self.line.set_ydata(spectrum)
+            self.line.set_ydata(resample(spectrum, len(spectrum) // DOWNSAMPLE_RATE))
             self.plot.set_ylim([0, max(spectrum) * (1 + Y_PADDING)])
 
 
