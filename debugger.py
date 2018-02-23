@@ -8,7 +8,6 @@
     TODO: genre labels
 
 """
-import time
 import threading
 from scipy.signal import resample
 from rtmaii import rtmaii # Replace with just import rtmaii in actual implementation.
@@ -143,7 +142,7 @@ class Debugger(tk.Tk):
         SignalPlotter(self.listener, self.signal_plot, self.signal_line)
 
         # --- SPECTRUM GRAPH --- #
-        self.frequencies = arange(SPECTRUM_LENGTH // DOWNSAMPLE_RATE)/(CHUNK_LENGTH/SAMPLING_RATE)/2 # Possible range of frequencies
+        self.frequencies = arange(0, SPECTRUM_LENGTH, DOWNSAMPLE_RATE) / (CHUNK_LENGTH/SAMPLING_RATE)/2 # Possible range of frequencies
         spectrum_frame = Figure(figsize=(8, 4), dpi=100)
         self.spectrum_plot = spectrum_frame.add_subplot(111)
         self.spectrum_canvas = FigureCanvasTkAgg(spectrum_frame, left_frame)
@@ -209,16 +208,12 @@ class Debugger(tk.Tk):
     def update(self):
         """ Update UI every FRAME_DELAY milliseconds """
         # --- UPDATE GRAPHS --- #
-        sigtime = time.time()
         self.signal_canvas.restore_region(self.signal_background)
         self.signal_plot.draw_artist(self.signal_line)
         self.signal_canvas.blit(self.signal_plot.bbox)
-        print('{} sig'.format(time.time() - sigtime))
-        spectime = time.time()
         self.spectrum_canvas.restore_region(self.signal_background)
         self.spectrum_plot.draw_artist(self.spectrum_line)
         self.spectrum_canvas.blit(self.spectrum_plot.bbox)
-        print('{} spec'.format(time.time() - spectime))
         # --- UPDATE LABELS --- #
         self.pitch.set("{0:.2f}".format(self.listener.get_item('pitch')))
         self.key.set(self.listener.get_item('key'))
