@@ -11,15 +11,13 @@
 import threading
 from rtmaii import rtmaii # Replace with just import rtmaii in actual implementation.
 from numpy import arange, zeros
+import time
 
 import matplotlib
 matplotlib.use("TkAgg") # Fastest plotter backend.
 import tkinter as tk
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
-
-from matplotlib import pyplot
-pyplot.ion() # Enables interactive plotting.
 
 CHUNK_LENGTH = 1024 # Length of sampled data
 SPECTRUM_LENGTH = int(CHUNK_LENGTH*10) # Default config is set to wait until 10*1024 before analysing the spectrum.
@@ -129,28 +127,32 @@ class Debugger(tk.Tk):
         left_frame = tk.Frame(self, borderwidth=1, width=500, height=500, bg=BACKGROUND_COLOR, highlightbackground='#33cc99', highlightthickness=2)
         left_frame.pack(side=tk.LEFT)
 
-        # --- SIGNAL GRAPH --- #
-        signal_frame = Figure(figsize=(10, 4), dpi=100)
+         # --- SIGNAL GRAPH --- #
+        signal_frame = Figure(figsize=(8, 4), dpi=100)
         self.signal_plot = signal_frame.add_subplot(111)
+        self.signal_canvas = FigureCanvasTkAgg(signal_frame, left_frame)
+        self.signal_canvas.show()
+        self.signal_background = self.signal_canvas.copy_from_bbox(self.signal_plot.bbox)
         self.signal_line, = self.signal_plot.plot(self.timeframe, self.timeframe)
         self.signal_plot.set_title('Signal')
         self.signal_plot.set_xlabel('Time (Arbitary)')
         self.signal_plot.set_ylabel('Amplitude')
-        self.signal_canvas = FigureCanvasTkAgg(signal_frame, left_frame)
-        self.signal_canvas.show()
         self.signal_canvas.get_tk_widget().pack(padx=XPADDING)
+        SignalPlotter(self.listener, self.signal_plot, self.signal_line)
 
         # --- SPECTRUM GRAPH --- #
         self.frequencies = arange(SPECTRUM_LENGTH)/(CHUNK_LENGTH/SAMPLING_RATE)/2 # Possible range of frequencies
-        spectrum_frame = Figure(figsize=(10, 4), dpi=100)
+        spectrum_frame = Figure(figsize=(8, 4), dpi=100)
         self.spectrum_plot = spectrum_frame.add_subplot(111)
+        self.spectrum_canvas = FigureCanvasTkAgg(spectrum_frame, left_frame)
+        self.spectrum_canvas.show()
+        self.spectrum_background = self.spectrum_canvas.copy_from_bbox(self.spectrum_plot.bbox)
         self.spectrum_line, = self.spectrum_plot.plot(self.frequencies, self.frequencies)
         self.spectrum_plot.set_title('Spectrum')
         self.spectrum_plot.set_xlabel('Frequency (Hz)')
         self.spectrum_plot.set_ylabel('Power')
-        self.spectrum_canvas = FigureCanvasTkAgg(spectrum_frame, left_frame)
-        self.spectrum_canvas.show()
         self.spectrum_canvas.get_tk_widget().pack(padx=XPADDING)
+        SpectrumPlotter(self.listener, self.spectrum_plot, self.spectrum_line)
 
         # --- RIGHT FRAME --- #
         right_frame = tk.Frame(self, borderwidth=1, width=500, height=500, bg=BACKGROUND_COLOR)
@@ -204,23 +206,14 @@ class Debugger(tk.Tk):
     def update(self):
         """ Update UI every FRAME_DELAY milliseconds """
         # --- UPDATE GRAPHS --- #
-        signal = self.listener.get_item('signal')
-        signal_y_max = max(signal) * (1 + Y_PADDING)
-        self.signal_line.set_ydata(signal)
-        self.signal_plot.set_ylim([-signal_y_max, signal_y_max])
-
-        spectrum = self.listener.get_item('spectrum')
-        self.spectrum_line.set_ydata(spectrum)
-        self.spectrum_plot.set_ylim([0, max(spectrum) * (1 + Y_PADDING)])
-
-        self.spectrogram_plot.clear()
-        self.spectrogram_plot.set_title('Spectrogram')
-        self.spectrogram_plot.set_xlabel('Time')
-        self.spectrogram_plot.set_ylabel('Frequency (Hz)')
-
-        self.signal_canvas.draw()
-        self.spectrum_canvas.draw()
-        self.spectrogram_canvas.draw()
+        currtime = time.time()
+        self.signal_canvas.restore_region(self.signal_background)
+        self.signal_plot.draw_artist(self.signal_line)
+        self.signal_canvas.blit(self.signal_plot.bbox)
+        self.spectrum_canvas.restore_region(self.signal_background)
+        self.spectrum_plot.draw_artist(self.spectrum_line)
+        self.spectrum_canvas.blit(self.spectrum_plot.bbox)
+        print(time.time() - currtime)
 
         # --- UPDATE LABELS --- #
         self.pitch.set("{0:.2f}".format(self.listener.get_item('pitch')))
@@ -239,6 +232,39 @@ class Debugger(tk.Tk):
             self.stop.config(state='disabled')
 
         self.after(FRAME_DELAY, self.update)
+class SignalPlotter(threading.Thread):
+    def __init__(self, listener, plot, line):
+        self.listener = listener
+        self.plot = plot
+        self.line = line
+
+        threading.Thread.__init__(self, args=(), kwargs=None)
+        self.setDaemon(True)
+        self.start()
+
+    def run(self):
+        while True:
+            signal = self.listener.get_item('signal')
+            signal_y_max = max(signal) * (1 + Y_PADDING)
+            self.line.set_ydata(signal)
+            self.plot.set_ylim([-signal_y_max, signal_y_max])
+
+class SpectrumPlotter(threading.Thread):
+    def __init__(self, listener, plot, line):
+        self.listener = listener
+        self.plot = plot
+        self.line = line
+
+        threading.Thread.__init__(self, args=(), kwargs=None)
+        self.setDaemon(True)
+        self.start()
+
+    def run(self):
+        while True:
+            spectrum = self.listener.get_item('spectrum')
+            self.line.set_ydata(spectrum)
+            self.plot.set_ylim([0, max(spectrum) * (1 + Y_PADDING)])
+
 
 def main():
     debugger = Debugger()
