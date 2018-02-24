@@ -12,7 +12,6 @@ import threading
 from scipy.signal import resample
 from rtmaii import rtmaii # Replace with just import rtmaii in actual implementation.
 from numpy import arange, zeros
-
 import matplotlib
 matplotlib.use("TkAgg") # Fastest plotter backend.
 import tkinter as tk
@@ -22,7 +21,7 @@ from matplotlib.figure import Figure
 CHUNK_LENGTH = 1024 # Length of sampled data
 SPECTRUM_LENGTH = int(CHUNK_LENGTH*10) # Default config is set to wait until 10*1024 before analysing the spectrum.
 SAMPLING_RATE = 44100 # Default sampling rate 44.1 khz
-DOWNSAMPLE_RATE = 2 # Amount to downsample length of signals by (For performance.)
+DOWNSAMPLE_RATE = 4 # Denominator to downsample length of signals by (Should be set according to system specs.)
 FRAME_DELAY = 200 # How long between each frame update (ms)
 XPADDING = 20
 BACKGROUND_COLOR = '#3366cc'
@@ -109,7 +108,8 @@ class Debugger(tk.Tk):
     def setup(self):
         """Create UI elements and assign configurable elements. """
         # --- INIT SETUP --- #
-        self.timeframe = arange(0, CHUNK_LENGTH/2) # split x axis up to 1
+        self.timeframe = arange(0, CHUNK_LENGTH, DOWNSAMPLE_RATE) # Where DOWNSAMPLE_RATE = steps taken.
+        self.frequencies = arange(0, SPECTRUM_LENGTH, DOWNSAMPLE_RATE) / (CHUNK_LENGTH/SAMPLING_RATE)/2 # Possible range of frequencies
         self.title("RTMAII DEBUGGER")
 
         # --- CONTROL FRAME --- #
@@ -142,7 +142,6 @@ class Debugger(tk.Tk):
         SignalPlotter(self.listener, self.signal_plot, self.signal_line)
 
         # --- SPECTRUM GRAPH --- #
-        self.frequencies = arange(0, SPECTRUM_LENGTH, DOWNSAMPLE_RATE) / (CHUNK_LENGTH/SAMPLING_RATE)/2 # Possible range of frequencies
         spectrum_frame = Figure(figsize=(8, 4), dpi=100)
         self.spectrum_plot = spectrum_frame.add_subplot(111)
         self.spectrum_canvas = FigureCanvasTkAgg(spectrum_frame, left_frame)
@@ -208,12 +207,13 @@ class Debugger(tk.Tk):
     def update(self):
         """ Update UI every FRAME_DELAY milliseconds """
         # --- UPDATE GRAPHS --- #
-        self.signal_canvas.restore_region(self.signal_background)
-        self.signal_plot.draw_artist(self.signal_line)
-        self.signal_canvas.blit(self.signal_plot.bbox)
+        self.signal_canvas.restore_region(self.signal_background) # Clear background.
+        self.signal_plot.draw_artist(self.signal_line) # Draw new data.
+        self.signal_canvas.blit(self.signal_plot.bbox) # Display new data in plot.
         self.spectrum_canvas.restore_region(self.signal_background)
         self.spectrum_plot.draw_artist(self.spectrum_line)
         self.spectrum_canvas.blit(self.spectrum_plot.bbox)
+
         # --- UPDATE LABELS --- #
         self.pitch.set("{0:.2f}".format(self.listener.get_item('pitch')))
         self.key.set(self.listener.get_item('key'))
@@ -232,6 +232,7 @@ class Debugger(tk.Tk):
 
         self.after(FRAME_DELAY, self.update)
 class SignalPlotter(threading.Thread):
+    """ Retrieves signal data, downsamples and sets new Y data and limits. """
     def __init__(self, listener, plot, line):
         self.listener = listener
         self.plot = plot
@@ -249,6 +250,7 @@ class SignalPlotter(threading.Thread):
             self.line.set_ydata(resample(signal, len(signal) // DOWNSAMPLE_RATE))
 
 class SpectrumPlotter(threading.Thread):
+    """ Retrieves signal data, downsamples and sets new Y data and limits. """
     def __init__(self, listener, plot, line):
         self.listener = listener
         self.plot = plot
