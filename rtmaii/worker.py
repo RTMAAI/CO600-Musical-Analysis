@@ -28,14 +28,15 @@ class BandsWorker(Worker):
             - `bands_of_interest`: dictionary of frequency bands to analyse.
             - `channel_id`: id of channel being analysed.
     """
-    def __init__(self, bands_of_interest: dict, channel_id: int):
+    def __init__(self, bands_of_interest: dict, sampling_rate: int, channel_id: int):
         Worker.__init__(self, channel_id)
         self.bands_of_interest = bands_of_interest
+        self.sampling_rate = sampling_rate
 
     def run(self):
         while True:
             spectrum = self.queue.get()
-            frequency_bands = frequency.frequency_bands(abs(spectrum), self.bands_of_interest)
+            frequency_bands = frequency.frequency_bands(abs(spectrum), self.bands_of_interest, self.sampling_rate)
             dispatcher.send(signal='bands', sender=self.channel_id, data=frequency_bands) #TODO: Move to a locator.
 
 class Key(object):
