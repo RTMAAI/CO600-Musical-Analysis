@@ -40,7 +40,7 @@ def new_hierarchy(config: object):
             elif algorithm == 'fft':
                 spectrum_list.append(new_worker('FFT', {'sampling_rate' : sampling_rate, 'channel_id': channel_id}))
             else:
-                spectrum_list.append(new_worker('AutoCorrelation', {'sampling_rate' : sampling_rate, 'channel_id': channel_id}))
+                freq_list.append(new_worker('AutoCorrelation', {'sampling_rate' : sampling_rate, 'channel_id': channel_id}))
 
         if tasks['genre']:
             # TODO: CREATE NECESSARY genre detection worker here.
