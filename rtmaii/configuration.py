@@ -48,7 +48,7 @@ class Config(object):
                 "beat": True,
                 "bands": True
             },
-            "fft_resolution": 20480,
+            "frequency_samples": 20, # Amount of samples to take before performing pitch tasks (Higher = More accurate, but more computationally expensive.)
             "pitch_algorithm": "auto-correlation",
             "frames_per_sample": 1024,
         }

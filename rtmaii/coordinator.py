@@ -122,13 +122,13 @@ class FrequencyCoordinator(Coordinator):
     def run(self):
         """ Extend signal data to configured resolution before transmitting to peers. """
 
-        fft_resolution = self.config.get_config('fft_resolution')
+        frequency_resolution = self.config.get_config('frequency_samples') * self.config.get_config('frames_per_sample')
         start_analysis = False
         signal = []
 
         while not start_analysis:
             signal.extend(self.queue.get())
-            if len(signal) >= fft_resolution:
+            if len(signal) >= frequency_resolution:
                 start_analysis = True
 
         while start_analysis:
@@ -150,11 +150,12 @@ class SpectrumCoordinator(Coordinator):
     """
     def __init__(self, config: object, peer_list: list, channel_id: int):
         Coordinator.__init__(self, config, peer_list)
-        fft_resolution = self.config.get_config('fft_resolution')
+        frequency_samples = config.get_config('frequency_samples')
+        frames_per_sample = config.get_config('frames_per_sample')
 
         self.sampling_rate = config.get_config('sampling_rate')
         self.channel_id = channel_id
-        self.window = spectral.new_window(fft_resolution, 'blackmanharris')
+        self.window = spectral.new_window(frequency_samples * frames_per_sample, 'hanning')
         self.filter = spectral.butter_bandpass(10, 20000, self.sampling_rate, 5)
 
     def run(self):
