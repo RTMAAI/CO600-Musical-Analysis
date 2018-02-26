@@ -47,11 +47,11 @@ def spectrum_transform(signal: list):
     """ Performs FFT on input signal """
     signal_length = len(signal)
     normalized_spectrum = fft(signal) / signal_length # Normalization
-    return abs(normalized_spectrum[:signal_length // 2]) # Only need half of fft
+    return normalized_spectrum[:signal_length // 2:] # Only need half of fft output.
 
 def spectrum(signal: list,
              window: list,
-             bp_filter: dict):
+             bp_filter: dict = None):
     """ Return the frequency spectrum of an input signal.
 
     **Args**
@@ -61,7 +61,7 @@ def spectrum(signal: list,
              In the form of {'numerator': list, 'denominator': list}
     """
     windowed_signal = signal * window
-    filtered_signal = band_pass_filter(windowed_signal, bp_filter['numerator'], bp_filter['denominator'])
+    filtered_signal = windowed_signal if bp_filter is None else band_pass_filter(windowed_signal, bp_filter['numerator'], bp_filter['denominator'])
     frequency_spectrum = spectrum_transform(filtered_signal)
     return frequency_spectrum
 
