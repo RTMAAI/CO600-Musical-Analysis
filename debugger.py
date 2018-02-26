@@ -10,6 +10,7 @@
 """
 import threading
 from scipy.signal import resample
+from scipy.fftpack import fftfreq
 from rtmaii import rtmaii # Replace with just import rtmaii in actual implementation.
 from numpy import arange, zeros
 import matplotlib
@@ -50,10 +51,11 @@ class Listener(threading.Thread):
                 'presence': 0,
                 'brilliance': 0
             },
-            'spectrum': zeros(SPECTRUM_LENGTH),
+            'spectrum': [],
             'signal': zeros(CHUNK_LENGTH),
 
         }
+
 
         callbacks = []
         for key, _ in self.state.items():
@@ -61,7 +63,10 @@ class Listener(threading.Thread):
 
         self.analyser = rtmaii.Rtmaii(callbacks,
                                       mode='INFO',
+                                      track=r'.\test_data\sine_493.88.wav',
                                      )
+
+        self.state['spectrum'] = zeros(self.analyser.config.get_config('frequency_samples') * self.analyser.config.get_config('frames_per_sample') // 2)
 
         threading.Thread.__init__(self, args=(), kwargs=None)
         self.setDaemon(True)
@@ -107,9 +112,13 @@ class Debugger(tk.Tk):
 
     def setup(self):
         """Create UI elements and assign configurable elements. """
+        self.frequency_length = self.listener.analyser.config.get_config('frequency_samples') * self.listener.analyser.config.get_config('frames_per_sample')
+        self.frequencies = fftfreq(self.frequency_length , 1 / SAMPLING_RATE)[::DOWNSAMPLE_RATE]
+        self.frequencies = self.frequencies[:len(self.frequencies)//2]
+
         # --- INIT SETUP --- #
         self.timeframe = arange(0, CHUNK_LENGTH, DOWNSAMPLE_RATE) # Where DOWNSAMPLE_RATE = steps taken.
-        self.frequencies = arange(0, SPECTRUM_LENGTH, DOWNSAMPLE_RATE) / (CHUNK_LENGTH/SAMPLING_RATE)/2 # Possible range of frequencies
+        # self.frequencies = arange(0, self.frequency_length, DOWNSAMPLE_RATE) / (CHUNK_LENGTH/SAMPLING_RATE)/2 # Possible range of frequencies
         self.title("RTMAII DEBUGGER")
 
         # --- CONTROL FRAME --- #
@@ -263,8 +272,9 @@ class SpectrumPlotter(threading.Thread):
     def run(self):
         while True:
             spectrum = self.listener.get_item('spectrum')
-            self.line.set_ydata(resample(spectrum, len(spectrum) // DOWNSAMPLE_RATE))
-            self.plot.set_ylim([0, max(spectrum) * (1 + Y_PADDING)])
+            downsampled_spectrum = resample(spectrum, len(spectrum) // DOWNSAMPLE_RATE)
+            self.plot.set_ylim([0, max(downsampled_spectrum) * (1 + Y_PADDING)])
+            self.line.set_ydata(downsampled_spectrum)
 
 
 def main():
