@@ -6,7 +6,7 @@ import threading
 import logging
 from rtmaii.analysis import spectral, spectrogram
 from pydispatch import dispatcher
-from numpy import mean, int16, zeros, append
+from numpy import mean, int16, zeros, append, fromstring
 LOGGER = logging.getLogger(__name__)
 class Coordinator(threading.Thread):
     """ Parent class of all coordinator threads.
@@ -63,7 +63,7 @@ class RootCoordinator(Coordinator):
         """
 
         while True:
-            data = self.queue.get()
+            data = fromstring(self.queue.get(), dtype=int16)
             channel_signals = []
 
             for channel in range(channels):

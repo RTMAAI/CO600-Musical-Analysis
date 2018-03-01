@@ -19,8 +19,6 @@ import tkinter as tk
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 
-CHUNK_LENGTH = 1024 # Length of sampled data
-SPECTRUM_LENGTH = int(CHUNK_LENGTH*10) # Default config is set to wait until 10*1024 before analysing the spectrum.
 SAMPLING_RATE = 44100 # Default sampling rate 44.1 khz
 DOWNSAMPLE_RATE = 4 # Denominator to downsample length of signals by (Should be set according to system specs.)
 FRAME_DELAY = 200 # How long between each frame update (ms)
@@ -52,8 +50,7 @@ class Listener(threading.Thread):
                 'brilliance': 0
             },
             'spectrum': [],
-            'signal': zeros(CHUNK_LENGTH),
-
+            'signal': []
         }
 
 
@@ -67,6 +64,7 @@ class Listener(threading.Thread):
                                      )
 
         self.state['spectrum'] = zeros(self.analyser.config.get_config('frequency_samples') * self.analyser.config.get_config('frames_per_sample') // 2)
+        self.state['signal'] = zeros(self.analyser.config.get_config('frames_per_sample'))
 
         threading.Thread.__init__(self, args=(), kwargs=None)
         self.setDaemon(True)
@@ -112,12 +110,13 @@ class Debugger(tk.Tk):
 
     def setup(self):
         """Create UI elements and assign configurable elements. """
-        self.frequency_length = self.listener.analyser.config.get_config('frequency_samples') * self.listener.analyser.config.get_config('frames_per_sample')
+        self.chunk_size = self.listener.analyser.config.get_config('frames_per_sample')
+        self.frequency_length = self.chunk_size * self.listener.analyser.config.get_config('frequency_samples')
         self.frequencies = fftfreq(self.frequency_length , 1 / SAMPLING_RATE)[::DOWNSAMPLE_RATE]
         self.frequencies = self.frequencies[:len(self.frequencies)//2]
 
         # --- INIT SETUP --- #
-        self.timeframe = arange(0, CHUNK_LENGTH, DOWNSAMPLE_RATE) # Where DOWNSAMPLE_RATE = steps taken.
+        self.timeframe = arange(0, self.chunk_size, DOWNSAMPLE_RATE) # Where DOWNSAMPLE_RATE = steps taken.
         # self.frequencies = arange(0, self.frequency_length, DOWNSAMPLE_RATE) / (CHUNK_LENGTH/SAMPLING_RATE)/2 # Possible range of frequencies
         self.title("RTMAII DEBUGGER")
 
