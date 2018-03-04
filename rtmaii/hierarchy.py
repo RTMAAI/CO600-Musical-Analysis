@@ -49,7 +49,7 @@ def new_hierarchy(config: object):
 
         if tasks['bands']:
             bands_of_interest = config.get_config('bands')
-            spectrum_list.append(new_worker('Bands', {'bands_of_interest' : bands_of_interest, 'channel_id': channel_id}))
+            spectrum_list.append(new_worker('Bands', {'bands_of_interest' : bands_of_interest, 'sampling_rate' : sampling_rate, 'channel_id': channel_id}))
 
 
         #--- Root Nodes (Coordinators) - Created last in order so that peers can be injected. ---#
