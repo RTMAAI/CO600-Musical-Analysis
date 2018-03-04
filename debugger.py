@@ -53,6 +53,7 @@ class Listener(threading.Thread):
             'signal': []
         }
 
+        self.condition = threading.Condition()
 
         callbacks = []
         for key, _ in self.state.items():
@@ -63,8 +64,8 @@ class Listener(threading.Thread):
                                       track=r'.\test_data\sine_493.88.wav',
                                      )
 
-        self.state['spectrum'] = zeros(self.analyser.config.get_config('frequency_samples') * self.analyser.config.get_config('frames_per_sample') // 2)
-        self.state['signal'] = zeros(self.analyser.config.get_config('frames_per_sample'))
+        self.state['spectrum'] = arange(self.analyser.config.get_config('frequency_resolution') // 2)
+        self.state['signal'] = arange(self.analyser.config.get_config('frames_per_sample'))
 
         threading.Thread.__init__(self, args=(), kwargs=None)
         self.setDaemon(True)
@@ -85,7 +86,9 @@ class Listener(threading.Thread):
     def run(self):
         """ Keep thread alive. """
         while True:
-            pass
+            self.condition.acquire()
+            self.condition.wait() # Non-blocking sleep.
+            self.condition.release()
 
     def callback(self, data, **kwargs):
         """ Set data for signal event. """
@@ -111,7 +114,7 @@ class Debugger(tk.Tk):
     def setup(self):
         """Create UI elements and assign configurable elements. """
         self.chunk_size = self.listener.analyser.config.get_config('frames_per_sample')
-        self.frequency_length = self.chunk_size * self.listener.analyser.config.get_config('frequency_samples')
+        self.frequency_length = self.listener.analyser.config.get_config('frequency_resolution')
         self.frequencies = fftfreq(self.frequency_length , 1 / SAMPLING_RATE)[::DOWNSAMPLE_RATE]
         self.frequencies = self.frequencies[:len(self.frequencies)//2]
 
