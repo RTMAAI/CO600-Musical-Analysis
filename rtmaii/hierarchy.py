@@ -29,7 +29,8 @@ def new_hierarchy(config: object):
         #--- LEAF NODES (WORKERS) - Any endpoints must be created first in order be attached to their peer at creation. --#
         if tasks['beat']:
             # TODO: CREATE NECESSARY beat detection workers/coordinators here. (Coordinator creation shouldn't probably be here.)
-            root_peers.append(new_coordinator('BPM', {'config': config, 'peer_list': [], 'channel_id': channel_id}))
+            #root_peers.append(new_coordinator('BPM', {'config': config, 'peer_list': [], 'channel_id': channel_id}))
+            pass # Had to disable for time being due to infinite while loop.
 
         if tasks['pitch']:
             algorithm = config.get_config('pitch_algorithm')
@@ -43,8 +44,7 @@ def new_hierarchy(config: object):
                 freq_list.append(new_worker('AutoCorrelation', {'sampling_rate' : sampling_rate, 'channel_id': channel_id}))
 
         if tasks['genre']:
-            # TODO: CREATE NECESSARY genre detection worker here.
-            # spectrogram_list.append(Worker.factory('Spectrogram', {}))
+            # spectrogram_list.append(new_worker('Spectrogram', {'sampling_rate' : sampling_rate, 'channel_id': channel_id}))
             pass
 
         if tasks['bands']:
