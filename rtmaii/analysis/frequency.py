@@ -51,7 +51,7 @@ def frequency_bands_to_bins(spectrum: list, bands: dict, sampling_rate: int):
     """
         In order to correctly analyse frequency bands, we need to first find the equivalent frequency bin locations.
     """
-    bins = fftfreq(len(spectrum))[:len(spectrum) // 2] * sampling_rate
+    bins = fftfreq(len(spectrum) * 2)[:len(spectrum)] * sampling_rate
     return {band: [find_nearest_bin(bins, values[0]), find_nearest_bin(bins, values[1])] for band, values in bands.items()}
 
 def find_nearest_bin(bins: list, target: int):
