@@ -8,9 +8,11 @@ from queue import Queue
 import threading
 import logging
 from rtmaii.analysis import spectral, spectrogram
-from rtmaii.worker import FFTWorker, AutoCorrelationWorker, BandsWorker, HPSWorker, ZeroCrossingWorker
+from rtmaii.worker import FFTWorker, AutoCorrelationWorker, BandsWorker, HPSWorker, ZeroCrossingWorker, SpectogramWorker
 from pydispatch import dispatcher
-from numpy import mean, int16
+from numpy import mean, int16, column_stack, hanning, array
+from numpy.fft import fft as numpyFFT
+
 LOGGER = logging.getLogger(__name__)
 class BaseCoordinator(threading.Thread):
     """ Parent class of all coordinator threads.
@@ -65,6 +67,7 @@ class Coordinator(BaseCoordinator):
                 - `channels` : number of channels of input source.
         """
         self.peer_list.append(FrequencyCoordinator(config, 1))
+        self.peer_list.append(SpectrogramCoordinator(config, 1))
         # self.peer_list.append(BPMCoordinator(config, 1)) PLACEHOLDER
 
         while True:
@@ -177,6 +180,8 @@ class SpectrumCoordinator(BaseCoordinator):
     """
     def __init__(self, config, channel_id):
         BaseCoordinator.__init__(self, config)
+        LOGGER.debug('BaseCoordinator Initiliazed')
+        
 
         pitch_method = config.get_config('pitch_algorithm')
         bands_of_interest = config.get_config('bands')
@@ -193,7 +198,8 @@ class SpectrumCoordinator(BaseCoordinator):
         elif pitch_method == 'fft':
             self.peer_list.append(FFTWorker(self.sampling_rate, channel_id))
         if tasks['genre']:
-            self.peer_list.append(SpectrogramCoordinator(config, channel_id))
+            #self.peer_list.append(SpectrogramCoordinator(config, channel_id))
+            pass
         if tasks['bands']:
             self.peer_list.append(BandsWorker(bands_of_interest, channel_id))
 
@@ -211,23 +217,41 @@ class SpectrumCoordinator(BaseCoordinator):
 class SpectrogramCoordinator(BaseCoordinator):
     def __init__(self, config, channel_id):
         BaseCoordinator.__init__(self, config)
+        self.sampling_rate = config.get_config('sampling_rate')
+        self.channel_id = channel_id
 
     def run(self):
-        ffts = []
-        spectrogram_resolution = 10
-        while True:
-            fft = self.queue.get()
-            if fft is None:
-                self.message_peers(None)
-                break
-            ffts.append(fft)
-            ffts = ffts[-spectrogram_resolution:]
+        print("Spectrogram Coordinator Initialized.")
 
-            if len(ffts) > spectrogram_resolution:
-                dispatcher.send(signal='spectrogram', sender='spectrogram', data=ffts)
-            # Also need to remove previous set of FFTs once there is enough data
-            # dispatcher.send(signal='spectrogram', sender='spectrogram', data=ffts)
-            # Create spectrogram when enough FFTs generated
+        ffts = []
+        x = 0 
+        spectrogram_resolution = 128
+        while True:
+            
+            hann = hanning(1024)
+            fft = self.queue.get()
+            if fft is not None:
+                fft = numpyFFT(fft * hann)[:1024//2]
+
+                if fft is None:
+                    self.message_peers(None)
+                    break
+
+                ffts.append(fft)
+                x = x + 1
+
+                if x > spectrogram_resolution:
+                    x = 0
+
+                    ffts = ffts[-spectrogram_resolution:]            
+                    self.peer_list.append(SpectogramWorker( self.sampling_rate, self.channel_id))
+                    self.message_peers(ffts)
+                    
+                    dispatcher.send(signal='spectrogram', sender='spectrogram', data=ffts)
+
+                # Also need to remove previous set of FFTs once there is enough data
+                #dispatcher.send(signal='spectrogram', sender='spectrogram', data=ffts)
+                # Create spectrogram when enough FFTs generated
 
 class BPMCoordinator(BaseCoordinator):
     def __init__(self, config, channel_id):
