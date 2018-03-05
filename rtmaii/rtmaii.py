@@ -76,7 +76,8 @@ class Rtmaii(object):
         pyaudio_settings['stream_callback'] = self.__stream_callback__
 
         if hasattr(self, 'waveform'):
-            self.waveform.setpos(0) # Reset wave file to initial position.
+            if self.waveform.tell() >= self.waveform.getnframes() - self.config.get_config('frames_per_sample'):
+                self.waveform.setpos(0) # Reset wave file to initial position.
 
         self.stream = self.audio.open(**pyaudio_settings)
         self.stream.start_stream()
@@ -86,8 +87,6 @@ class Rtmaii(object):
     def stop(self):
         """ Stop the stream & close the track (if set). """
         self.stream.stop_stream()
-        if hasattr(self, 'waveform'):
-            self.waveform.close()
 
     def set_config(self, **kwargs):
         """ Change configuration options, i.e. what bands should be look at. """
@@ -96,8 +95,9 @@ class Rtmaii(object):
     def set_source(self, source=None, sampling_rate=None, channels=None):
         """ Change the analyzed source """
         # Stop stream, reinitialize with new settings, fire kill command to coordinator.
-
+        if hasattr(self, 'stream'): self.stop()
         if source is None:
+            if hasattr(self, 'waveform'): del self.waveform
             pyaudio_kwargs = {
                 'rate': 44100,
                 'channels': 2,
