@@ -19,12 +19,13 @@ import tkinter as tk
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 
-<<<<<<< HEAD
+
+
 #matplotlib.pyplot.ion() # Enables interactive plotting.
-=======
->>>>>>> e68e3e02d939bf8896ae30dad7b425e1f3092f5d
-CHUNK_LENGTH = 1024 # Length of sampled data
-SPECTRUM_LENGTH = int(CHUNK_LENGTH*10) # Default config is set to wait until 10*1024 before analysing the spectrum.
+
+#CHUNK_LENGTH = 1024 # Length of sampled data
+#SPECTRUM_LENGTH = int(CHUNK_LENGTH*10) # Default config is set to wait until 10*1024 before analysing the spectrum.
+
 SAMPLING_RATE = 44100 # Default sampling rate 44.1 khz
 DOWNSAMPLE_RATE = 4 # Denominator to downsample length of signals by (Should be set according to system specs.)
 FRAME_DELAY = 200 # How long between each frame update (ms)
@@ -56,11 +57,11 @@ class Listener(threading.Thread):
                 'brilliance': 0
             },
             'spectrum': [],
-            'signal': zeros(CHUNK_LENGTH),
+            'signal': [],
             'spectogramData':zeros([128,128,128])
-
         }
 
+        self.condition = threading.Condition()
 
         callbacks = []
         for key, _ in self.state.items():
@@ -71,7 +72,8 @@ class Listener(threading.Thread):
                                       track=r'.\test_data\spectogramTest.wav',
                                      )
 
-        self.state['spectrum'] = zeros(self.analyser.config.get_config('frequency_samples') * self.analyser.config.get_config('frames_per_sample') // 2)
+        self.state['spectrum'] = arange(self.analyser.config.get_config('frequency_resolution') // 2)
+        self.state['signal'] = arange(self.analyser.config.get_config('frames_per_sample'))
 
         threading.Thread.__init__(self, args=(), kwargs=None)
         self.setDaemon(True)
@@ -92,7 +94,9 @@ class Listener(threading.Thread):
     def run(self):
         """ Keep thread alive. """
         while True:
-            pass
+            self.condition.acquire()
+            self.condition.wait() # Non-blocking sleep.
+            self.condition.release()
 
     def callback(self, data, **kwargs):
         """ Set data for signal event. """
@@ -117,12 +121,13 @@ class Debugger(tk.Tk):
 
     def setup(self):
         """Create UI elements and assign configurable elements. """
-        self.frequency_length = self.listener.analyser.config.get_config('frequency_samples') * self.listener.analyser.config.get_config('frames_per_sample')
+        self.chunk_size = self.listener.analyser.config.get_config('frames_per_sample')
+        self.frequency_length = self.listener.analyser.config.get_config('frequency_resolution')
         self.frequencies = fftfreq(self.frequency_length , 1 / SAMPLING_RATE)[::DOWNSAMPLE_RATE]
         self.frequencies = self.frequencies[:len(self.frequencies)//2]
 
         # --- INIT SETUP --- #
-        self.timeframe = arange(0, CHUNK_LENGTH, DOWNSAMPLE_RATE) # Where DOWNSAMPLE_RATE = steps taken.
+        self.timeframe = arange(0, self.chunk_size, DOWNSAMPLE_RATE) # Where DOWNSAMPLE_RATE = steps taken.
         # self.frequencies = arange(0, self.frequency_length, DOWNSAMPLE_RATE) / (CHUNK_LENGTH/SAMPLING_RATE)/2 # Possible range of frequencies
         self.title("RTMAII DEBUGGER")
 
@@ -221,25 +226,27 @@ class Debugger(tk.Tk):
     def update(self):
         """ Update UI every FRAME_DELAY milliseconds """
         # --- UPDATE GRAPHS --- #
-<<<<<<< HEAD
-        self.signal_plot.clear()
-        self.signal_plot.set_title('Signal')
-        self.signal_plot.set_xlabel('Time (Arbitary)')
-        self.signal_plot.set_ylabel('Amplitude')
-        signal = self.listener.get_item('signal') #TODO: Shouldn't need to splice timeframe to len of sig.
-        self.signal_plot.plot(self.timeframe[:len(signal)], signal)
+# <<<<<<< HEAD
+# <<<<<<< HEAD
+        # self.signal_plot.clear()
+        # self.signal_plot.set_title('Signal')
+        # self.signal_plot.set_xlabel('Time (Arbitary)')
+        # self.signal_plot.set_ylabel('Amplitude')
+        # signal = self.listener.get_item('signal') #TODO: Shouldn't need to splice timeframe to len of sig.
+        # self.signal_plot.plot(self.timeframe[:len(signal)], signal)
 
-        self.spectrum_plot.clear()
-        self.spectrum_plot.set_title('Spectrum')
-        self.spectrum_plot.set_xlabel('Frequency (Hz)')
-        self.spectrum_plot.set_ylabel('Power')
-        self.spectrum_plot.plot(self.frequencies, self.listener.get_item('spectrum'))
+        # self.spectrum_plot.clear()
+        # self.spectrum_plot.set_title('Spectrum')
+        # self.spectrum_plot.set_xlabel('Frequency (Hz)')
+        # self.spectrum_plot.set_ylabel('Power')
+        # self.spectrum_plot.plot(self.frequencies, self.listener.get_item('spectrum'))
 
         self.spectrogram_plot.clear()
         self.spectrogram_plot.set_title('Spectrogram')
         self.spectrogram_plot.set_xlabel('Time')
         self.spectrogram_plot.set_ylabel('Frequency (Hz)')
         data = self.listener.get_item('spectogramData')
+        #print(data)
         
         #self.spectrogram_plot.pcolormesh(data[0],data[1],data[2], vmin=-120, vmax=0)
         self.spectrogram_plot.pcolormesh( data[0], data[1], data[2])
@@ -247,17 +254,17 @@ class Debugger(tk.Tk):
         self.spectrogram_plot.set_xlim(0, 1.5)
         self.spectrogram_plot.set_ylim(0, 20000)
 
-        self.signal_canvas.draw()
-        self.spectrum_canvas.draw()
+#         self.signal_canvas.draw()
+#         self.spectrum_canvas.draw()
         self.spectrogram_canvas.draw()
-=======
+# =======
+# =======
         self.signal_canvas.restore_region(self.signal_background) # Clear background.
         self.signal_plot.draw_artist(self.signal_line) # Draw new data.
         self.signal_canvas.blit(self.signal_plot.bbox) # Display new data in plot.
         self.spectrum_canvas.restore_region(self.signal_background)
         self.spectrum_plot.draw_artist(self.spectrum_line)
         self.spectrum_canvas.blit(self.spectrum_plot.bbox)
->>>>>>> e68e3e02d939bf8896ae30dad7b425e1f3092f5d
 
         # --- UPDATE LABELS --- #
         self.pitch.set("{0:.2f}".format(self.listener.get_item('pitch')))

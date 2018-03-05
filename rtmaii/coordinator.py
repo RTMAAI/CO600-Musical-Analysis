@@ -180,7 +180,7 @@ class SpectrogramCoordinator(Coordinator):
             fft = self.queue.get()
             if fft is not None:
                 fft = numpyFFT(fft * self.window)[:1024//2]
-                print("bar")
+                #print("bar")
                 if fft is None:
                     self.message_peers(None)
                     break
