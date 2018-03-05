@@ -23,7 +23,6 @@ class Worker(threading.Thread):
     def run(self):
         raise NotImplementedError("Run should be implemented")
 
-<<<<<<< HEAD
 class PitchWorker(Worker):
     """ Specialised worker that has a method to analyse the key given the pitch. """
     def __init__(self, channel_id: int):
@@ -87,12 +86,6 @@ class SpectogramWorker(Worker):
 
             dispatcher.send(signal='spectogramData', sender=self.channel_id, data=spectroData)
 
-<<<<<<< Updated upstream
-
-=======
-=======
->>>>>>> e68e3e02d939bf8896ae30dad7b425e1f3092f5d
->>>>>>> Stashed changes
 class BandsWorker(Worker):
     """ Worker responsible for analysing interesting frequency bands.
 
