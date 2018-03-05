@@ -11,7 +11,7 @@ def main():
 
     analyser = rtmaii.Rtmaii([{'function': frequency_callback, 'signal':'frequency'},
                               {'function': spectrogram_callback, 'signal':'spectrogram'}],
-                              track=r'.\test_data\saw_493.88.wav',
+                              track=r'.\test_data\spectogramTest.wav',
                               mode='DEBUG')
 
     analyser.start()
@@ -21,7 +21,7 @@ def main():
     #     # Keeps script running, similar to Pyaudio's is_active()
     #     pass
 
-    end_time = time.time() + 10 # run for 10 seconds
+    end_time = time.time() + 30 # run for 10 seconds
     while time.time() < end_time:
         pass
 
