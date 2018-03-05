@@ -1,12 +1,12 @@
 """
   TODO: Fill in docstring.
 """
-from queue import Queue
 import threading
 import logging
-from rtmaii.analysis import spectral, spectrogram
+from rtmaii.workqueue import WorkQueue
+from rtmaii.analysis import spectral
 from pydispatch import dispatcher
-from numpy import mean, int16, zeros, append
+from numpy import mean, int16, zeros, append, fromstring
 LOGGER = logging.getLogger(__name__)
 class Coordinator(threading.Thread):
     """ Parent class of all coordinator threads.
@@ -17,13 +17,13 @@ class Coordinator(threading.Thread):
             - `queue` (Queue): Coordinators queue of data to be processed.
             - `peer_list` (list): List of peer threads to communicate processed data with.
             - `config` (Config): Configuration options to use.
+            - `queue_length` (Int): Maximum length of a coordinator's queue, helps to cull items.
 
     """
-    def __init__(self, config: object, peer_list: list):
+    def __init__(self, config: object, peer_list: list, queue_length: int = None):
         threading.Thread.__init__(self, args=(), kwargs=None)
-
         self.setDaemon(True)
-        self.queue = Queue()
+        self.queue = WorkQueue(queue_length)
         self.peer_list = peer_list
         self.config = config
         self.start()
@@ -63,7 +63,7 @@ class RootCoordinator(Coordinator):
         """
 
         while True:
-            data = self.queue.get()
+            data = fromstring(self.queue.get(), dtype=int16)
             channel_signals = []
 
             for channel in range(channels):
@@ -88,7 +88,6 @@ class RootCoordinator(Coordinator):
 
         while True:
             data = self.queue.get()
-
             for channel in range(1, channels + 1):
                 channel_signal = data[channel::channels]
                 dispatcher.send(signal='signal', sender=channel, data=channel_signal) #TODO: Move to a locator.
@@ -122,17 +121,17 @@ class FrequencyCoordinator(Coordinator):
     def run(self):
         """ Extend signal data to configured resolution before transmitting to peers. """
 
-        fft_resolution = self.config.get_config('fft_resolution')
+        frequency_resolution = self.config.get_config('frequency_resolution')
         start_analysis = False
         signal = []
 
         while not start_analysis:
-            signal.extend(self.queue.get())
-            if len(signal) >= fft_resolution:
+            signal.extend(self.queue.get_all())
+            if len(signal) >= frequency_resolution:
                 start_analysis = True
 
         while start_analysis:
-            data = self.queue.get()
+            data = self.queue.get_all()
             signal = signal[len(data):]
             signal.extend(data)
             self.message_peers(signal)
@@ -149,12 +148,12 @@ class SpectrumCoordinator(Coordinator):
             - `Peers` created are dependent on configured tasks and algorithms.
     """
     def __init__(self, config: object, peer_list: list, channel_id: int):
-        Coordinator.__init__(self, config, peer_list)
-        fft_resolution = self.config.get_config('fft_resolution')
+        Coordinator.__init__(self, config, peer_list, 1)
+        frequency_resolution = config.get_config('frequency_resolution')
 
         self.sampling_rate = config.get_config('sampling_rate')
         self.channel_id = channel_id
-        self.window = spectral.new_window(fft_resolution, 'blackmanharris')
+        self.window = spectral.new_window(frequency_resolution, 'hanning')
         self.filter = spectral.butter_bandpass(10, 20000, self.sampling_rate, 5)
 
     def run(self):

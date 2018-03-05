@@ -3,11 +3,13 @@
 '''
 import wave
 import json
+import threading
 import logging
 import os
+import time
 from rtmaii.hierarchy import new_hierarchy
 from rtmaii.configuration import Config
-from numpy import fromstring, int16
+from numpy import int16
 from pydispatch import dispatcher
 import pyaudio
 
@@ -42,6 +44,7 @@ class Rtmaii(object):
             ```
     """
     def __init__(self, callbacks: list, track: str = None, config: dict = {}, mode: str = 'ERROR'):
+
         self.config = Config(**config)
         self.audio = pyaudio.PyAudio()
         self.set_source(track)
@@ -54,9 +57,7 @@ class Rtmaii(object):
         """
             Convert raw stream data into signal bin and put data on the coordinator's queue.
         """
-        data = fromstring(
-            self.waveform.readframes(frame_count) if hasattr(self, 'waveform') else in_data,
-            dtype=int16)
+        data = self.waveform.readframes(frame_count) if hasattr(self, 'waveform') else in_data
         self.root.queue.put(data)
         return (data, pyaudio.paContinue)
 
@@ -101,10 +102,8 @@ class Rtmaii(object):
                 'rate': 44100,
                 'channels': 2,
                 'format': pyaudio.paInt16,
-                'input': True,
-                'frames_per_buffer': 1024
+                'input': True
             }
-            self.config.set_source(pyaudio_kwargs)
         else:
             self.waveform = wave.open(source)
             pyaudio_kwargs = {
@@ -113,7 +112,8 @@ class Rtmaii(object):
                 'rate': self.waveform.getframerate(),
                 'channels': self.waveform.getnchannels()
             }
-            self.config.set_source(pyaudio_kwargs)
+        pyaudio_kwargs['frames_per_buffer'] = self.config.get_config('frames_per_sample')
+        self.config.set_source(pyaudio_kwargs)
 
     def set_callbacks(self, callbacks):
         """
