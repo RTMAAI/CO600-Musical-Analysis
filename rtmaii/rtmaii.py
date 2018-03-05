@@ -5,7 +5,7 @@ import wave
 import json
 import logging
 import os
-from rtmaii.coordinator import Coordinator
+from rtmaii.hierarchy import new_hierarchy
 from rtmaii.configuration import Config
 from numpy import fromstring, int16
 from pydispatch import dispatcher
@@ -46,7 +46,7 @@ class Rtmaii(object):
         self.audio = pyaudio.PyAudio()
         self.set_source(track)
         self.set_callbacks(callbacks)
-        self.coordinator = Coordinator(self.config)
+        self.root = new_hierarchy(self.config)
         LOGGER.setLevel(mode)
         LOGGER.debug('RTMAII Initiliazed')
 
@@ -57,10 +57,7 @@ class Rtmaii(object):
         data = fromstring(
             self.waveform.readframes(frame_count) if hasattr(self, 'waveform') else in_data,
             dtype=int16)
-
-        self.coordinator.queue.put(data)
-        if status == 4: # Push finish request to coordinator when stream has ended.
-            self.coordinator.queue.put(None)
+        self.root.queue.put(data)
         return (data, pyaudio.paContinue)
 
     def is_active(self):
@@ -77,6 +74,9 @@ class Rtmaii(object):
         pyaudio_settings = self.config.get_config('pyaudio_settings')
         pyaudio_settings['stream_callback'] = self.__stream_callback__
 
+        if hasattr(self, 'waveform'):
+            self.waveform.setpos(0) # Reset wave file to initial position.
+
         self.stream = self.audio.open(**pyaudio_settings)
         self.stream.start_stream()
 
@@ -85,8 +85,6 @@ class Rtmaii(object):
     def stop(self):
         """ Stop the stream & close the track (if set). """
         self.stream.stop_stream()
-        self.stream.close()
-        self.coordinator.queue.put(None)
         if hasattr(self, 'waveform'):
             self.waveform.close()
 
