@@ -178,7 +178,7 @@ class Debugger(tk.Tk):
         left_frame.pack(side=tk.LEFT)
 
          # --- SIGNAL GRAPH --- #
-        signal_frame = Figure(figsize=(8, 4), dpi=100)
+        signal_frame = Figure(figsize=(7, 4), dpi=100)
         self.signal_plot = signal_frame.add_subplot(111)
         self.signal_canvas = FigureCanvasTkAgg(signal_frame, left_frame)
         self.signal_canvas.show()
@@ -187,12 +187,13 @@ class Debugger(tk.Tk):
         self.signal_plot.set_title('Signal')
         self.signal_plot.set_xlabel('Time (Arbitary)')
         self.signal_plot.set_ylabel('Amplitude')
+        self.signal_plot.get_xaxis().set_ticks([])
         self.signal_plot.get_yaxis().set_ticks([])
         self.signal_canvas.get_tk_widget().pack(pady=INNERPADDING, padx=INNERPADDING)
         SignalPlotter(self.listener, self.signal_plot, self.signal_line)
 
         # --- SPECTRUM GRAPH --- #
-        spectrum_frame = Figure(figsize=(8, 4), dpi=100)
+        spectrum_frame = Figure(figsize=(7, 4), dpi=100)
         self.spectrum_plot = spectrum_frame.add_subplot(111)
         self.spectrum_canvas = FigureCanvasTkAgg(spectrum_frame, left_frame)
         self.spectrum_canvas.show()
@@ -202,7 +203,7 @@ class Debugger(tk.Tk):
         self.spectrum_plot.set_xlabel('Frequency (Hz)')
         self.spectrum_plot.set_ylabel('Power')
         self.spectrum_plot.get_yaxis().set_ticks([])
-        self.spectrum_canvas.get_tk_widget().pack(pady=INNERPADDING, padx=INNERPADDING)
+        self.spectrum_canvas.get_tk_widget().pack(pady=(0, INNERPADDING), padx=INNERPADDING)
         SpectrumPlotter(self.listener, self.spectrum_plot, self.spectrum_line)
 
         # --- RIGHT FRAME --- #
