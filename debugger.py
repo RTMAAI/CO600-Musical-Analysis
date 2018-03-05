@@ -116,12 +116,19 @@ class Debugger(tk.Tk):
         self.update()
 
     def changetrack(self):
+        self.is_live = False
         self.track = tk.filedialog.askopenfilename(initialdir = "/", title = "Select track", filetypes = (("wave files","*.wav"),("all files","*.*")))
-        self.listener.set_source(self.track)
+        if self.track :
+            self.listener.set_source(self.track)
+
+    def liveinput(self):
+        self.is_live = True
+        self.listener.set_source(None)
 
     def setup(self):
         """Create UI elements and assign configurable elements. """
         self.chunk_size = self.listener.analyser.config.get_config('frames_per_sample')
+        self.is_live = False
         self.frequency_length = self.listener.analyser.config.get_config('frequency_resolution')
         self.frequencies = fftfreq(self.frequency_length , 1 / SAMPLING_RATE)[::DOWNSAMPLE_RATE]
         self.frequencies = self.frequencies[:len(self.frequencies)//2]
@@ -132,7 +139,7 @@ class Debugger(tk.Tk):
         self.title("RTMAII DEBUGGER")
 
         # --- CONTROL FRAME --- #
-        control_frame = tk.Frame(self, borderwidth=1, bg=BACKGROUND_COLOR, highlightbackground=TRIM_COLOR, highlightthickness=4)
+        control_frame = tk.Frame(self, borderwidth=1, bg=TRIM_COLOR, highlightbackground=TRIM_COLOR, highlightthickness=4)
         control_frame.pack(side=tk.TOP, pady=10)
 
         # --- CONTROLS --- #
@@ -144,6 +151,9 @@ class Debugger(tk.Tk):
 
         self.browse = tk.Button(control_frame, text="Browse", command=self.changetrack, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, HEADER_SIZE))
         self.browse.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT)
+
+        self.live = tk.Button(control_frame, text="Live", command=self.liveinput, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, HEADER_SIZE))
+        self.live.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT)
 
         # --- LEFT FRAME---- #
         left_frame = tk.Frame(self, borderwidth=1, width=500, height=500, bg=BACKGROUND_COLOR, highlightbackground='#33cc99', highlightthickness=2)
@@ -251,6 +261,11 @@ class Debugger(tk.Tk):
         else:
             self.play.config(state='normal')
             self.stop.config(state='disabled')
+
+        if self.is_live:
+            self.live.config(state='disabled')
+        else:
+            self.live.config(state='normal')
 
         self.after(FRAME_DELAY, self.update)
 class SignalPlotter(threading.Thread):
