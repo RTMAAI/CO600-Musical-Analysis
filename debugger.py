@@ -75,6 +75,10 @@ class Listener(threading.Thread):
         """ Start analysis. """
         self.analyser.start()
 
+    def pause_analysis(self):
+        """ Pauses analysis. """
+        self.analyser.pause()
+
     def stop_analysis(self):
         """ Stop analysis and clear existing state. """
         self.analyser.stop()
@@ -145,6 +149,9 @@ class Debugger(tk.Tk):
         # --- CONTROLS --- #
         self.play = tk.Button(control_frame, text="Play", command=self.listener.start_analysis, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, HEADER_SIZE))
         self.play.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT)
+
+        self.pause = tk.Button(control_frame, text="Pause", command=self.listener.pause_analysis, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, HEADER_SIZE))
+        self.pause.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT)
 
         self.stop = tk.Button(control_frame, text="Stop", command=self.listener.stop_analysis, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, HEADER_SIZE))
         self.stop.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT)
@@ -257,9 +264,11 @@ class Debugger(tk.Tk):
         # --- UPDATE PLAY --- #
         if self.listener.is_active():
             self.play.config(state='disabled')
+            self.pause.config(state='normal')
             self.stop.config(state='normal')
         else:
             self.play.config(state='normal')
+            self.pause.config(state='disabled')
             self.stop.config(state='disabled')
 
         if self.is_live:

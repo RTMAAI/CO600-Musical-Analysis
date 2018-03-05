@@ -84,8 +84,14 @@ class Rtmaii(object):
 
         LOGGER.info('Stream started')
 
+    def pause(self):
+        """ Pause the stream. Analogous to stop if analysing live music. """
+        self.stream.stop_stream()
+
     def stop(self):
-        """ Stop the stream & close the track (if set). """
+        """ Stop the stream & reset track's position (if set). """
+        if hasattr(self, 'waveform'):
+            self.waveform.setpos(0) # Reset wave file to initial position.
         self.stream.stop_stream()
 
     def set_config(self, **kwargs):
