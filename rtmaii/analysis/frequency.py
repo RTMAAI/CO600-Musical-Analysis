@@ -19,7 +19,7 @@ def normalize_dict(dictionary: dict, dict_sum: float):
             - dictionary: the dictionary to be normalized.
             - dict_sum: the sum value to normalize with.
     """
-    return { key: float(value)/dict_sum for key, value in dictionary.items() }
+    return { key: float(value)/dict_sum if dict_sum > 0 else 0 for key, value in dictionary.items() }
 
 
 def get_band_power(spectrum: list, bands: dict):
