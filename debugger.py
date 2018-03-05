@@ -22,7 +22,8 @@ from matplotlib.figure import Figure
 SAMPLING_RATE = 44100 # Default sampling rate 44.1 khz
 DOWNSAMPLE_RATE = 4 # Denominator to downsample length of signals by (Should be set according to system specs.)
 FRAME_DELAY = 200 # How long between each frame update (ms)
-XPADDING = 20
+XPADDING = 10
+INNERPADDING = 5
 BACKGROUND_COLOR = '#3366cc'
 ACCENT_COLOR = '#6633cc'
 TEXT_COLOR = '#fff'
@@ -144,26 +145,36 @@ class Debugger(tk.Tk):
 
         # --- CONTROL FRAME --- #
         control_frame = tk.Frame(self, borderwidth=1, bg=TRIM_COLOR, highlightbackground=TRIM_COLOR, highlightthickness=4)
-        control_frame.pack(side=tk.TOP, pady=10)
+        control_frame.pack(side=tk.TOP, pady=10, ipady=INNERPADDING)
 
         # --- CONTROLS --- #
         self.play = tk.Button(control_frame, text="Play", command=self.listener.start_analysis, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, HEADER_SIZE))
-        self.play.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT)
+        self.play.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT, ipadx=INNERPADDING, ipady=INNERPADDING)
+        self.play_icon = tk.PhotoImage(file="./assets/play.png", master=self)
+        self.play.config(image=self.play_icon)
 
         self.pause = tk.Button(control_frame, text="Pause", command=self.listener.pause_analysis, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, HEADER_SIZE))
-        self.pause.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT)
+        self.pause.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT, ipadx=INNERPADDING, ipady=INNERPADDING)
+        self.pause_icon = tk.PhotoImage(file="./assets/pause.png", master=self)
+        self.pause.config(image=self.pause_icon)
 
         self.stop = tk.Button(control_frame, text="Stop", command=self.listener.stop_analysis, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, HEADER_SIZE))
-        self.stop.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT)
+        self.stop.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT, ipadx=INNERPADDING, ipady=INNERPADDING)
+        self.stop_icon = tk.PhotoImage(file="./assets/stop.png", master=self)
+        self.stop.config(image=self.stop_icon)
 
         self.browse = tk.Button(control_frame, text="Browse", command=self.changetrack, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, HEADER_SIZE))
-        self.browse.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT)
+        self.browse.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT, ipadx=INNERPADDING, ipady=INNERPADDING)
+        self.browse_icon = tk.PhotoImage(file="./assets/Browse.png", master=self)
+        self.browse.config(image=self.browse_icon)
 
         self.live = tk.Button(control_frame, text="Live", command=self.liveinput, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, HEADER_SIZE))
-        self.live.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT)
+        self.live.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT, ipadx=INNERPADDING, ipady=INNERPADDING)
+        self.live_icon = tk.PhotoImage(file="./assets/Live.png", master=self)
+        self.live.config(image=self.live_icon)
 
         # --- LEFT FRAME---- #
-        left_frame = tk.Frame(self, borderwidth=1, width=500, height=500, bg=BACKGROUND_COLOR, highlightbackground='#33cc99', highlightthickness=2)
+        left_frame = tk.Frame(self, borderwidth=1, width=500, height=500, bg=TRIM_COLOR, highlightbackground=BACKGROUND_COLOR, highlightthickness=5)
         left_frame.pack(side=tk.LEFT)
 
          # --- SIGNAL GRAPH --- #
@@ -177,7 +188,7 @@ class Debugger(tk.Tk):
         self.signal_plot.set_xlabel('Time (Arbitary)')
         self.signal_plot.set_ylabel('Amplitude')
         self.signal_plot.get_yaxis().set_ticks([])
-        self.signal_canvas.get_tk_widget().pack(padx=XPADDING)
+        self.signal_canvas.get_tk_widget().pack(pady=INNERPADDING, padx=INNERPADDING)
         SignalPlotter(self.listener, self.signal_plot, self.signal_line)
 
         # --- SPECTRUM GRAPH --- #
@@ -191,7 +202,7 @@ class Debugger(tk.Tk):
         self.spectrum_plot.set_xlabel('Frequency (Hz)')
         self.spectrum_plot.set_ylabel('Power')
         self.spectrum_plot.get_yaxis().set_ticks([])
-        self.spectrum_canvas.get_tk_widget().pack(padx=XPADDING)
+        self.spectrum_canvas.get_tk_widget().pack(pady=INNERPADDING, padx=INNERPADDING)
         SpectrumPlotter(self.listener, self.spectrum_plot, self.spectrum_line)
 
         # --- RIGHT FRAME --- #
