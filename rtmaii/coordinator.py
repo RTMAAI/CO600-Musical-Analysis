@@ -6,8 +6,9 @@ import logging
 from rtmaii.workqueue import WorkQueue
 from rtmaii.analysis import spectral
 from pydispatch import dispatcher
-from numpy import mean, int16, zeros, append, hanning, array, column_stack,fromstring
+from numpy import mean, int16, zeros, append, hanning, array, column_stack,fromstring, absolute, power, log10, arange
 from numpy.fft import fft as numpyFFT
+
 LOGGER = logging.getLogger(__name__)
 class Coordinator(threading.Thread):
     """ Parent class of all coordinator threads.
@@ -164,7 +165,7 @@ class SpectrumCoordinator(Coordinator):
             self.message_peers(frequency_spectrum)
             dispatcher.send(signal='spectrum', sender=self.channel_id, data=frequency_spectrum)
 
-class SpectrogramCoordinator(Coordinator):
+class FFTSCoordinator(Coordinator):
     def __init__(self, config, peer_list: list, channel_id):
         Coordinator.__init__(self, config, peer_list)
         self.window = hanning(1024)
@@ -175,6 +176,7 @@ class SpectrogramCoordinator(Coordinator):
         ffts = []
         x = 0 
         spectrogram_resolution = 128
+        
             
         while True:
             fft = self.queue.get()
@@ -199,6 +201,60 @@ class SpectrogramCoordinator(Coordinator):
                 # Also need to remove previous set of FFTs once there is enough data
                 #dispatcher.send(signal='spectrogram', sender='spectrogram', data=ffts)
                 # Create spectrogram when enough FFTs generated
+
+class SpectrogramCoordinator(Coordinator):
+    """ Worker responsible for creating spectograms ... .
+
+        **Args**:
+            - `sampling_rate`: sampling_rate of source being analysed.
+            - `channel_id`: id of channel being analysed.
+    """
+    def __init__(self, config, peer_list: list, channel_id, sampling_rate):
+        Coordinator.__init__(self, channel_id, peer_list)
+        self.sampling_rate = sampling_rate
+        self.channel_id = channel_id
+
+
+    def run(self):
+        while True:
+            ffts = self.queue.get()
+            if ffts is None:
+                break # No more data so cleanup and end thread.
+            
+            self.window = 1024
+            
+            ffts = column_stack(ffts)
+            print(ffts.shape)
+            ffts = absolute(ffts) * 2.0 / self.window
+            ffts = ffts / power(2.0, 8* 2 - 1)
+            ffts = (20 * log10(ffts)).clip(-120)
+
+            time = arange(0, ffts.shape[1], dtype=float) * self.window / self.sampling_rate / 2
+            frequecy = arange(0, self.window / 2, dtype=float) * self.sampling_rate / self.window
+            
+            smallerFFTS = []
+            smallerF = []
+
+            for i in range(0, len(ffts), 4):
+                if i + 4 > len(ffts):
+                    break
+
+                meanF = 0
+                meanFFTS = 0
+
+                for j in range(i , i + 3):
+                    meanF = meanF + frequecy[j] 
+                    meanFFTS = meanFFTS + ffts[j]
+
+                meanF = meanF + frequecy[j]/4 
+                meanFFTS = meanFFTS + ffts[j]/4
+
+                smallerF.append(meanF)
+                smallerFFTS.append(meanFFTS)
+
+            spectroData = [time, smallerF, smallerFFTS]
+            self.message_peers(spectroData)
+            dispatcher.send(signal='spectogramData', sender=self.channel_id, data=spectroData)
 
 
 class BPMCoordinator(Coordinator):

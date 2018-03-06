@@ -34,7 +34,7 @@ class PitchWorker(Worker):
         estimated_key = key.note_from_pitch(pitch)
         dispatcher.send(signal='key', sender=self.channel_id, data=estimated_key)
 
-class SpectrogramWorker(Worker):
+class GenrePredictorWorker(Worker):
     """ Worker responsible for creating spectograms ... .
 
         **Args**:
@@ -51,60 +51,20 @@ class SpectrogramWorker(Worker):
         self.dict[3] = 'Hip-Hop'
         self.dict[4] = 'Pop'
         self.dict[5] = 'Rock'
-
+    
     def run(self):
+        
         while True:
-            ffts = self.queue.get()
-            if ffts is None:
-                break # No more data so cleanup and end thread.
-            
-            self.window = 1024
-            
-            ffts = column_stack(ffts)
-            print(ffts.shape)
-            ffts = absolute(ffts) * 2.0 / self.window
-            ffts = ffts / power(2.0, 8* 2 - 1)
-            ffts = (20 * log10(ffts)).clip(-120)
-
-            time = arange(0, ffts.shape[1], dtype=float) * self.window / self.sampling_rate / 2
-            frequecy = arange(0, self.window / 2, dtype=float) * self.sampling_rate / self.window
-            
-            smallerFFTS = []
-            smallerF = []
-
-            for i in range(0, len(ffts), 4):
-                if i + 4 > len(ffts):
-                    break
-
-                meanF = 0
-                meanFFTS = 0
-
-                for j in range(i , i + 3):
-                    meanF = meanF + frequecy[j] 
-                    meanFFTS = meanFFTS + ffts[j]
-
-                meanF = meanF + frequecy[j]/4 
-                meanFFTS = meanFFTS + ffts[j]/4
-
-                smallerF.append(meanF)
-                smallerFFTS.append(meanFFTS)
-            
-            #print(smallerFFTS.shape)
-
-            testPhoto = reshape(smallerFFTS, (1,128,128,1))
-            predictions = self.predict_fn({"x": testPhoto})
+            spectrogram = self.queue.get()[2]
+            spectrogram = reshape(spectrogram, (1,128,128,1))
+            predictions = self.predict_fn({"x": spectrogram})
             predictionClass = predictions['classes'][0]
             
             prediction = self.dict[predictionClass]
 
             print(predictions['probabilities'])
 
-            #ax = plt.subplot(111)
-            #plt.pcolormesh(time, smallerF, smallerF, vmin=-120, vmax=0)
-
-            spectroData = [time, smallerF, smallerFFTS]
-
-            dispatcher.send(signal='spectogramData', sender=self.channel_id, data=spectroData)
+            dispatcher.send(signal='genre', sender=self.channel_id, data=prediction)
 
 class BandsWorker(Worker):
     """ Worker responsible for analysing interesting frequency bands.

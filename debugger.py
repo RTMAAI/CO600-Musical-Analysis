@@ -56,9 +56,11 @@ class Listener(threading.Thread):
                 'presence': 0,
                 'brilliance': 0
             },
+            'genre': "N/A",
             'spectrum': [],
             'signal': [],
             'spectogramData':zeros([128,128,128])
+
         }
 
         self.condition = threading.Condition()
@@ -208,6 +210,15 @@ class Debugger(tk.Tk):
         key_value = tk.Label(key_frame, textvariable=self.key, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, VALUE_SIZE))
         key_value.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT)
 
+        # --- GENRE LABEL --- #
+        self.genre = tk.StringVar()
+        genre_frame = tk.Frame(value_frame, borderwidth=1, bg=ACCENT_COLOR)
+        genre_frame.pack(padx=10)
+        genre_label = tk.Label(key_frame, text=str('Genre:'), bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, VALUE_SIZE))
+        genre_label.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT)
+        genre_value = tk.Label(key_frame, textvariable=self.genre, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, VALUE_SIZE))
+        genre_value.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT)
+
         # --- BANDS LABEL --- #
         self.bands = {}
         chosen_bands = self.listener.get_item('bands')
@@ -226,30 +237,14 @@ class Debugger(tk.Tk):
     def update(self):
         """ Update UI every FRAME_DELAY milliseconds """
         # --- UPDATE GRAPHS --- #
-# <<<<<<< HEAD
-# <<<<<<< HEAD
-        # self.signal_plot.clear()
-        # self.signal_plot.set_title('Signal')
-        # self.signal_plot.set_xlabel('Time (Arbitary)')
-        # self.signal_plot.set_ylabel('Amplitude')
-        # signal = self.listener.get_item('signal') #TODO: Shouldn't need to splice timeframe to len of sig.
-        # self.signal_plot.plot(self.timeframe[:len(signal)], signal)
-
-        # self.spectrum_plot.clear()
-        # self.spectrum_plot.set_title('Spectrum')
-        # self.spectrum_plot.set_xlabel('Frequency (Hz)')
-        # self.spectrum_plot.set_ylabel('Power')
-        # self.spectrum_plot.plot(self.frequencies, self.listener.get_item('spectrum'))
 
         self.spectrogram_plot.clear()
         self.spectrogram_plot.set_title('Spectrogram')
         self.spectrogram_plot.set_xlabel('Time')
         self.spectrogram_plot.set_ylabel('Frequency (Hz)')
         data = self.listener.get_item('spectogramData')
-        #print(data)
-        
-        #self.spectrogram_plot.pcolormesh(data[0],data[1],data[2], vmin=-120, vmax=0)
-        self.spectrogram_plot.pcolormesh( data[0], data[1], data[2])
+
+        self.spectrogram_plot.pcolormesh(data[0], data[1], data[2])
 
         self.spectrogram_plot.set_xlim(0, 1.5)
         self.spectrogram_plot.set_ylim(0, 20000)
@@ -269,6 +264,7 @@ class Debugger(tk.Tk):
         # --- UPDATE LABELS --- #
         self.pitch.set("{0:.2f}".format(self.listener.get_item('pitch')))
         self.key.set(self.listener.get_item('key'))
+        self.genre.set(self.listener.get_item('genre'))
         bands = self.listener.get_item('bands')
         # Update each band value.
         for key, value in bands.items():
