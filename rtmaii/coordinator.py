@@ -44,7 +44,7 @@ class Coordinator(threading.Thread):
             peer.queue.put(data)
 
 class RootCoordinator(Coordinator):
-    """ First-line coordinator responsible for sending signal data to other threads.
+    """ First-line coordinator responsible for sending signal data to other threads with unique channel data.
 
         **Attributes**:
             - channels (List): list of channel threads to transmit signal to.
@@ -54,55 +54,53 @@ class RootCoordinator(Coordinator):
         LOGGER.info('Coordinator Initialized.')
         Coordinator.__init__(self, config, peer_list)
         self.frames_per_sample = self.config.get_config('frames_per_sample')
+        self.message_channel_data = self.single_channel if self.config.get_config('merge_channels') else self.multi_channel
         self.channels = []
 
-    def single_channel(self, config: object, channels: int):
+    def message_channel_peer(self, data: object, channel: int = 0):
+        for peer in self.peer_list[channel]:
+            peer.queue.put(data)
+
+    def pad_signal_length(self, data: object):
+        return append(data, zeros(self.frames_per_sample - len(data)))
+
+    def single_channel(self, data: object, channels: int):
         """ Task configuration to handle analysis of an averaged single channel.
 
             **Args**:
-                - `config` : configuration to be passed to peers.
+                - `data` : signal data to average and send to peered threads.
                 - `channels` : number of channels of input source.
         """
+        channel_signals = []
 
-        while True:
-            data = fromstring(self.queue.get(), dtype=int16)
-            channel_signals = []
+        for channel in range(channels):
+                # Extract individual channel signals.
+                signal_data = self.pad_signal_length(data[channel::channels])
+                # Zero pad array as the data length is not always guaranteed to be == frames_per_sample (i.e. end of recording.)
+                channel_signals.append(signal_data)
 
-            for channel in range(channels):
-                    # Extract individual channel signals.
-                    signal_data = data[channel::channels]
-                    # Zero pad array as the data length is not always guaranteed to be == frames_per_sample (i.e. end of recording.)
-                    padded_signal_data = append(signal_data, zeros(self.frames_per_sample - len(signal_data)))
-                    channel_signals.append(padded_signal_data)
+        averaged_signal = mean(channel_signals, axis=0, dtype=int16) # Average all channels.
+        self.message_channel_peer(averaged_signal)
+        dispatcher.send(signal='signal', sender=channel, data=averaged_signal)
 
-            averaged_signal = mean(channel_signals, axis=0, dtype=int16) # Average all channels.
-
-            self.message_peers(averaged_signal)
-            dispatcher.send(signal='signal', sender=channel, data=averaged_signal) #TODO: Move to a locator.
-
-    def multi_channel(self, config: object, channels: int):
+    def multi_channel(self, data: object, channels: int):
         """ Task configuration to handle analysis of multiple channels at the same time.
 
             **Args**:
-                - `config` : configuration to be passed to peers.
+                - `data` : signal data to send to peered channel threads.
                 - `channels` : number of channels of input source.
         """
-
-        while True:
-            data = self.queue.get()
-            for channel in range(1, channels + 1):
-                channel_signal = data[channel::channels]
-                dispatcher.send(signal='signal', sender=channel, data=channel_signal) #TODO: Move to a locator.
-                self.message_peers(channel_signal)
+        for channel in range(channels):
+            channel_signal = self.pad_signal_length(data[channel::channels])
+            dispatcher.send(signal='signal', sender=channel + 1, data=channel_signal)
+            self.message_channel_peer(channel_signal, channel)
 
     def run(self):
         channels = self.config.get_config('channels')
-        merge_channels = self.config.get_config('merge_channels')
 
-        if merge_channels:
-            self.single_channel(self.config, channels)
-        else:
-            self.multi_channel(self.config, channels)
+        while True:
+            data = fromstring(self.queue.get(), dtype=int16)
+            self.message_channel_data(data, channels)
 
 class FrequencyCoordinator(Coordinator):
     """ Frequency coordinator responsible for extending signal data before further analysis.
