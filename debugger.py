@@ -30,7 +30,7 @@ TEXT_COLOR = '#fff'
 TRIM_COLOR = '#33cc99'
 HEADER_SIZE = 20
 VALUE_SIZE = 15
-Y_PADDING = 0.1 # Amount to pad the maximum Y value of a graph by. (Percentage i.e. 0.1 = 10% padding.)
+Y_PADDING = 0.3 # Amount to pad the maximum Y value of a graph by. (Percentage i.e. 0.1 = 10% padding.)
 
 class Listener(threading.Thread):
     """ Starts analysis and holds a state of analysed results.
@@ -301,10 +301,12 @@ class SignalPlotter(threading.Thread):
         self.start()
 
     def run(self):
+        min_power = 8000 # Minimum power value of graph axes, avoids graph showing loads of movement when it's just noise.
         while True:
             signal = self.listener.get_item('signal')
-            signal_y_max = max(abs(signal)) * (1 + Y_PADDING)
-            self.plot.set_ylim([-signal_y_max, signal_y_max])
+            signal_max = max(abs(signal)) * (1 + Y_PADDING) # Pad Y maximum/minimum so line doesn't hit top of graph.
+            y_max = signal_max if signal_max > min_power else min_power # If mainly noise in signal use min_power as graph max/min.
+            self.plot.set_ylim([-y_max, y_max])
             self.line.set_ydata(resample(signal, len(signal) // DOWNSAMPLE_RATE))
 
 class SpectrumPlotter(threading.Thread):
@@ -324,7 +326,6 @@ class SpectrumPlotter(threading.Thread):
             downsampled_spectrum = resample(spectrum, len(spectrum) // DOWNSAMPLE_RATE)
             self.plot.set_ylim([0, max(downsampled_spectrum) * (1 + Y_PADDING)])
             self.line.set_ydata(downsampled_spectrum)
-
 
 def main():
     debugger = Debugger()
