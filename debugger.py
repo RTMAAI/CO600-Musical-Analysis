@@ -19,6 +19,13 @@ import tkinter as tk
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 
+
+
+#matplotlib.pyplot.ion() # Enables interactive plotting.
+
+#CHUNK_LENGTH = 1024 # Length of sampled data
+#SPECTRUM_LENGTH = int(CHUNK_LENGTH*10) # Default config is set to wait until 10*1024 before analysing the spectrum.
+
 SAMPLING_RATE = 44100 # Default sampling rate 44.1 khz
 DOWNSAMPLE_RATE = 4 # Denominator to downsample length of signals by (Should be set according to system specs.)
 FRAME_DELAY = 200 # How long between each frame update (ms)
@@ -49,8 +56,11 @@ class Listener(threading.Thread):
                 'presence': 0,
                 'brilliance': 0
             },
+            'genre': "N/A",
             'spectrum': [],
-            'signal': []
+            'signal': [],
+            'spectogramData':zeros([128,128,128])
+
         }
 
         self.condition = threading.Condition()
@@ -61,7 +71,7 @@ class Listener(threading.Thread):
 
         self.analyser = rtmaii.Rtmaii(callbacks,
                                       mode='INFO',
-                                      track=r'.\test_data\sine_493.88.wav',
+                                      track=r'.\test_data\spectogramTest.wav',
                                      )
 
         self.state['spectrum'] = arange(self.analyser.config.get_config('frequency_resolution') // 2)
@@ -173,7 +183,6 @@ class Debugger(tk.Tk):
         # --- SPECTROGRAM GRAPH --- #
         spectrogram_frame = Figure(figsize=(10, 4), dpi=100)
         self.spectrogram_plot = spectrogram_frame.add_subplot(111)
-        self.spectrogram_plot.plot(self.frequencies, self.frequencies)
         self.spectrogram_canvas = FigureCanvasTkAgg(spectrogram_frame, right_frame)
         self.spectrogram_canvas.show()
         self.spectrogram_canvas.get_tk_widget().pack(padx=XPADDING, side=tk.BOTTOM)
@@ -200,6 +209,15 @@ class Debugger(tk.Tk):
         key_value = tk.Label(key_frame, textvariable=self.key, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, VALUE_SIZE))
         key_value.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT)
 
+        # --- GENRE LABEL --- #
+        self.genre = tk.StringVar()
+        genre_frame = tk.Frame(value_frame, borderwidth=1, bg=ACCENT_COLOR)
+        genre_frame.pack(padx=10)
+        genre_label = tk.Label(key_frame, text=str('Genre:'), bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, VALUE_SIZE))
+        genre_label.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT)
+        genre_value = tk.Label(key_frame, textvariable=self.genre, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, VALUE_SIZE))
+        genre_value.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT)
+
         # --- BANDS LABEL --- #
         self.bands = {}
         chosen_bands = self.listener.get_item('bands')
@@ -218,6 +236,18 @@ class Debugger(tk.Tk):
     def update(self):
         """ Update UI every FRAME_DELAY milliseconds """
         # --- UPDATE GRAPHS --- #
+
+        self.spectrogram_plot.clear()
+        self.spectrogram_plot.set_title('Spectrogram')
+        self.spectrogram_plot.set_xlabel('Time')
+        self.spectrogram_plot.set_ylabel('Frequency (Hz)')
+        data = self.listener.get_item('spectogramData')
+
+        self.spectrogram_plot.pcolormesh(data[0], data[1], data[2])
+        self.spectrogram_plot.set_xlim(0, 1.5)
+        self.spectrogram_plot.set_ylim(0, 20000)
+        self.spectrogram_canvas.draw()
+
         self.signal_canvas.restore_region(self.signal_background) # Clear background.
         self.signal_plot.draw_artist(self.signal_line) # Draw new data.
         self.signal_canvas.blit(self.signal_plot.bbox) # Display new data in plot.
@@ -228,6 +258,7 @@ class Debugger(tk.Tk):
         # --- UPDATE LABELS --- #
         self.pitch.set("{0:.2f}".format(self.listener.get_item('pitch')))
         self.key.set(self.listener.get_item('key'))
+        self.genre.set(self.listener.get_item('genre'))
         bands = self.listener.get_item('bands')
         # Update each band value.
         for key, value in bands.items():
