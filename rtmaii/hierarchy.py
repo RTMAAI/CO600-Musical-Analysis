@@ -25,6 +25,7 @@ def new_hierarchy(config: object):
         freq_list = []
         spectrum_list = []
         spectrogram_list = []
+        prediction_list = []
 
         #--- LEAF NODES (WORKERS) - Any endpoints must be created first in order be attached to their peer at creation. --#
         if tasks['beat']:
@@ -44,8 +45,7 @@ def new_hierarchy(config: object):
                 freq_list.append(new_worker('AutoCorrelation', {'sampling_rate' : sampling_rate, 'channel_id': channel_id}))
 
         if tasks['genre']:
-            # spectrogram_list.append(new_worker('Spectrogram', {'sampling_rate' : sampling_rate, 'channel_id': channel_id}))
-            pass
+            prediction_list.append(new_worker('GenrePredictor', {'sampling_rate' : sampling_rate, 'channel_id': channel_id}))
 
         if tasks['bands']:
             bands_of_interest = config.get_config('bands')
@@ -54,8 +54,9 @@ def new_hierarchy(config: object):
 
         #--- Root Nodes (Coordinators) - Created last in order so that peers can be injected. ---#
         # This simply avoids creation of u
-        if len(spectrogram_list) > 0:
-            spectrum_list.append(new_coordinator('Spectrogram', {'config': config, 'peer_list': [], 'channel_id': channel_id}))
+        if len(prediction_list) > 0:
+            root_peers.append(new_coordinator('FFTS', {'config': config, 'peer_list': spectrogram_list, 'channel_id': channel_id}))
+            spectrogram_list.append(new_coordinator('Spectrogram', {'config': config, 'peer_list': prediction_list, 'channel_id': channel_id, 'sampling_rate': sampling_rate}))
 
         if len(spectrum_list) > 0:
             freq_list.append(new_coordinator('Spectrum', {'config': config, 'peer_list': spectrum_list, 'channel_id': channel_id}))

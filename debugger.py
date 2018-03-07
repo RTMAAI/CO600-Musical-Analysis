@@ -19,17 +19,25 @@ import tkinter as tk
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 
+
+
+#matplotlib.pyplot.ion() # Enables interactive plotting.
+
+#CHUNK_LENGTH = 1024 # Length of sampled data
+#SPECTRUM_LENGTH = int(CHUNK_LENGTH*10) # Default config is set to wait until 10*1024 before analysing the spectrum.
+
 SAMPLING_RATE = 44100 # Default sampling rate 44.1 khz
 DOWNSAMPLE_RATE = 4 # Denominator to downsample length of signals by (Should be set according to system specs.)
 FRAME_DELAY = 200 # How long between each frame update (ms)
-XPADDING = 20
+XPADDING = 10
+INNERPADDING = 5
 BACKGROUND_COLOR = '#3366cc'
 ACCENT_COLOR = '#6633cc'
 TEXT_COLOR = '#fff'
 TRIM_COLOR = '#33cc99'
 HEADER_SIZE = 20
 VALUE_SIZE = 15
-Y_PADDING = 0.1 # Amount to pad the maximum Y value of a graph by. (Percentage i.e. 0.1 = 10% padding.)
+Y_PADDING = 0.3 # Amount to pad the maximum Y value of a graph by. (Percentage i.e. 0.1 = 10% padding.)
 
 class Listener(threading.Thread):
     """ Starts analysis and holds a state of analysed results.
@@ -49,8 +57,11 @@ class Listener(threading.Thread):
                 'presence': 0,
                 'brilliance': 0
             },
+            'genre': "N/A",
             'spectrum': [],
-            'signal': []
+            'signal': [],
+            'spectogramData':zeros([128,128,128])
+
         }
 
         self.condition = threading.Condition()
@@ -61,7 +72,7 @@ class Listener(threading.Thread):
 
         self.analyser = rtmaii.Rtmaii(callbacks,
                                       mode='INFO',
-                                      track=r'.\test_data\sine_493.88.wav',
+                                      track=r'.\test_data\spectogramTest.wav',
                                      )
 
         self.state['spectrum'] = arange(self.analyser.config.get_config('frequency_resolution') // 2)
@@ -75,9 +86,17 @@ class Listener(threading.Thread):
         """ Start analysis. """
         self.analyser.start()
 
+    def pause_analysis(self):
+        """ Pauses analysis. """
+        self.analyser.pause()
+
     def stop_analysis(self):
         """ Stop analysis and clear existing state. """
         self.analyser.stop()
+
+    def set_source(self, track):
+        """ Change the source. """
+        self.analyser.set_source(track)
 
     def is_active(self):
         """ Check that analyser is still running. """
@@ -111,9 +130,20 @@ class Debugger(tk.Tk):
         self.setup()
         self.update()
 
+    def changetrack(self):
+        self.is_live = False
+        self.track = tk.filedialog.askopenfilename(initialdir = "/", title = "Select track", filetypes = (("wave files","*.wav"),("all files","*.*")))
+        if self.track :
+            self.listener.set_source(self.track)
+
+    def liveinput(self):
+        self.is_live = True
+        self.listener.set_source(None)
+
     def setup(self):
         """Create UI elements and assign configurable elements. """
         self.chunk_size = self.listener.analyser.config.get_config('frames_per_sample')
+        self.is_live = False
         self.frequency_length = self.listener.analyser.config.get_config('frequency_resolution')
         self.frequencies = fftfreq(self.frequency_length , 1 / SAMPLING_RATE)[::DOWNSAMPLE_RATE]
         self.frequencies = self.frequencies[:len(self.frequencies)//2]
@@ -124,22 +154,41 @@ class Debugger(tk.Tk):
         self.title("RTMAII DEBUGGER")
 
         # --- CONTROL FRAME --- #
-        control_frame = tk.Frame(self, borderwidth=1, bg=BACKGROUND_COLOR, highlightbackground=TRIM_COLOR, highlightthickness=4)
-        control_frame.pack(side=tk.TOP, pady=10)
+        control_frame = tk.Frame(self, borderwidth=1, bg=TRIM_COLOR, highlightbackground=TRIM_COLOR, highlightthickness=4)
+        control_frame.pack(side=tk.TOP, pady=10, ipady=INNERPADDING)
 
         # --- CONTROLS --- #
-        self.play = tk.Button(control_frame, text="PLAY", command=self.listener.start_analysis, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, HEADER_SIZE))
-        self.play.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT)
+        self.play = tk.Button(control_frame, text="Play", command=self.listener.start_analysis, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, HEADER_SIZE))
+        self.play.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT, ipadx=INNERPADDING, ipady=INNERPADDING)
+        self.play_icon = tk.PhotoImage(file="./assets/play.png", master=self)
+        self.play.config(image=self.play_icon)
 
-        self.stop = tk.Button(control_frame, text="STOP", command=self.listener.stop_analysis, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, HEADER_SIZE))
-        self.stop.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT)
+        self.pause = tk.Button(control_frame, text="Pause", command=self.listener.pause_analysis, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, HEADER_SIZE))
+        self.pause.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT, ipadx=INNERPADDING, ipady=INNERPADDING)
+        self.pause_icon = tk.PhotoImage(file="./assets/pause.png", master=self)
+        self.pause.config(image=self.pause_icon)
+
+        self.stop = tk.Button(control_frame, text="Stop", command=self.listener.stop_analysis, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, HEADER_SIZE))
+        self.stop.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT, ipadx=INNERPADDING, ipady=INNERPADDING)
+        self.stop_icon = tk.PhotoImage(file="./assets/stop.png", master=self)
+        self.stop.config(image=self.stop_icon)
+
+        self.browse = tk.Button(control_frame, text="Browse", command=self.changetrack, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, HEADER_SIZE))
+        self.browse.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT, ipadx=INNERPADDING, ipady=INNERPADDING)
+        self.browse_icon = tk.PhotoImage(file="./assets/Browse.png", master=self)
+        self.browse.config(image=self.browse_icon)
+
+        self.live = tk.Button(control_frame, text="Live", command=self.liveinput, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, HEADER_SIZE))
+        self.live.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT, ipadx=INNERPADDING, ipady=INNERPADDING)
+        self.live_icon = tk.PhotoImage(file="./assets/Live.png", master=self)
+        self.live.config(image=self.live_icon)
 
         # --- LEFT FRAME---- #
-        left_frame = tk.Frame(self, borderwidth=1, width=500, height=500, bg=BACKGROUND_COLOR, highlightbackground='#33cc99', highlightthickness=2)
+        left_frame = tk.Frame(self, borderwidth=1, width=500, height=500, bg=TRIM_COLOR, highlightbackground=BACKGROUND_COLOR, highlightthickness=5)
         left_frame.pack(side=tk.LEFT)
 
          # --- SIGNAL GRAPH --- #
-        signal_frame = Figure(figsize=(8, 4), dpi=100)
+        signal_frame = Figure(figsize=(7, 4), dpi=100)
         self.signal_plot = signal_frame.add_subplot(111)
         self.signal_canvas = FigureCanvasTkAgg(signal_frame, left_frame)
         self.signal_canvas.show()
@@ -148,12 +197,13 @@ class Debugger(tk.Tk):
         self.signal_plot.set_title('Signal')
         self.signal_plot.set_xlabel('Time (Arbitary)')
         self.signal_plot.set_ylabel('Amplitude')
+        self.signal_plot.get_xaxis().set_ticks([])
         self.signal_plot.get_yaxis().set_ticks([])
-        self.signal_canvas.get_tk_widget().pack(padx=XPADDING)
+        self.signal_canvas.get_tk_widget().pack(pady=INNERPADDING, padx=INNERPADDING)
         SignalPlotter(self.listener, self.signal_plot, self.signal_line)
 
         # --- SPECTRUM GRAPH --- #
-        spectrum_frame = Figure(figsize=(8, 4), dpi=100)
+        spectrum_frame = Figure(figsize=(7, 4), dpi=100)
         self.spectrum_plot = spectrum_frame.add_subplot(111)
         self.spectrum_canvas = FigureCanvasTkAgg(spectrum_frame, left_frame)
         self.spectrum_canvas.show()
@@ -163,7 +213,7 @@ class Debugger(tk.Tk):
         self.spectrum_plot.set_xlabel('Frequency (Hz)')
         self.spectrum_plot.set_ylabel('Power')
         self.spectrum_plot.get_yaxis().set_ticks([])
-        self.spectrum_canvas.get_tk_widget().pack(padx=XPADDING)
+        self.spectrum_canvas.get_tk_widget().pack(pady=(0, INNERPADDING), padx=INNERPADDING)
         SpectrumPlotter(self.listener, self.spectrum_plot, self.spectrum_line)
 
         # --- RIGHT FRAME --- #
@@ -173,7 +223,6 @@ class Debugger(tk.Tk):
         # --- SPECTROGRAM GRAPH --- #
         spectrogram_frame = Figure(figsize=(10, 4), dpi=100)
         self.spectrogram_plot = spectrogram_frame.add_subplot(111)
-        self.spectrogram_plot.plot(self.frequencies, self.frequencies)
         self.spectrogram_canvas = FigureCanvasTkAgg(spectrogram_frame, right_frame)
         self.spectrogram_canvas.show()
         self.spectrogram_canvas.get_tk_widget().pack(padx=XPADDING, side=tk.BOTTOM)
@@ -200,6 +249,15 @@ class Debugger(tk.Tk):
         key_value = tk.Label(key_frame, textvariable=self.key, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, VALUE_SIZE))
         key_value.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT)
 
+        # --- GENRE LABEL --- #
+        self.genre = tk.StringVar()
+        genre_frame = tk.Frame(value_frame, borderwidth=1, bg=ACCENT_COLOR)
+        genre_frame.pack(padx=10)
+        genre_label = tk.Label(key_frame, text=str('Genre:'), bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, VALUE_SIZE))
+        genre_label.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT)
+        genre_value = tk.Label(key_frame, textvariable=self.genre, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, VALUE_SIZE))
+        genre_value.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT)
+
         # --- BANDS LABEL --- #
         self.bands = {}
         chosen_bands = self.listener.get_item('bands')
@@ -218,6 +276,18 @@ class Debugger(tk.Tk):
     def update(self):
         """ Update UI every FRAME_DELAY milliseconds """
         # --- UPDATE GRAPHS --- #
+
+        self.spectrogram_plot.clear()
+        self.spectrogram_plot.set_title('Spectrogram')
+        self.spectrogram_plot.set_xlabel('Time')
+        self.spectrogram_plot.set_ylabel('Frequency (Hz)')
+        data = self.listener.get_item('spectogramData')
+
+        self.spectrogram_plot.pcolormesh(data[0], data[1], data[2])
+        self.spectrogram_plot.set_xlim(0, 1.5)
+        self.spectrogram_plot.set_ylim(0, 20000)
+        self.spectrogram_canvas.draw()
+
         self.signal_canvas.restore_region(self.signal_background) # Clear background.
         self.signal_plot.draw_artist(self.signal_line) # Draw new data.
         self.signal_canvas.blit(self.signal_plot.bbox) # Display new data in plot.
@@ -228,6 +298,7 @@ class Debugger(tk.Tk):
         # --- UPDATE LABELS --- #
         self.pitch.set("{0:.2f}".format(self.listener.get_item('pitch')))
         self.key.set(self.listener.get_item('key'))
+        self.genre.set(self.listener.get_item('genre'))
         bands = self.listener.get_item('bands')
         # Update each band value.
         for key, value in bands.items():
@@ -236,10 +307,17 @@ class Debugger(tk.Tk):
         # --- UPDATE PLAY --- #
         if self.listener.is_active():
             self.play.config(state='disabled')
+            self.pause.config(state='normal')
             self.stop.config(state='normal')
         else:
             self.play.config(state='normal')
+            self.pause.config(state='disabled')
             self.stop.config(state='disabled')
+
+        if self.is_live:
+            self.live.config(state='disabled')
+        else:
+            self.live.config(state='normal')
 
         self.after(FRAME_DELAY, self.update)
 class SignalPlotter(threading.Thread):
@@ -254,10 +332,12 @@ class SignalPlotter(threading.Thread):
         self.start()
 
     def run(self):
+        min_power = 8000 # Minimum power value of graph axes, avoids graph showing loads of movement when it's just noise.
         while True:
             signal = self.listener.get_item('signal')
-            signal_y_max = max(abs(signal)) * (1 + Y_PADDING)
-            self.plot.set_ylim([-signal_y_max, signal_y_max])
+            signal_max = max(abs(signal)) * (1 + Y_PADDING) # Pad Y maximum/minimum so line doesn't hit top of graph.
+            y_max = signal_max if signal_max > min_power else min_power # If mainly noise in signal use min_power as graph max/min.
+            self.plot.set_ylim([-y_max, y_max])
             self.line.set_ydata(resample(signal, len(signal) // DOWNSAMPLE_RATE))
 
 class SpectrumPlotter(threading.Thread):
@@ -277,7 +357,6 @@ class SpectrumPlotter(threading.Thread):
             downsampled_spectrum = resample(spectrum, len(spectrum) // DOWNSAMPLE_RATE)
             self.plot.set_ylim([0, max(downsampled_spectrum) * (1 + Y_PADDING)])
             self.line.set_ydata(downsampled_spectrum)
-
 
 def main():
     debugger = Debugger()
