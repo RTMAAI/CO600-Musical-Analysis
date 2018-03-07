@@ -1,4 +1,5 @@
 import threading
+import os
 from rtmaii.workqueue import WorkQueue
 from rtmaii.analysis import frequency, pitch, key, spectral
 from pydispatch import dispatcher
@@ -44,7 +45,7 @@ class GenrePredictorWorker(Worker):
     def __init__(self, sampling_rate: int, channel_id: int):
         Worker.__init__(self, channel_id)
         self.sampling_rate = sampling_rate
-        self.predict_fn = predictor.from_saved_model(r'C:\Users\RalphRaulePC\Documents\FinalYearProject\CO600-Musical-Analysis\rtmaii\model\model\\')
+        self.predict_fn = predictor.from_saved_model(os.path.join(os.path.dirname(__file__), 'model'))
         self.dict = {}
         self.dict[0] = 'Folk'
         self.dict[1] = 'Hip-Hop'
