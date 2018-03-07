@@ -46,7 +46,6 @@ def new_hierarchy(config: object):
 
         if tasks['genre']:
             prediction_list.append(new_worker('GenrePredictor', {'sampling_rate' : sampling_rate, 'channel_id': channel_id}))
-            #pass
 
         if tasks['bands']:
             bands_of_interest = config.get_config('bands')

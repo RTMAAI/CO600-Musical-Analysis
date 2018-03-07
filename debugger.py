@@ -183,7 +183,6 @@ class Debugger(tk.Tk):
         # --- SPECTROGRAM GRAPH --- #
         spectrogram_frame = Figure(figsize=(10, 4), dpi=100)
         self.spectrogram_plot = spectrogram_frame.add_subplot(111)
-        #self.spectrogram_plot.plot(self.frequencies, self.frequencies)
         self.spectrogram_canvas = FigureCanvasTkAgg(spectrogram_frame, right_frame)
         self.spectrogram_canvas.show()
         self.spectrogram_canvas.get_tk_widget().pack(padx=XPADDING, side=tk.BOTTOM)
@@ -245,15 +244,10 @@ class Debugger(tk.Tk):
         data = self.listener.get_item('spectogramData')
 
         self.spectrogram_plot.pcolormesh(data[0], data[1], data[2])
-
         self.spectrogram_plot.set_xlim(0, 1.5)
         self.spectrogram_plot.set_ylim(0, 20000)
-
-#         self.signal_canvas.draw()
-#         self.spectrum_canvas.draw()
         self.spectrogram_canvas.draw()
-# =======
-# =======
+
         self.signal_canvas.restore_region(self.signal_background) # Clear background.
         self.signal_plot.draw_artist(self.signal_line) # Draw new data.
         self.signal_canvas.blit(self.signal_plot.bbox) # Display new data in plot.
