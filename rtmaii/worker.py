@@ -46,19 +46,19 @@ class GenrePredictorWorker(Worker):
         self.sampling_rate = sampling_rate
         self.predict_fn = predictor.from_saved_model(r'C:\Users\RalphRaulePC\Documents\FinalYearProject\CO600-Musical-Analysis\rtmaii\model\model\\')
         self.dict = {}
-        self.dict[1] = 'Electronic'
-        self.dict[2] = 'Folk'
-        self.dict[3] = 'Hip-Hop'
-        self.dict[4] = 'Pop'
-        self.dict[5] = 'Rock'
+        self.dict[0] = 'Folk'
+        self.dict[1] = 'Hip-Hop'
+        self.dict[2] = 'Pop'
+        self.dict[3] = 'Rock'
     
     def run(self):
         
         while True:
             spectrogram = self.queue.get()[2]
             spectrogram = reshape(spectrogram, (1,128,128,1))
-            predictions = self.predict_fn({"x": spectrogram})
+            predictions = self.predict_fn({'x': spectrogram})
             predictionClass = predictions['classes'][0]
+            print(predictionClass)
             
             prediction = self.dict[predictionClass]
 
