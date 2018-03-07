@@ -14,7 +14,7 @@ from scipy.fftpack import fftfreq
 from rtmaii import rtmaii # Replace with just import rtmaii in actual implementation.
 from numpy import arange, zeros
 import matplotlib
-matplotlib.use("Agg") # Fastest plotter backend.
+matplotlib.use("TkAgg") # Fastest plotter backend.
 import tkinter as tk
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
