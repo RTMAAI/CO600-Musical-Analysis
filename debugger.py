@@ -38,7 +38,7 @@ class Listener(threading.Thread):
         self.state = {
             'pitch': [0],
             'key': ["A"],
-            'bands': [{ #TODO: Should build labels initially based on config bands.
+            'bands': [{
                 'sub-bass': 0,
                 'bass': 0,
                 'low-mid': 0,
@@ -50,9 +50,10 @@ class Listener(threading.Thread):
             'genre': ["N/A"],
             'spectrum': [],
             'signal': [],
-            'spectogramData': [[zeros(128), zeros(128), zeros([128,128])]]
+            'spectogramData': [[zeros(128), zeros(128), zeros([128, 128])]]
         }
 
+        self.max_index = STATE_COUNT - 1
         self.condition = threading.Condition()
         self.current_index = 0
 
@@ -90,7 +91,8 @@ class Listener(threading.Thread):
 
     def change_analysis(self, amount):
         """ Rewind through one state of the analysis. """
-        self.current_index = self.current_index + amount
+        new_value = self.current_index + amount
+        self.current_index = 0 if new_value < 0 else self.max_index if new_value > self.max_index else new_value
 
     def set_source(self, track):
         """ Change the source. """
@@ -111,7 +113,7 @@ class Listener(threading.Thread):
         """ Set data for signal event. """
         signal = kwargs['signal']
         self.state[signal].insert(0, data)
-        self.state[signal] = self.state[signal][:10]
+        self.state[signal] = self.state[signal][:STATE_COUNT]
 
     def get_item(self, item):
         """ Get the latest value. """
