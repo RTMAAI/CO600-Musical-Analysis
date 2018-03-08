@@ -38,7 +38,7 @@ ACCENT_COLOR = '#6633cc'
 TEXT_COLOR = '#fff'
 TRIM_COLOR = '#33cc99'
 HEADER_SIZE = 20
-VALUE_SIZE = 15
+FONT_SIZE = 15
 Y_PADDING = 0.3 # Amount to pad the maximum Y value of a graph by. (Percentage i.e. 0.1 = 10% padding.)
 STATE_COUNT = 50
 SPECTRO_DELAY = 2
@@ -247,31 +247,25 @@ class Debugger(tk.Tk):
     def setup_pitch_label(self, frame):
         # --- PITCH LABEL --- #
         self.pitch = tk.StringVar()
-        pitch_frame = tk.Frame(frame, borderwidth=1, bg=ACCENT_COLOR)
-        pitch_frame.pack(padx=10)
-        pitch_label = tk.Label(pitch_frame, text=str('Pitch:'), bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, VALUE_SIZE))
+        pitch_label = tk.Label(frame, text=str('Pitch:'), bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, FONT_SIZE))
         pitch_label.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT)
-        pitch_value = tk.Label(pitch_frame, textvariable=self.pitch, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, VALUE_SIZE))
+        pitch_value = tk.Label(frame, textvariable=self.pitch, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, FONT_SIZE))
         pitch_value.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT)
 
     def setup_key_label(self, frame):
         # --- KEY LABEL --- #
         self.key = tk.StringVar()
-        key_frame = tk.Frame(frame, borderwidth=1, bg=ACCENT_COLOR)
-        key_frame.pack(padx=10)
-        key_label = tk.Label(key_frame, text=str('Key:'), bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, VALUE_SIZE))
+        key_label = tk.Label(frame, text=str('Key:'), bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, FONT_SIZE))
         key_label.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT)
-        key_value = tk.Label(key_frame, textvariable=self.key, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, VALUE_SIZE))
+        key_value = tk.Label(frame, textvariable=self.key, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, FONT_SIZE))
         key_value.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT)
 
     def setup_genre_label(self, frame):
         # --- GENRE LABEL --- #
         self.genre = tk.StringVar()
-        genre_frame = tk.Frame(frame, borderwidth=1, bg=ACCENT_COLOR)
-        genre_frame.pack(padx=10)
-        genre_label = tk.Label(frame, text=str('Genre:'), bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, VALUE_SIZE))
+        genre_label = tk.Label(frame, text=str('Genre:'), bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, FONT_SIZE))
         genre_label.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT)
-        genre_value = tk.Label(frame, textvariable=self.genre, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, VALUE_SIZE))
+        genre_value = tk.Label(frame, textvariable=self.genre, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, FONT_SIZE))
         genre_value.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT)
 
     def setup_bands_label(self, frame):
@@ -279,16 +273,29 @@ class Debugger(tk.Tk):
         self.bands = {}
         chosen_bands = self.listener.get_item('bands')
         bands_frame = tk.LabelFrame(frame, borderwidth=1, text="Analysed Bands", bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, HEADER_SIZE), highlightbackground=TRIM_COLOR, highlightthickness=4)
-        bands_frame.pack(padx=10, pady=10, fill='x')
+        bands_frame.pack(padx=10, pady=10)
 
         for key, _ in chosen_bands.items():
             self.bands[key] = tk.IntVar()
             band_frame = tk.Frame(bands_frame, borderwidth=1, bg=ACCENT_COLOR)
             band_frame.pack()
-            key_label = tk.Label(band_frame, text='{}: '.format(key), foreground=TEXT_COLOR, bg=ACCENT_COLOR, font=(None, VALUE_SIZE))
+            key_label = tk.Label(band_frame, text='{}: '.format(key), foreground=TEXT_COLOR, bg=ACCENT_COLOR, font=(None, FONT_SIZE))
             key_label.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT)
-            value_label = tk.Label(band_frame, textvariable=self.bands[key], foreground=TEXT_COLOR, bg=ACCENT_COLOR, font=(None, VALUE_SIZE))
+            value_label = tk.Label(band_frame, textvariable=self.bands[key], foreground=TEXT_COLOR, bg=ACCENT_COLOR, font=(None, FONT_SIZE))
             value_label.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT)
+
+    def setup_pitch_frame(self, frame):
+        # --- PITCH FRAME --- #
+        pitch_frame = tk.Frame(frame, borderwidth=1, bg=ACCENT_COLOR)
+        pitch_frame.pack(padx=10)
+        self.setup_key_label(pitch_frame)
+        self.setup_pitch_label(pitch_frame)
+
+    def setup_genrebeat_frame(self, frame):
+        # --- GENRE & BEAT FRAME --- #
+        gb_frame = tk.Frame(frame, borderwidth=1, bg=ACCENT_COLOR)
+        gb_frame.pack(padx=10)
+        self.setup_genre_label(gb_frame)
 
     def setup_control_panel(self):
         # --- CONTROL FRAME --- #
@@ -305,9 +312,8 @@ class Debugger(tk.Tk):
         value_frame = tk.LabelFrame(frame, borderwidth=1, width=500, height=500, text="Analysed Values", bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, HEADER_SIZE), highlightbackground=TRIM_COLOR, highlightthickness=4)
         value_frame.pack(side=tk.TOP, padx=XPADDING, pady=XPADDING, fill='x')
 
-        self.setup_pitch_label(value_frame)
-        self.setup_key_label(value_frame)
-        self.setup_genre_label(value_frame)
+        self.setup_pitch_frame(value_frame)
+        self.setup_genrebeat_frame(value_frame)
         self.setup_bands_label(value_frame)
 
     def setup_left_frame(self):
