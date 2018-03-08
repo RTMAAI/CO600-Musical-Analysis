@@ -33,6 +33,57 @@ Github for the CO600 project on real-time musical analysis.
 
 Please see the file example_implementation.py for an example implementation using the libraries API.
 
+### Usage
+To use the library you will first need to import the rtmaii module into the script you want to use it in.
+
+```python
+    from rtmaii import Rtmaii
+```
+
+All the functionality of rtmaii is contained within the Rtmaii class, there are a variety of ways to initiliaze the library.
+
+```python
+    analyser = rtmaii.Rtmaii([{'function': pitch_callback, 'signal': 'frequency'}],
+                                track = r'.\test_data\spectogramTest.wav',
+                                config = {
+                                    'bands': {'myband': [0, 2000]}
+                                },
+                                mode = 'DEBUG'
+                              )
+```
+
+For more information on the configuration options available, please see the Config section below.
+
+Rtmaii uses an event driven callback system to provide your scripts with updates on the state of analysis.
+
+```python
+    def pitch_callback(pitch):
+        print(pitch)
+
+    analyser = rtmaii.Rtmaii([{'function': pitch_callback, 'signal':'frequency'},
+                              track=r'.\test_data\spectogramTest.wav')
+```
+
+For more information on the signals available and the data they return, please see the Callbacks section below.
+
+To run analysis you will need to run the start method on the generated analysis object.
+
+```python
+    analyser.start()
+
+    # Runs forever whilst analyser is active, when a track is used will run until it's finished.
+    while analyser.is_active():
+        pass
+```
+
+There are a variety of methods that can be called on the object, please see the Methods section below for more detail.
+
+### Config
+
+
+### Callbacks
+
+
 ### Debugger
 
 Run ``` python .\debugger.py ``` to use the debugger view of the library.
