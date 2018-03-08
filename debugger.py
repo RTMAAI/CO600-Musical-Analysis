@@ -18,7 +18,7 @@ from matplotlib.figure import Figure
 
 SAMPLING_RATE = 44100 # Default sampling rate 44.1 khz
 DOWNSAMPLE_RATE = 4 # Denominator to downsample length of signals by (Should be set according to system specs.)
-FRAME_DELAY = 100 # How long between each frame update (ms)
+FRAME_DELAY = 50 # How long between each frame update (ms)
 XPADDING = 10
 INNERPADDING = 5
 BACKGROUND_COLOR = '#3366cc'
@@ -37,7 +37,7 @@ class Listener(threading.Thread):
 
         self.state = {
             'pitch': [0],
-            'key': ["A"],
+            'key': [{'key':"N/A", 'cents_off': 0}],
             'bands': [{
                 'sub-bass': 0,
                 'bass': 0,
@@ -209,12 +209,14 @@ class Debugger(tk.Tk):
         self.update_graphs()
         self.update_labels()
         self.update_controls()
-        self.after(0, self.update)
+        self.after(FRAME_DELAY, self.update)
 
     def update_labels(self):
         # --- UPDATE LABELS --- #
         self.pitch.set("{0:.2f}".format(self.listener.get_item('pitch')))
-        self.key.set(self.listener.get_item('key'))
+        key = self.listener.get_item('key')
+        self.key.set(key['key'])
+        self.cent.set(key['cents_off'])
         self.genre.set(self.listener.get_item('genre'))
         bands = self.listener.get_item('bands')
         # Update each band value.
@@ -372,17 +374,21 @@ class Debugger(tk.Tk):
         # --- PITCH LABEL --- #
         self.pitch = tk.StringVar()
         pitch_label = tk.Label(frame, text=str('Pitch:'), bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, FONT_SIZE))
-        pitch_label.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT)
+        pitch_label.place(x=450, y=0, height=30, width=50)
         pitch_value = tk.Label(frame, textvariable=self.pitch, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, FONT_SIZE))
-        pitch_value.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT)
+        pitch_value.place(x=500, y=0, height=30, width=100)
 
     def setup_key_label(self, frame):
         # --- KEY LABEL --- #
         self.key = tk.StringVar()
         key_label = tk.Label(frame, text=str('Key:'), bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, FONT_SIZE))
-        key_label.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT)
+        key_label.place(x=100, y=0, height=30, width=40)
         key_value = tk.Label(frame, textvariable=self.key, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, FONT_SIZE))
-        key_value.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT)
+        key_value.place(x=140, y=0, height=30, width=80)
+
+        self.cent = tk.StringVar()
+        cent_value = tk.Label(frame, textvariable=self.cent, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, FONT_SIZE))
+        cent_value.place(x=220, y=0, height=30, width=50)
 
     def setup_genre_label(self, frame):
         # --- GENRE LABEL --- #
@@ -410,8 +416,9 @@ class Debugger(tk.Tk):
 
     def setup_pitch_frame(self, frame):
         # --- PITCH FRAME --- #
-        pitch_frame = tk.Frame(frame, borderwidth=1, bg=ACCENT_COLOR)
-        pitch_frame.pack(padx=10)
+        pitch_frame = tk.Frame(frame, borderwidth=1, bg=ACCENT_COLOR, height=32)
+        pitch_frame.pack(padx=10, fill=tk.X)
+        pitch_frame.pack_propagate(0)
         self.setup_key_label(pitch_frame)
         self.setup_pitch_label(pitch_frame)
 
