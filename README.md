@@ -25,7 +25,7 @@ Github for the CO600 project on real-time musical analysis.
 
 ```bash
     # With Project Folder as current context
-    python -m virtualenv VENV # Just to make sure you are using same package versions
+    python -m virtualenv venv # Just to make sure you are using same package versions
     .\init.sh # Installs python packages and activates virtualenv
 ```
 
@@ -34,7 +34,7 @@ Github for the CO600 project on real-time musical analysis.
 ```bash
     # Some issues may arise due to how matplotlib interacts with python on mac
     # With Project Folder as current context
-    python3 -m venv VENV # Use python3's venv over virtualenv
+    python3 -m venv venv # Use python3's venv over virtualenv
     .\init.sh # Installs python packages and activates the virtual environment
 ```
 
