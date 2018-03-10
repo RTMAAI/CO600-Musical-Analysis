@@ -7,7 +7,7 @@ Github for the CO600 project on real-time musical analysis.
 
 ## Authors:
 
-* Laurent Testing Baeriswyl
+* Laurent Baeriswyl
 * Ralph Jacob Raule
 * Andrew Harris
 
@@ -21,12 +21,21 @@ Github for the CO600 project on real-time musical analysis.
     .\init.ps1 # Installs python packages and activates virtualenv
 ```
 
-### Mac/Linux
+### Linux
 
 ```bash
     # With Project Folder as current context
     python -m virtualenv VENV # Just to make sure you are using same package versions
-    .\init.sh1 # Installs python packages and activates virtualenv
+    .\init.sh # Installs python packages and activates virtualenv
+```
+
+### Mac
+
+```bash
+    # Some issues may arise due to how matplotlib interacts with python on mac
+    # With Project Folder as current context
+    python3 -m venv VENV # Use python3's venv over virtualenv
+    .\init.sh # Installs python packages and activates the virtual environment
 ```
 
 ### Example implementation
