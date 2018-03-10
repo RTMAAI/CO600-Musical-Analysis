@@ -325,37 +325,37 @@ class Debugger(tk.Tk):
         # --- MEDIA CONTROLS --- #
         self.fast_rewind = tk.Button(frame, text="Fast Rewind", command=partial(self.listener.change_analysis, 10), bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, HEADER_SIZE))
         self.fast_rewind.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT, ipadx=INNERPADDING, ipady=INNERPADDING)
-        self.fast_rewind_icon = tk.PhotoImage(file="./assets/fastrewind.png", master=self)
+        self.fast_rewind_icon = tk.PhotoImage(file="./assets/FastRewind.png", master=self)
         self.fast_rewind.config(image=self.fast_rewind_icon)
 
         self.rewind = tk.Button(frame, text="Rewind", command=partial(self.listener.change_analysis, 1), bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, HEADER_SIZE))
         self.rewind.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT, ipadx=INNERPADDING, ipady=INNERPADDING)
-        self.rewind_icon = tk.PhotoImage(file="./assets/rewind.png", master=self)
+        self.rewind_icon = tk.PhotoImage(file="./assets/Rewind.png", master=self)
         self.rewind.config(image=self.rewind_icon)
 
         self.play = tk.Button(frame, text="Play", command=self.listener.start_analysis, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, HEADER_SIZE))
         self.play.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT, ipadx=INNERPADDING, ipady=INNERPADDING)
-        self.play_icon = tk.PhotoImage(file="./assets/play.png", master=self)
+        self.play_icon = tk.PhotoImage(file="./assets/Play.png", master=self)
         self.play.config(image=self.play_icon)
 
         self.pause = tk.Button(frame, text="Pause", command=self.listener.pause_analysis, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, HEADER_SIZE))
         self.pause.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT, ipadx=INNERPADDING, ipady=INNERPADDING)
-        self.pause_icon = tk.PhotoImage(file="./assets/pause.png", master=self)
+        self.pause_icon = tk.PhotoImage(file="./assets/Pause.png", master=self)
         self.pause.config(image=self.pause_icon)
 
         self.stop = tk.Button(frame, text="Stop", command=self.listener.stop_analysis, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, HEADER_SIZE))
         self.stop.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT, ipadx=INNERPADDING, ipady=INNERPADDING)
-        self.stop_icon = tk.PhotoImage(file="./assets/stop.png", master=self)
+        self.stop_icon = tk.PhotoImage(file="./assets/Stop.png", master=self)
         self.stop.config(image=self.stop_icon)
 
         self.forward = tk.Button(frame, text="Forward", command=partial(self.listener.change_analysis, -1), bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, HEADER_SIZE))
         self.forward.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT, ipadx=INNERPADDING, ipady=INNERPADDING)
-        self.forward_icon = tk.PhotoImage(file="./assets/forward.png", master=self)
+        self.forward_icon = tk.PhotoImage(file="./assets/Forward.png", master=self)
         self.forward.config(image=self.forward_icon)
 
         self.fast_forward = tk.Button(frame, text="Fast Forward", command=partial(self.listener.change_analysis, -10), bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, HEADER_SIZE))
         self.fast_forward.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT, ipadx=INNERPADDING, ipady=INNERPADDING)
-        self.fast_forward_icon = tk.PhotoImage(file="./assets/fastforward.png", master=self)
+        self.fast_forward_icon = tk.PhotoImage(file="./assets/FastForward.png", master=self)
         self.fast_forward.config(image=self.fast_forward_icon)
 
     def setup_source_controls(self, frame):
