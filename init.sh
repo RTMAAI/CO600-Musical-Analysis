@@ -1,8 +1,8 @@
 #!/bin/sh
-# Init script for Linux/Mac users
+# Init script for Linux users
 
 source venv/bin/activate
 
-pip install -r requirements.txt
+pip3 install -r requirements.txt
 
-python example_implementation.py
+python3 example_implementation.py
