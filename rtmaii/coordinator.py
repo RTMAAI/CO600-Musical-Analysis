@@ -203,7 +203,7 @@ class FFTSCoordinator(Coordinator):
                 # Create spectrogram when enough FFTs generated
 
 class SpectrogramCoordinator(Coordinator):
-    """ Worker responsible for creating spectograms ... .
+    """ Coordinator responsible for creating spectograms ... .
 
         **Args**:
             - `sampling_rate`: sampling_rate of source being analysed.
@@ -258,6 +258,10 @@ class SpectrogramCoordinator(Coordinator):
 
 
 class BPMCoordinator(Coordinator):
+    """Coordinator responsible for finding beats and estimating bpm
+
+
+    """
     def __init__(self, config, peer_list: list, channel_id):
         Coordinator.__init__(self, config, peer_list)
 
@@ -265,8 +269,11 @@ class BPMCoordinator(Coordinator):
         beats = [] # List of beat intervals
         bpm = 0
         while True:
-            pass
-            # data = self.queue.get()
+            data = self.queue.get()
+
+            if data is None:
+                break
+
             # checkForBeat
             #   if beat:
             #       dispatcher.send(signal='bpm', sender=self)
