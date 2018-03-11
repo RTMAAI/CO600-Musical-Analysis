@@ -185,7 +185,7 @@ class BPMWorker(Worker):
     """ Worker responsible for determining beats happening.
 
     """
-    def __init__(self, channel_id: int):
+    def __init__(self, sampling_rate: int, channel_id: int):
         Worker.__init__(self, channel_id)
 
     def run(self):

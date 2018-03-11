@@ -26,11 +26,13 @@ def new_hierarchy(config: object):
         spectrum_list = []
         spectrogram_list = []
         prediction_list = []
+        bpm_list = []
 
         #--- LEAF NODES (WORKERS) - Any endpoints must be created first in order be attached to their peer at creation. --#
         if tasks['beat']:
-            # TODO: CREATE NECESSARY beat detection workers/coordinators here. (Coordinator creation shouldn't probably be here.)
+            # TODO: (Coordinator creation shouldn't probably be here.)
             #root_peers.append(new_coordinator('BPM', {'config': config, 'peer_list': [], 'channel_id': channel_id}))
+            bpm_list.append(new_worker('BPM', {'sampling_rate' : sampling_rate, 'channel_id': channel_id}))
             pass # Had to disable for time being due to infinite while loop.
 
         if tasks['pitch']:
@@ -63,6 +65,9 @@ def new_hierarchy(config: object):
 
         if len(freq_list) > 0:
             root_peers.append(new_coordinator('Frequency', {'config': config, 'peer_list': freq_list, 'channel_id': channel_id}))
+
+        if len(bpm_list) > 0:
+            bpm_list.append(new_coordinator('BPM', {'config':config, 'peer_list': bpm_list, 'channel_id': channel_id}))
 
     if len(root_peers) > 0:
         return new_coordinator('Root', {'config': config, 'peer_list': root_peers})
