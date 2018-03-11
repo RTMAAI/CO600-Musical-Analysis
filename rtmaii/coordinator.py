@@ -266,13 +266,11 @@ class BPMCoordinator(Coordinator):
         Coordinator.__init__(self, config, peer_list)
 
     def run(self):
+        LOGGER.info('BPM Initialized.')
         beats = [] # List of beat intervals
         bpm = 0
         while True:
             data = self.queue.get()
-
-            if data is None:
-                break
 
             # checkForBeat
             #   if beat:
