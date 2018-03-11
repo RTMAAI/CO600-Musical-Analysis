@@ -38,16 +38,16 @@ def new_window(N: int, window: str):
     window = get_window(window, N, True)
     return window
 
-def convolve_spectrum(signal: list):
+def convolve_signal(signal: list):
     """ Apply convolution to the input signal. """
     convol = fftconvolve(signal, signal[::-1], mode='full')
-    return convol[len(convol) // 2:] # Split bin in half removing negatives.
+    return convol[len(convol) // 2:] # Split bin in half removing negative lags.
 
 def spectrum_transform(signal: list):
-    """ Performs FFT on input signal """
+    """ Performs FFT on input signal. """
     signal_length = len(signal)
     normalized_spectrum = fft(signal) / signal_length # Normalization
-    return normalized_spectrum[:signal_length // 2:] # Only need half of fft output.
+    return normalized_spectrum[:signal_length // 2] # Only need half of fft output.
 
 def spectrum(signal: list,
              window: list,
@@ -64,8 +64,3 @@ def spectrum(signal: list,
     filtered_signal = windowed_signal if bp_filter is None else band_pass_filter(windowed_signal, bp_filter['numerator'], bp_filter['denominator'])
     frequency_spectrum = spectrum_transform(filtered_signal)
     return frequency_spectrum
-
-
-def spectro(signal, sampling_rate):
-    """ Basic form of creating a spectrogram, can create our own using FFT bins """
-    return spectrogram(signal, sampling_rate)
