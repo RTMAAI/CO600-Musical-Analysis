@@ -48,6 +48,8 @@ class Listener(threading.Thread):
                 'brilliance': 0
             }],
             'genre': ["N/A"],
+            'beats': [],
+            'bpm': [0],
             'spectrum': [],
             'signal': [],
             'spectogramData': [[zeros(128), zeros(128), zeros([128, 128])]]
