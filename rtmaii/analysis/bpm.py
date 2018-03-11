@@ -36,7 +36,8 @@ def beatdetection(data):
     if(amp >= threshold):
         threshold = amp
         currenttime = time.clock()
-        timedif = currenttime - timelast
+        if(timelast!=0):
+            timedif = currenttime - timelast
         timelast = currenttime
         LOGGER.info('BEAT!')
         return True
@@ -60,9 +61,18 @@ def bpmsimple(beatarray, hbeatarray):
             total += dif
         avg = total/len(beatarray)
         return 60/avg
+    else:
+        return 0
 
-#def
-
+def cleanbeatarray(beatarray):
+    """
+    placeholder
+    validates the data from the beat array and discards outliers and wrong results
+    :param beatarray: the array of beats
+    :return:
+    """
+    LOGGER.info('cleanhere')
+    return beatarray
 
 def lowpass(data):
     """

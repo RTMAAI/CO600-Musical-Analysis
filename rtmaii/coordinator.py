@@ -4,7 +4,7 @@
 import threading
 import logging
 from rtmaii.workqueue import WorkQueue
-from rtmaii.analysis import spectral
+from rtmaii.analysis import spectral, bpm
 from pydispatch import dispatcher
 from numpy import mean, int16, zeros, append, hanning, array, column_stack,fromstring, absolute, power, log10, arange
 from numpy.fft import fft as numpyFFT
@@ -268,12 +268,16 @@ class BPMCoordinator(Coordinator):
 
     def run(self):
         beats = [] # List of beat intervals
+        hbeats = [] # placeholder for later
         bpm = 0
         while True:
             data = self.queue.get()
-
             # checkForBeat
-            #   if beat:
-            #       dispatcher.send(signal='bpm', sender=self)
+            beat = bpm.beatdetection(data)
+            if(beat == True):
+                timedif = bpm.gettimedif()
+                beats.append(timedif)
+                beatdata = [beats, hbeats]
+                dispatcher.send(signal='bpm', sender=self, data=beatdata)
             #       add timeinterval from previous occurence of a beat to beats list.
             #       bpm = calculate average time interval

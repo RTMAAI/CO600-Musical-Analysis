@@ -1,7 +1,7 @@
 import threading
 import os
 from rtmaii.workqueue import WorkQueue
-from rtmaii.analysis import frequency, pitch, key, spectral
+from rtmaii.analysis import frequency, pitch, key, spectral, bpm
 from pydispatch import dispatcher
 from numpy import arange, mean, int16, resize, column_stack, power, log10, absolute, reshape
 from matplotlib import pyplot as plt
@@ -172,18 +172,37 @@ class BeatsWorker(Worker):
     def __init__(self, channel_id: int):
         Worker.__init__(self, channel_id)
 
-    #def run(self):
-        #while True:
-            #spectrum = self.queue.get()
-            #estimated_pitch = pitch.pitch_from_fft(spectrum, self.sampling_rate)
-            #dispatcher.send(signal='pitch', sender=self.channel_id, data=estimated_pitch)
-            #self.analyse_key(estimated_pitch, self.channel_id)
+    def run(self):
+        while True:
+            data = self.queue.get()
+            beat = bpm.beatdetection(data)
+            timedif = bpm.gettimedif()
+            dispatcher.send(signal='beat', sender=self.channel_id, data=beat)
+            self.analyse_bpm(timedif, self.channel_id)
+
 
 class BPMWorker(Worker):
-    """ Analyse bpm based on beat times """
-    def __init__(self, channel_id: int):
-        Worker.__init__(self, args=(), kwargs=None)
+    """ Worker responsible for determining beats happening.
 
-    #def analyse_key(self, pitch):
-        #estimated_key = key.note_from_pitch(pitch)
+    """
+    def __init__(self, channel_id: int):
+        Worker.__init__(self, channel_id)
+
+    def run(self):
+        while True:
+            data = self.queue.get()
+            beats = data[0]
+            hbeats = data[1]
+            bpm = bpm.bpmsimple(beats,hbeats)
+
+            dispatcher.send(signal='bpm', sender=self.channel_id, data=bpm)
+            #self.analyse_bpm(timedif, self.channel_id)
+
+#class BPMWorker(Worker):
+    #""" Analyse bpm based on beat times """
+    #def __init__(self, channel_id: int):
+    #    Worker.__init__(self, args=(), kwargs=None)
+
+    #def analyse_bpm(self, timedif):
+    #    estimated_bpm = bpm.bpmsimple()
         #dispatcher.send(signal='key', sender=self.channel_id, data=estimated_key)
