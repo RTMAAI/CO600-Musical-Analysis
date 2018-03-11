@@ -51,7 +51,7 @@ class Rtmaii(object):
         self.set_callbacks(callbacks)
         self.root = new_hierarchy(self.config)
         LOGGER.setLevel(mode)
-        LOGGER.debug('RTMAII Initiliazed')
+        LOGGER.debug('RTMAAI Initiliazed')
 
     def __stream_callback__(self, in_data, frame_count, time_info, status):
         """
