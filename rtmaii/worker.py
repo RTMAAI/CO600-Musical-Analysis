@@ -164,3 +164,26 @@ class FFTWorker(Worker, Key):
             estimated_pitch = pitch.pitch_from_fft(spectrum, self.sampling_rate)
             dispatcher.send(signal='pitch', sender=self.channel_id, data=estimated_pitch)
             self.analyse_key(estimated_pitch, self.channel_id)
+
+class BeatsWorker(Worker):
+    """ Worker responsible for determining beats happening.
+
+    """
+    def __init__(self, channel_id: int):
+        Worker.__init__(self, channel_id)
+
+    #def run(self):
+        #while True:
+            #spectrum = self.queue.get()
+            #estimated_pitch = pitch.pitch_from_fft(spectrum, self.sampling_rate)
+            #dispatcher.send(signal='pitch', sender=self.channel_id, data=estimated_pitch)
+            #self.analyse_key(estimated_pitch, self.channel_id)
+
+class BPMWorker(Worker):
+    """ Analyse bpm based on beat times """
+    def __init__(self, channel_id: int):
+        Worker.__init__(self, args=(), kwargs=None)
+
+    #def analyse_key(self, pitch):
+        #estimated_key = key.note_from_pitch(pitch)
+        #dispatcher.send(signal='key', sender=self.channel_id, data=estimated_key)
