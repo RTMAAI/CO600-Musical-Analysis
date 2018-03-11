@@ -264,9 +264,9 @@ class BPMCoordinator(Coordinator):
     """
     def __init__(self, config, peer_list: list, channel_id):
         Coordinator.__init__(self, config, peer_list)
+        LOGGER.info('BPM Initialized.')
 
     def run(self):
-        LOGGER.info('BPM Initialized.')
         beats = [] # List of beat intervals
         bpm = 0
         while True:
