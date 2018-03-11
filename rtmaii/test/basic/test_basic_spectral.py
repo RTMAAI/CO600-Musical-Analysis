@@ -32,7 +32,7 @@ class SpectralTestSuite(unittest.TestCase):
         self.window = spectral.new_window(self.sampling_rate, 'blackmanharris')
         self.bp_filter = spectral.butter_bandpass(1, 24, self.sampling_rate, 10)
         self.spectrum = spectral.spectrum(self.low_frequency, self.window, self.bp_filter)
-        self.conv_spectrum = spectral.convolve_spectrum(self.low_frequency)
+        self.conv_spectrum = spectral.convolve_signal(self.low_frequency)
 
         self.filter_cut_off = 0.006 # Maximum amplitude expected of filtered frequencies.
 
