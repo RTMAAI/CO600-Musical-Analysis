@@ -269,7 +269,7 @@ class BPMCoordinator(Coordinator):
     def run(self):
         beats = [] # List of beat intervals
         hbeats = [] # placeholder
-        bpm = 0
+        #bpmestimate = 0
         while True:
             data = self.queue.get()
             beat = bpm.beatdetection(data)
@@ -278,6 +278,7 @@ class BPMCoordinator(Coordinator):
                 beats.append(timedif)
                 beatdata = [beats, hbeats]
                 self.message_peers(beatdata)
-                dispatcher.send(signal='bpm', sender=self, data=beatdata)
+
+            dispatcher.send(signal='beats', sender=self, data=str(beat))
             #       add timeinterval from previous occurence of a beat to beats list.
             #       bpm = calculate average time interval

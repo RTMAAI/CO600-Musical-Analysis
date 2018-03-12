@@ -67,7 +67,7 @@ def new_hierarchy(config: object):
             root_peers.append(new_coordinator('Frequency', {'config': config, 'peer_list': freq_list, 'channel_id': channel_id}))
 
         if len(bpm_list) > 0:
-            bpm_list.append(new_coordinator('BPM', {'config':config, 'peer_list': bpm_list, 'channel_id': channel_id}))
+            root_peers.append(new_coordinator('BPM', {'config':config, 'peer_list': bpm_list, 'channel_id': channel_id}))
 
     if len(root_peers) > 0:
         return new_coordinator('Root', {'config': config, 'peer_list': root_peers})

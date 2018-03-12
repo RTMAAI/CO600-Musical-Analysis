@@ -51,7 +51,7 @@ class Listener(threading.Thread):
             'spectrum': [],
             'signal': [],
             'spectogramData': [[zeros(128), zeros(128), zeros([128, 128])]],
-            'beats': [False],
+            'beats': ['False'],
             'bpm': [0]
         }
 
