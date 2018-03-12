@@ -14,7 +14,8 @@
         * Look into other areas i.e. harmonic product spectrum.
         * Finish comments and documentation.
 """
-from numpy import argmax, mean, diff, arange
+from numpy import argmax, mean, diff, arange, copy
+from scipy.signal import decimate
 
 def pitch_from_fft(spectrum: list, sampling_rate: int):
     """ Estimate pitch from the frequency spectrum.
@@ -33,11 +34,10 @@ def pitch_from_fft(spectrum: list, sampling_rate: int):
 
     """
     basic_frequency = argmax(spectrum)
-    estimated_frequency = interpolate_peak(abs(spectrum), basic_frequency)
-    return sampling_rate * basic_frequency / len(spectrum) / 2
-    #TODO: Validate why / 2 is needed, probably due to halving the spectrum initially in spectral module.
+    estimated_frequency = interpolate_peak(spectrum, basic_frequency)
+    return sampling_rate * basic_frequency / (len(spectrum) * 2)
 
-def pitch_from_auto_correlation(convolved_spectrum: list, sampling_rate: int):
+def pitch_from_auto_correlation(convolved_signal: list, sampling_rate: int):
     """ Estimate pitch using the autocorrelation method.
 
         **Args**:
@@ -54,12 +54,12 @@ def pitch_from_auto_correlation(convolved_spectrum: list, sampling_rate: int):
 
     """
 
-    spectrum_distances = diff(convolved_spectrum)
+    signal_distances = diff(convolved_signal)
     first_low_point = next(
-        i for i, _ in enumerate(spectrum_distances) if spectrum_distances[i] > 0
+        i for i, _ in enumerate(signal_distances) if signal_distances[i] > 0
     ) # Finds first rising edge
-    peak = argmax(convolved_spectrum[first_low_point:]) + first_low_point
-    interpolated_peak = interpolate_peak(convolved_spectrum, peak)
+    peak = argmax(convolved_signal[first_low_point:]) + first_low_point
+    interpolated_peak = interpolate_peak(convolved_signal, peak)
     return sampling_rate / peak
 
 def pitch_from_zero_crossings(signal: list, sampling_rate: int):
@@ -95,17 +95,18 @@ def pitch_from_hps(spectrum: list, sampling_rate: int, max_harmonics: int):
             - max_framonics the sampling rate of the audio source.
 
     """
-    harmonic_spectrum = abs(spectrum) # Keep positive values
+    harmonic_spectrum = spectrum
 
     for harmonic_level in range(2, max_harmonics):
-        downsampled_spectrum = harmonic_spectrum [::harmonic_level]
-        harmonic_spectrum = harmonic_spectrum [:len(downsampled_spectrum)]
-        pitch = argmax(harmonic_spectrum)
-        harmonic_spectrum *= downsampled_spectrum
+        spectrum_c = harmonic_spectrum.copy() # Shallow copy, allowing values to be changed in original array.
+        downsampled_spectrum = decimate(spectrum, harmonic_level) # Downsample using anti-aliasing, = better results.
+        spectrum_c[:len(downsampled_spectrum)] *= downsampled_spectrum # Amplify any frequencies based on harmnonics.
 
-    # interpolated_pitch = interpolate_peak(harmonic_spectrum, pitch)
+    pitch = argmax(harmonic_spectrum)
 
-    return sampling_rate * pitch / len(spectrum)
+    #interpolated_pitch = interpolate_peak(harmonic_spectrum, pitch)
+
+    return sampling_rate * pitch / (len(spectrum) * 2)
 
 def interpolate_peak(spectrum: list, peak: int):
     """ Uses quadratic interpolation of spectral peaks to get a better estimate of the peak.

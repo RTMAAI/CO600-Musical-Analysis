@@ -124,8 +124,8 @@ class AutoCorrelationWorker(Worker, Key):
     def run(self):
         while True:
             signal = self.queue.get()
-            convolved_spectrum = spectral.convolve_spectrum(signal)
-            estimated_pitch = pitch.pitch_from_auto_correlation(convolved_spectrum, self.sampling_rate)
+            convolved_signal = spectral.convolve_signal(signal)
+            estimated_pitch = pitch.pitch_from_auto_correlation(convolved_signal, self.sampling_rate)
             dispatcher.send(signal='pitch', sender=self.channel_id, data=estimated_pitch)
             self.analyse_key(estimated_pitch, self.channel_id)
 

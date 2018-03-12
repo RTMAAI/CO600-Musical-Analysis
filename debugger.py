@@ -386,8 +386,8 @@ class Debugger(tk.Tk):
     def setup_key_label(self, frame):
         # --- KEY LABEL --- #
         self.key = tk.StringVar()
-        key_label = tk.Label(frame, text=str('Key:'), bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, FONT_SIZE))
-        key_label.place(x=100, y=0, height=30, width=40)
+        key_label = tk.Label(frame, text=str('Root Note:'), bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, FONT_SIZE))
+        key_label.place(x=40, y=0, height=30, width=110)
         key_value = tk.Label(frame, textvariable=self.key, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, FONT_SIZE))
         key_value.place(x=140, y=0, height=30, width=80)
 
