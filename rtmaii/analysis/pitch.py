@@ -104,9 +104,9 @@ def pitch_from_hps(spectrum: list, sampling_rate: int, max_harmonics: int):
 
     pitch = argmax(harmonic_spectrum)
 
-    interpolated_pitch = interpolate_peak(harmonic_spectrum, pitch)
+    #interpolated_pitch = interpolate_peak(harmonic_spectrum, pitch)
 
-    return sampling_rate * interpolated_pitch / (len(spectrum) * 2)
+    return sampling_rate * pitch / (len(spectrum) * 2)
 
 def interpolate_peak(spectrum: list, peak: int):
     """ Uses quadratic interpolation of spectral peaks to get a better estimate of the peak.
