@@ -165,20 +165,20 @@ class FFTWorker(Worker, Key):
             dispatcher.send(signal='pitch', sender=self.channel_id, data=estimated_pitch)
             self.analyse_key(estimated_pitch, self.channel_id)
 
-class BeatsWorker(Worker):
-    """ Worker responsible for determining beats happening.
+#class BeatsWorker(Worker):
+#    """ Worker responsible for determining beats happening.
 
-    """
-    def __init__(self, channel_id: int):
-        Worker.__init__(self, channel_id)
-
-    def run(self):
-        while True:
-            data = self.queue.get()
-            beat = bpm.beatdetection(data)
-            timedif = bpm.gettimedif()
-            dispatcher.send(signal='beat', sender=self.channel_id, data=beat)
-            self.analyse_bpm(timedif, self.channel_id)
+#    """
+#    def __init__(self, channel_id: int):
+#        Worker.__init__(self, channel_id)
+#
+#    def run(self):
+#        while True:
+#            data = self.queue.get()
+#            beat = bpm.beatdetection(data)
+#            timedif = bpm.gettimedif()
+#            dispatcher.send(signal='beat', sender=self.channel_id, data=beat)
+#            self.analyse_bpm(timedif, self.channel_id)
 
 
 class BPMWorker(Worker):

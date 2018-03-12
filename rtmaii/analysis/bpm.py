@@ -62,7 +62,7 @@ def bpmsimple(beatarray, hbeatarray):
         avg = total/len(beatarray)
         return 60/avg
     else:
-        return 0
+        return 39
 
 def cleanbeatarray(beatarray):
     """

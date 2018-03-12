@@ -33,7 +33,7 @@ def new_hierarchy(config: object):
             # TODO: (Coordinator creation shouldn't probably be here.)
             #root_peers.append(new_coordinator('BPM', {'config': config, 'peer_list': [], 'channel_id': channel_id}))
             bpm_list.append(new_worker('BPM', {'sampling_rate' : sampling_rate, 'channel_id': channel_id}))
-            pass # Had to disable for time being due to infinite while loop.
+             # Had to disable for time being due to infinite while loop.
 
         if tasks['pitch']:
             algorithm = config.get_config('pitch_algorithm')

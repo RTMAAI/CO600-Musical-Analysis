@@ -48,11 +48,11 @@ class Listener(threading.Thread):
                 'brilliance': 0
             }],
             'genre': ["N/A"],
-            'beats': [],
-            'bpm': [0],
             'spectrum': [],
             'signal': [],
-            'spectogramData': [[zeros(128), zeros(128), zeros([128, 128])]]
+            'spectogramData': [[zeros(128), zeros(128), zeros([128, 128])]],
+            'beats': [False],
+            'bpm': [0]
         }
 
         self.max_index = STATE_COUNT - 1
@@ -220,6 +220,9 @@ class Debugger(tk.Tk):
         self.key.set(key['key'])
         self.cent.set(key['cents_off'])
         self.genre.set(self.listener.get_item('genre'))
+        #bpm stuff
+        self.beats.set(self.listener.get_item('beats'))
+        self.bpm.set(self.listener.get_item('bpm'))
         bands = self.listener.get_item('bands')
         # Update each band value.
         for key, value in bands.items():
