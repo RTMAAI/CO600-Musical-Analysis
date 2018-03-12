@@ -50,7 +50,9 @@ class Listener(threading.Thread):
             'genre': ["N/A"],
             'spectrum': [],
             'signal': [],
-            'spectogramData': [[zeros(128), zeros(128), zeros([128, 128])]]
+            'spectogramData': [[zeros(128), zeros(128), zeros([128, 128])]],
+            'beats': ['False'],
+            'bpm': [0]
         }
 
         self.max_index = STATE_COUNT - 1
@@ -218,6 +220,9 @@ class Debugger(tk.Tk):
         self.key.set(key['key'])
         self.cent.set(key['cents_off'])
         self.genre.set(self.listener.get_item('genre'))
+        #bpm stuff
+        self.beats.set(self.listener.get_item('beats'))
+        self.bpm.set(self.listener.get_item('bpm'))
         bands = self.listener.get_item('bands')
         # Update each band value.
         for key, value in bands.items():
@@ -272,7 +277,7 @@ class Debugger(tk.Tk):
 
         # --- INIT SETUP --- #
         self.timeframe = arange(0, chunk_size, DOWNSAMPLE_RATE) # Where DOWNSAMPLE_RATE = steps taken.
-        self.title("RTMAII VISUALIZER")
+        self.title("RTMAAI VISUALIZER")
         self.setup_control_panel()
         self.setup_left_frame()
         self.setup_right_frame()
@@ -398,6 +403,22 @@ class Debugger(tk.Tk):
         genre_value = tk.Label(frame, textvariable=self.genre, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, FONT_SIZE))
         genre_value.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT)
 
+    def setup_bpm_label(self, frame):
+        # --- BPM LABEL --- #
+        self.bpm = tk.StringVar()
+        bpm_label = tk.Label(frame, text=str('BPM:'), bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, FONT_SIZE))
+        bpm_label.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT)
+        bpm_value = tk.Label(frame, textvariable=self.bpm, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, FONT_SIZE))
+        bpm_value.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT)
+
+    def setup_beats_label(self, frame):
+        # --- Beats LABEL --- #
+        self.beats = tk.StringVar()
+        beats_label = tk.Label(frame, text=str('Beats:'), bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, FONT_SIZE))
+        beats_label.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT)
+        beats_value = tk.Label(frame, textvariable=self.beats, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, FONT_SIZE))
+        beats_value.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT)
+
     def setup_bands_label(self, frame):
         # --- BANDS LABEL --- #
         self.bands = {}
@@ -427,6 +448,8 @@ class Debugger(tk.Tk):
         gb_frame = tk.Frame(frame, borderwidth=1, bg=ACCENT_COLOR)
         gb_frame.pack(padx=10)
         self.setup_genre_label(gb_frame)
+        self.setup_beats_label(gb_frame)
+        self.setup_bpm_label(gb_frame)
 
     def setup_control_panel(self):
         # --- CONTROL FRAME --- #
