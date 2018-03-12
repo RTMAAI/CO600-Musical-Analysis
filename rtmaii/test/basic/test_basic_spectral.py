@@ -32,7 +32,7 @@ class SpectralTestSuite(unittest.TestCase):
         self.window = spectral.new_window(self.sampling_rate, 'blackmanharris')
         self.bp_filter = spectral.butter_bandpass(1, 24, self.sampling_rate, 10)
         self.spectrum = spectral.spectrum(self.low_frequency, self.window, self.bp_filter)
-        self.conv_spectrum = spectral.convolve_signal(self.low_frequency)
+        self.conv_signal= spectral.convolve_signal(self.low_frequency)
 
         self.filter_cut_off = 0.006 # Maximum amplitude expected of filtered frequencies.
 
@@ -76,12 +76,12 @@ class SpectralTestSuite(unittest.TestCase):
 
     def test_conv_spectrum_length(self):
         """ Test length of generated convolved spectrums. Two spectrums so should be == sampling rate. """
-        self.assertEqual(len(self.conv_spectrum), self.sampling_rate)
+        self.assertEqual(len(self.conv_signal), self.sampling_rate)
 
     def test_conv_spectrum_value(self):
         """ As it's a basic sine wave the amplitude at the frequency location should be lowest.
             (Opposite to standard spectrum.)
         """
-        peak = self.conv_spectrum[5]
+        peak = self.conv_signal[5]
         for i in range(len(self.spectrum)):
-            self.assertLessEqual(peak, self.conv_spectrum[i])
+            self.assertLessEqual(peak, self.conv_signal[i])
