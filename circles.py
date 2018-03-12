@@ -91,7 +91,7 @@ class Listener(threading.Thread):
 
         self.analyser = rtmaii.Rtmaii(callbacks,
                                       mode='INFO',
-                                      track=r'.\test_data\spectogramTest.wav',
+                                      track=r'./test_data/spectogramTest.wav',
                                      )
 
         threading.Thread.__init__(self, args=(), kwargs=None)

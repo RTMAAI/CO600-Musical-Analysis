@@ -11,7 +11,7 @@ def main():
 
     analyser = rtmaii.Rtmaii([{'function': frequency_callback, 'signal':'frequency'},
                               {'function': spectrogram_callback, 'signal':'spectrogram'}],
-                              track=r'.\test_data\spectogramTest.wav',
+                              track=r'./test_data/spectogramTest.wav',
                               mode='DEBUG')
 
     analyser.start()

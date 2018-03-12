@@ -4,7 +4,7 @@
 import threading
 import logging
 from rtmaii.workqueue import WorkQueue
-from rtmaii.analysis import spectral
+from rtmaii.analysis import spectral, bpm
 from pydispatch import dispatcher
 from numpy import mean, int16, zeros, append, hanning, array, column_stack,fromstring, absolute, power, log10, arange
 from numpy.fft import fft as numpyFFT
@@ -201,7 +201,7 @@ class FFTSCoordinator(Coordinator):
                 # Create spectrogram when enough FFTs generated
 
 class SpectrogramCoordinator(Coordinator):
-    """ Worker responsible for creating spectograms ... .
+    """ Coordinator responsible for creating spectograms ... .
 
         **Args**:
             - `sampling_rate`: sampling_rate of source being analysed.
@@ -256,17 +256,27 @@ class SpectrogramCoordinator(Coordinator):
 
 
 class BPMCoordinator(Coordinator):
+    """Coordinator responsible for finding beats and estimating bpm
+
+
+    """
     def __init__(self, config, peer_list: list, channel_id):
         Coordinator.__init__(self, config, peer_list)
+        LOGGER.info('BPM Initialized.')
 
     def run(self):
         beats = [] # List of beat intervals
-        bpm = 0
+        hbeats = [] # placeholder
+        #bpmestimate = 0
         while True:
-            pass
-            # data = self.queue.get()
-            # checkForBeat
-            #   if beat:
-            #       dispatcher.send(signal='bpm', sender=self)
+            data = self.queue.get()
+            beat = bpm.beatdetection(data)
+            if(beat == True):
+                timedif = bpm.gettimedif()
+                beats.append(timedif)
+                beatdata = [beats, hbeats]
+                self.message_peers(beatdata)
+
+            dispatcher.send(signal='beats', sender=self, data=str(beat))
             #       add timeinterval from previous occurence of a beat to beats list.
             #       bpm = calculate average time interval
