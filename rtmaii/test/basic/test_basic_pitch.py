@@ -40,4 +40,4 @@ class TestSuite(unittest.TestCase):
 
     def test_basic_HPS(self):
         """ Test that the zero-crossings algorithm can detect the correct pitch for a basic sine wave. """
-        # self.assertEqual(pitch.pitch_from_hps(self.frequency_spectrum, self.sampling_rate, 8), 5)
+        self.assertEqual(pitch.pitch_from_hps(self.frequency_spectrum, self.sampling_rate, 8), 5)
