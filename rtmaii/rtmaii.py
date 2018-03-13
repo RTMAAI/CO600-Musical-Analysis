@@ -2,14 +2,11 @@
     Main script that is imported with the library.
 '''
 import wave
-import json
-import threading
 import logging
 import os
-import time
 from rtmaii.hierarchy import new_hierarchy
 from rtmaii.configuration import Config
-from numpy import int16
+from numpy import int16, frombuffer
 from pydispatch import dispatcher
 import pyaudio
 
@@ -56,7 +53,7 @@ class Rtmaii(object):
     def __stream_callback__(self, in_data, frame_count, time_info, status):
         """ Convert raw stream data into signal bin and put data on the coordinator's queue. """
         data = self.waveform.readframes(frame_count) if hasattr(self, 'waveform') else in_data
-        self.root.queue.put(data)
+        self.root.queue.put(frombuffer(data, int16))
         return (data, pyaudio.paContinue)
 
     def is_active(self):
@@ -110,8 +107,9 @@ class Rtmaii(object):
                 - `source`: Int (Index of input device to use) || String (Path of audio file to analyse)
                 - `kwargs`: Additional configuration to be used in Pyaudio. (Please see our readme for more information.)
         """
-        if hasattr(self, 'stream'): self.stop()
-        if type(source) is int or source is None:
+        if isinstance(source, int) or source is None:
+            if hasattr(self, 'waveform'):
+                delattr(self, 'waveform')
             # Extract relevant configuration to use in waveform.
             if source is None:
                 device = self.audio.get_default_input_device_info()
@@ -119,7 +117,7 @@ class Rtmaii(object):
                 try:
                     device = self.audio.get_device_info_by_index(source)
                 except Exception:
-                    print ('Exception: Specified device index {} could not be set.'.format(source))
+                    print('Exception: Specified device index {} could not be set.'.format(source))
                     raise
 
             pyaudio_kwargs = {
@@ -127,12 +125,15 @@ class Rtmaii(object):
                 'input': True
             }
             # Grab relevant default settings to use as pyaudio args.
-            pyaudio_kwargs.update({'input_device_index': device['index'], 'channels': device['maxInputChannels'], 'rate': int(device['defaultSampleRate'])})
+            pyaudio_kwargs.update({'input_device_index': device['index'],
+                                   'channels': device['maxInputChannels'],
+                                   'rate': int(device['defaultSampleRate'])
+                                  })
         else:
             try:
                 self.waveform = wave.open(source)
             except Exception:
-                print ('Exception: Specified wav file {} could not be opened.'.format(source))
+                print('Exception: Specified wav file {} could not be opened.'.format(source))
                 raise
 
             pyaudio_kwargs = { # Extract relevant configuration from .wav file to use in Pyaudio.
@@ -156,8 +157,9 @@ class Rtmaii(object):
         info = self.audio.get_host_api_info_by_index(0)
         numdevices = info.get('deviceCount')
         for i in range(0, numdevices):
-                if (self.audio.get_device_info_by_host_api_device_index(0, i).get('maxInputChannels')) > 0:
-                    print("Input Device index {} - {}".format(i, self.audio.get_device_info_by_host_api_device_index(0, i).get('name')))
+            audio_device = self.audio.get_device_info_by_host_api_device_index(0, i)
+            if (audio_device.get('maxInputChannels')) > 0:
+                print("Input Device index {} - {}".format(i, audio_device.get('name')))
 
     def set_callbacks(self, callbacks: list):
         """ Attach supplied callbacks to signals on the dispatcher.
