@@ -1,5 +1,6 @@
 import threading
 import os
+import logging
 from rtmaii.workqueue import WorkQueue
 from rtmaii.analysis import frequency, pitch, key, spectral, bpm
 from pydispatch import dispatcher
@@ -7,7 +8,7 @@ from numpy import arange, mean, int16, resize, column_stack, power, log10, absol
 from matplotlib import pyplot as plt
 from tensorflow.contrib import predictor
 
-
+LOGGER = logging.getLogger()
 class Worker(threading.Thread):
     """ Base worker class, responsible for initializing shared attributes.
 

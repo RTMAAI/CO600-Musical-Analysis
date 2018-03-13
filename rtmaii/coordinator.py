@@ -9,7 +9,7 @@ from pydispatch import dispatcher
 from numpy import mean, int16, pad, hanning, column_stack, absolute, power, log10, arange
 from numpy.fft import fft as numpyFFT
 
-LOGGER = logging.getLogger(__name__)
+LOGGER = logging.getLogger()
 class Coordinator(threading.Thread):
     """ Parent class of all coordinator threads.
 
