@@ -267,10 +267,16 @@ class BPMCoordinator(Coordinator):
     def run(self):
         beats = [] # List of beat intervals
         hbeats = [] # placeholder
-        #bpmestimate = 0
+        #maxpeak = 0
+        #threshold = 0
+        #descrate = 0
+        #timelast = 0
+        #timedif = 0
+
         while True:
             data = self.queue.get()
-            beat = bpm.beatdetection(data)
+            #threshold -= descrate
+            beat = bpm.beatdetectionold(data)
             if(beat == True):
                 timedif = bpm.gettimedif()
                 beats.append(timedif)

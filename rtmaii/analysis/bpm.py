@@ -17,13 +17,26 @@ threshold = 0
 descrate = 100
 LOGGER = logging.getLogger(__name__)
 
-def beatdetection(data):
+def beatdetectionnew(data, thres):
     """
     Takes data as input and returns true for when a beat occurs
     :param data: raw, high-pass or low-pass music info
     :return: true or false depending on if there was a beat
     """
-    amp = audioop.rms(data, 2)
+    amp = audioop.rms(data, 1)
+
+    if(amp >= thres):
+        return amp
+    else:
+        return False
+
+def beatdetectionold(data):
+    """
+    Takes data as input and returns true for when a beat occurs
+    :param data: raw, high-pass or low-pass music info
+    :return: true or false depending on if there was a beat
+    """
+    amp = audioop.rms(data, 1)
     global maxpeak
     global threshold
     global descrate
@@ -44,8 +57,12 @@ def beatdetection(data):
     else:
         return False
 
+def energydetect(data):
+    return False
+
 def gettimedif():
     if(timedif!=0):
+        #this needs to be in seconds, figure that out
         return timedif
 
 def bpmsimple(beatarray, hbeatarray):
@@ -55,7 +72,7 @@ def bpmsimple(beatarray, hbeatarray):
     :param hbeatarray: array of high-passed beats
     :return: approximate bpm
     """
-    if (len(beatarray)>=4):
+    if (len(beatarray)>=2):
         total=0
         for dif in beatarray:
             total += dif
