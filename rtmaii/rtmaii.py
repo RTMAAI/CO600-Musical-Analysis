@@ -10,10 +10,16 @@ from numpy import int16, frombuffer
 from pydispatch import dispatcher
 import pyaudio
 
-PATH = os.path.abspath(__file__)
-DIR_PATH = os.path.dirname(PATH)
-logging.basicConfig(format='%(asctime)s [%(levelname)s]: %(message)s')
-LOGGER = logging.getLogger(__name__)
+FORMATTER = logging.Formatter('%(asctime)s [%(levelname)s]: %(message)s')
+LOGGER = logging.getLogger()
+LOGGER.setLevel(logging.DEBUG)
+SH = logging.StreamHandler()
+FH = logging.FileHandler('rtma-log.log')
+FH.setLevel(logging.DEBUG)
+FH.setFormatter(FORMATTER)
+SH.setFormatter(FORMATTER)
+LOGGER.addHandler(FH)
+LOGGER.addHandler(SH)
 
 class Rtmaii(object):
     """ Interface for real-time musical analysis library.
@@ -47,7 +53,7 @@ class Rtmaii(object):
         self.set_source(track)
         self.set_callbacks(callbacks)
         self.root = new_hierarchy(self.config)
-        LOGGER.setLevel(mode)
+        SH.setLevel(mode)
         LOGGER.debug('RTMAAI Initiliazed')
 
     def __stream_callback__(self, in_data, frame_count, time_info, status):
