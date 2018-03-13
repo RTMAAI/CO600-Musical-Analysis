@@ -77,7 +77,7 @@ class Listener(threading.Thread):
 
         callbacks = []
         for key, _ in self.state.items():
-            callbacks.append({'function': self.callbacks[key], 'signal': key})
+            callbacks.append({'function': self.callback, 'signal': key})
 
         self.analyser = rtmaii.Rtmaii(callbacks,
                                       mode='INFO',
@@ -117,9 +117,10 @@ class Listener(threading.Thread):
         for key, fun in self.callbacks.items():
             if key == 'signal':
                 signals = self.state[key][self.current_index + SIGNAL_COUNT: self.current_index: -1]
-                fun(concatenate(signals), **{'signal' : key})
+                fun(key, concatenate(signals))
             else:
-                fun(self.state[key][self.current_index], **{'signal' : key})
+                fun(key, self.state[key][self.current_index])
+
 
     def set_source(self, track):
         """ Change the source. """
@@ -136,25 +137,24 @@ class Listener(threading.Thread):
             self.condition.wait() # Non-blocking sleep.
             self.condition.release()
 
-    def graph_callback(self, data, **kwargs):
-        signal = kwargs['signal']
-        self.handlers[signal].queue.put(data)
-        self.save_state(data, **kwargs)
+    def put_handler(self, handler, data):
+        self.handlers[handler].queue.put(data)
 
-    def label_callback(self, data, **kwargs):
-        signal = kwargs['signal']
-        self.handlers['label'].queue.put([signal, data])
-        self.save_state(data, **kwargs)
+    def graph_callback(self, signal, data):
+        self.put_handler(signal, data)
 
-    def beat_callback(self, data, **kwargs):
-        self.handlers['beat'].queue.put(data)
-        self.save_state(data, **kwargs)
+    def label_callback(self, signal, data):
+        self.put_handler('label', [signal, data])
 
-    def save_state(self, data, **kwargs):
+    def beat_callback(self, signal, data):
+        self.put_handler('beat', data)
+
+    def callback(self, data, **kwargs):
         """ Set data for signal event. """
         signal = kwargs['signal']
         self.state[signal].insert(0, data)
         self.state[signal] = self.state[signal][:STATE_COUNT]
+        self.callbacks[signal](signal, data)
 
     def get_item(self, item):
         """ Get the latest value. """
