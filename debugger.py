@@ -9,7 +9,8 @@ from functools import partial
 from scipy.signal import resample
 from scipy.fftpack import fftfreq
 from rtmaii import rtmaii # Replace with just import rtmaii in actual implementation.
-from numpy import arange, zeros
+from rtmaii.workqueue import WorkQueue
+from numpy import arange, zeros, append, concatenate
 import matplotlib
 matplotlib.use("TkAgg") # Fastest plotter backend.
 import tkinter as tk
@@ -30,6 +31,7 @@ FONT_SIZE = 15
 Y_PADDING = 0.3 # Amount to pad the maximum Y value of a graph by. (Percentage i.e. 0.1 = 10% padding.)
 STATE_COUNT = 50 # Amount of states to store that can be moved through.
 SPECTRO_DELAY = 2 # Seconds to wait between each spectrogram plot.
+SIGNAL_COUNT = 8
 
 class Listener(threading.Thread):
     """ Starts analysis and holds a state of analysed results. """
@@ -55,13 +57,27 @@ class Listener(threading.Thread):
             'bpm': [0]
         }
 
+        self.callbacks = {
+            'bands': self.label_callback,
+            'key': self.label_callback,
+            'genre': self.label_callback,
+            'pitch': self.label_callback,
+            'beats': self.beat_callback,
+            'bpm': self.label_callback,
+            'signal': self.graph_callback,
+            'spectogramData': self.graph_callback,
+            'spectrum': self.graph_callback
+        }
+
+        self.handlers = {}
+
         self.max_index = STATE_COUNT - 1
         self.condition = threading.Condition()
         self.current_index = 0
 
         callbacks = []
         for key, _ in self.state.items():
-            callbacks.append({'function': self.callback, 'signal': key})
+            callbacks.append({'function': self.callbacks[key], 'signal': key})
 
         self.analyser = rtmaii.Rtmaii(callbacks,
                                       mode='INFO',
@@ -83,6 +99,9 @@ class Listener(threading.Thread):
         self.current_index = 0
         self.analyser.start()
 
+    def add_handler(self, name, handler):
+        self.handlers[name] = handler
+
     def pause_analysis(self):
         """ Pauses analysis. """
         self.analyser.pause()
@@ -95,6 +114,12 @@ class Listener(threading.Thread):
         """ Rewind through one state of the analysis. """
         new_value = self.current_index + amount
         self.current_index = 0 if new_value < 0 else self.max_index if new_value > self.max_index else new_value
+        for key, fun in self.callbacks.items():
+            if key == 'signal':
+                signals = self.state[key][self.current_index + SIGNAL_COUNT: self.current_index: -1]
+                fun(concatenate(signals), **{'signal' : key})
+            else:
+                fun(self.state[key][self.current_index], **{'signal' : key})
 
     def set_source(self, track):
         """ Change the source. """
@@ -111,7 +136,21 @@ class Listener(threading.Thread):
             self.condition.wait() # Non-blocking sleep.
             self.condition.release()
 
-    def callback(self, data, **kwargs):
+    def graph_callback(self, data, **kwargs):
+        signal = kwargs['signal']
+        self.handlers[signal].queue.put(data)
+        self.save_state(data, **kwargs)
+
+    def label_callback(self, data, **kwargs):
+        signal = kwargs['signal']
+        self.handlers['label'].queue.put([signal, data])
+        self.save_state(data, **kwargs)
+
+    def beat_callback(self, data, **kwargs):
+        self.handlers['beat'].queue.put(data)
+        self.save_state(data, **kwargs)
+
+    def save_state(self, data, **kwargs):
         """ Set data for signal event. """
         signal = kwargs['signal']
         self.state[signal].insert(0, data)
@@ -124,9 +163,8 @@ class Listener(threading.Thread):
 
 class SpectrogramCompression(threading.Thread):
     """ Compresses the data in the spectrogram, making plotting faster. """
-    def __init__(self, listener):
-        self.listener = listener
-
+    def __init__(self):
+        self.queue = WorkQueue()
         threading.Thread.__init__(self, args=(), kwargs=None)
         self.compressed_data = [zeros(64), zeros(64), zeros([64, 64])]
         self.setDaemon(True)
@@ -134,44 +172,45 @@ class SpectrogramCompression(threading.Thread):
 
     def run(self):
         while True:
-            data = self.listener.get_item('spectogramData')
+            data = self.queue.get()
             compr_length = len(data[0]) // 2
             color_resample = resample(resample(data[2], compr_length), compr_length, axis=1)
             x_resample = resample(data[0], compr_length)
             y_resample = resample(data[1], compr_length)
             self.compressed_data = [x_resample, y_resample, color_resample]
-            time.sleep(0.2)
 
     def get_spectro_data(self):
         return self.compressed_data
 
 class SignalPlotter(threading.Thread):
     """ Retrieves signal data, downsamples and sets new Y data and limits. """
-    def __init__(self, listener, plot, line):
-        self.listener = listener
+    def __init__(self, plot, line):
         self.plot = plot
         self.line = line
+        self.queue = WorkQueue()
 
         threading.Thread.__init__(self, args=(), kwargs=None)
         self.setDaemon(True)
         self.start()
 
     def run(self):
-        min_power = 8000 # Minimum power value of graph axes, avoids graph showing loads of movement when it's just noise.
+        signal = zeros(1024 * SIGNAL_COUNT)
+        min_power = 8000
         while True:
-            signal = self.listener.get_item('signal')
+            new_data = self.queue.get()
+            signal = append(signal, new_data)
+            signal = signal[len(new_data):]
             signal_max = max(abs(signal)) * (1 + Y_PADDING) # Pad Y maximum/minimum so line doesn't hit top of graph.
             y_max = signal_max if signal_max > min_power else min_power # If mainly noise in signal use min_power as graph max/min.
             self.plot.set_ylim([-y_max, y_max])
-            self.line.set_ydata(resample(signal, len(signal) // DOWNSAMPLE_RATE))
-            time.sleep(0.1)
+            self.line.set_ydata(resample(signal, 1024 // DOWNSAMPLE_RATE))
 
 class SpectrumPlotter(threading.Thread):
     """ Retrieves signal data, downsamples and sets new Y data and limits. """
-    def __init__(self, listener, plot, line):
-        self.listener = listener
+    def __init__(self, plot, line):
         self.plot = plot
         self.line = line
+        self.queue = WorkQueue()
 
         threading.Thread.__init__(self, args=(), kwargs=None)
         self.setDaemon(True)
@@ -179,11 +218,54 @@ class SpectrumPlotter(threading.Thread):
 
     def run(self):
         while True:
-            spectrum = self.listener.get_item('spectrum')
+            spectrum = self.queue.get()
             downsampled_spectrum = resample(spectrum, len(spectrum) // DOWNSAMPLE_RATE)
             self.plot.set_ylim([0, max(downsampled_spectrum) * (1 + Y_PADDING)])
             self.line.set_ydata(downsampled_spectrum)
-            time.sleep(0.1)
+
+class LabelHandler(threading.Thread):
+    def __init__(self):
+        self.labels = {}
+        self.queue = WorkQueue()
+
+        threading.Thread.__init__(self, args=(), kwargs=None)
+        self.setDaemon(True)
+        self.start()
+
+    def add_label(self, variable, key):
+        self.labels[key] = variable
+
+    def run(self):
+        while True:
+            data = self.queue.get()
+            if data[0] == 'key':
+                self.labels['cents'].set(data[1]['cents_off'])
+                self.labels['key'].set(data[1]['key'])
+            elif data[0] == 'bands':
+                for key, value in data[1].items():
+                    self.labels[key].set("{0:.2f}".format(value))
+            elif data[0] == 'pitch':
+                self.labels[data[0]].set("{0:.2f}".format(data[1]))
+            else:
+                self.labels[data[0]].set(data[1])
+
+class BeatHandler(threading.Thread):
+    def __init__(self, beat):
+        self.queue = WorkQueue()
+        self.beat = beat
+        self.beat_cooldown = time.time()
+        threading.Thread.__init__(self, args=(), kwargs=None)
+        self.setDaemon(True)
+        self.start()
+
+    def run(self):
+        while True:
+            beat = self.queue.get()
+            if beat:
+                self.beat_cooldown = time.time() + 0.2
+                self.beat.set('[O]')
+            if self.beat_cooldown - time.time() <= 0:
+                self.beat.set('[X]')
 
 class Debugger(tk.Tk):
     """ Setup debugger UI to display analysis results from rtmaii.
@@ -193,6 +275,8 @@ class Debugger(tk.Tk):
         tk.Tk.__init__(self, *args, **kwargs)
         self.config(bg=BACKGROUND_COLOR)
         self.listener = Listener()
+        self.label_handler = LabelHandler()
+        self.listener.add_handler('label', self.label_handler)
         self.setup()
         self.update()
 
@@ -209,24 +293,8 @@ class Debugger(tk.Tk):
     def update(self):
         """ Update UI every FRAME_DELAY milliseconds """
         self.update_graphs()
-        self.update_labels()
         self.update_controls()
         self.after(FRAME_DELAY, self.update)
-
-    def update_labels(self):
-        # --- UPDATE LABELS --- #
-        self.pitch.set("{0:.2f}".format(self.listener.get_item('pitch')))
-        key = self.listener.get_item('key')
-        self.key.set(key['key'])
-        self.cent.set(key['cents_off'])
-        self.genre.set(self.listener.get_item('genre'))
-        #bpm stuff
-        self.beats.set(self.listener.get_item('beats'))
-        self.bpm.set(self.listener.get_item('bpm'))
-        bands = self.listener.get_item('bands')
-        # Update each band value.
-        for key, value in bands.items():
-            self.bands[key].set("{0:.2f}".format(value))
 
     def update_controls(self):
         # --- UPDATE CONTROLS --- #
@@ -284,6 +352,7 @@ class Debugger(tk.Tk):
 
         self.is_live = False
         self.spectro_time = time.time() # Initial ticker for spectorgram plotting.
+        self.beat_cooldown = time.time()
 
     def setup_signal_graph(self, frame):
         # --- SIGNAL GRAPH SETUP --- #
@@ -299,7 +368,7 @@ class Debugger(tk.Tk):
         self.signal_plot.get_xaxis().set_ticks([])
         self.signal_plot.get_yaxis().set_ticks([])
         self.signal_canvas.get_tk_widget().pack(pady=INNERPADDING, padx=INNERPADDING)
-        SignalPlotter(self.listener, self.signal_plot, self.signal_line)
+        self.listener.add_handler('signal', SignalPlotter(self.signal_plot, self.signal_line))
 
     def setup_spectrum_graph(self, frame):
         # --- SPECTRUM GRAPH SETUP --- #
@@ -313,7 +382,7 @@ class Debugger(tk.Tk):
         self.spectrum_plot.set_ylabel('Power')
         self.spectrum_plot.get_yaxis().set_ticks([])
         self.spectrum_canvas.get_tk_widget().pack(pady=(0, INNERPADDING), padx=INNERPADDING)
-        SpectrumPlotter(self.listener, self.spectrum_plot, self.spectrum_line)
+        self.listener.add_handler('spectrum', SpectrumPlotter(self.spectrum_plot, self.spectrum_line))
 
     def setup_spectrogram_graph(self, frame):
         # --- SPECTROGRAM GRAPH --- #
@@ -324,7 +393,8 @@ class Debugger(tk.Tk):
         self.spectrogram_canvas = FigureCanvasTkAgg(spectrogram_frame, spectrogram_border)
         self.spectrogram_canvas.show()
         self.spectrogram_canvas.get_tk_widget().pack(padx=INNERPADDING, pady=INNERPADDING, side=tk.BOTTOM)
-        self.spectro_thread = SpectrogramCompression(self.listener)
+        self.spectro_thread = SpectrogramCompression()
+        self.listener.add_handler('spectogramData', self.spectro_thread)
 
     def setup_media_controls(self, frame):
         # --- MEDIA CONTROLS --- #
@@ -382,6 +452,7 @@ class Debugger(tk.Tk):
         pitch_label.place(x=450, y=0, height=30, width=50)
         pitch_value = tk.Label(frame, textvariable=self.pitch, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, FONT_SIZE))
         pitch_value.place(x=500, y=0, height=30, width=100)
+        self.label_handler.add_label(self.pitch, 'pitch')
 
     def setup_key_label(self, frame):
         # --- KEY LABEL --- #
@@ -390,10 +461,12 @@ class Debugger(tk.Tk):
         key_label.place(x=40, y=0, height=30, width=110)
         key_value = tk.Label(frame, textvariable=self.key, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, FONT_SIZE))
         key_value.place(x=140, y=0, height=30, width=80)
+        self.label_handler.add_label(self.key, 'key')
 
         self.cent = tk.StringVar()
         cent_value = tk.Label(frame, textvariable=self.cent, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, FONT_SIZE))
         cent_value.place(x=220, y=0, height=30, width=50)
+        self.label_handler.add_label(self.cent, 'cents')
 
     def setup_genre_label(self, frame):
         # --- GENRE LABEL --- #
@@ -402,6 +475,7 @@ class Debugger(tk.Tk):
         genre_label.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT)
         genre_value = tk.Label(frame, textvariable=self.genre, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, FONT_SIZE))
         genre_value.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT)
+        self.label_handler.add_label(self.genre, 'genre')
 
     def setup_bpm_label(self, frame):
         # --- BPM LABEL --- #
@@ -410,6 +484,7 @@ class Debugger(tk.Tk):
         bpm_label.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT)
         bpm_value = tk.Label(frame, textvariable=self.bpm, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, FONT_SIZE))
         bpm_value.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT)
+        self.label_handler.add_label(self.bpm, 'bpm')
 
     def setup_beats_label(self, frame):
         # --- Beats LABEL --- #
@@ -418,6 +493,7 @@ class Debugger(tk.Tk):
         beats_label.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT)
         beats_value = tk.Label(frame, textvariable=self.beats, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, FONT_SIZE))
         beats_value.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT)
+        self.listener.add_handler('beat', BeatHandler(self.beats))
 
     def setup_bands_label(self, frame):
         # --- BANDS LABEL --- #
@@ -434,6 +510,7 @@ class Debugger(tk.Tk):
             key_label.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT)
             value_label = tk.Label(band_frame, textvariable=self.bands[key], foreground=TEXT_COLOR, bg=ACCENT_COLOR, font=(None, FONT_SIZE))
             value_label.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT)
+            self.label_handler.add_label(self.bands[key], key)
 
     def setup_pitch_frame(self, frame):
         # --- PITCH FRAME --- #
