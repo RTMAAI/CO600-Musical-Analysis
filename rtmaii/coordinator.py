@@ -253,6 +253,6 @@ class BPMCoordinator(Coordinator):
                 beatdata = [beats, hbeats]
                 self.message_peers(beatdata)
 
-            dispatcher.send(signal='beats', sender=self, data=str(beat))
+            dispatcher.send(signal='beats', sender=self, data=beat)
             #       add timeinterval from previous occurence of a beat to beats list.
             #       bpm = calculate average time interval
