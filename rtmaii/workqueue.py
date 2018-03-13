@@ -16,9 +16,10 @@ class WorkQueue(object):
 
     def get(self) -> object:
         """ Get last added item from work queue. If empty sleep thread. """
-        with self.condition:
-            self.condition.wait()
-            data = self.queue.popleft()
+        if not self.queue: # Wait until a notification is sent.
+            with self.condition:
+                self.condition.wait()
+        data = self.queue.popleft()
         return data
 
     def get_all(self) -> list:
@@ -27,10 +28,11 @@ class WorkQueue(object):
             If queue is empty `blocks` until an item is available.
         """
         data = []
-        with self.condition:
-            self.condition.wait()
-            if self.queue:
-                data.extend(self.queue.popleft())
+        if not self.queue: # Wait until a notification is sent.
+            with self.condition:
+                self.condition.wait()
+        while self.queue: # Grab all items.
+            data.extend(self.queue.popleft())
         return data
 
     def put(self, data: object):
