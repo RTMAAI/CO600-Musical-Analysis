@@ -6,7 +6,7 @@ import logging
 from rtmaii.workqueue import WorkQueue
 from rtmaii.analysis import spectral, bpm
 from pydispatch import dispatcher
-from numpy import mean, int16, zeros, append, hanning, array, column_stack,fromstring, absolute, power, log10, arange
+from numpy import mean, int16, pad, hanning, column_stack, absolute, power, log10, arange
 from numpy.fft import fft as numpyFFT
 
 LOGGER = logging.getLogger(__name__)
@@ -47,60 +47,41 @@ class RootCoordinator(Coordinator):
     """ First-line coordinator responsible for sending signal data to other threads with unique channel data.
 
         **Attributes**:
-            - channels (List): list of channel threads to transmit signal to.
+            - `channels` (List): list of channel threads to transmit signal to.
             - `peer_list` (list): List of peer threads to communicate processed data with.
     """
     def __init__(self, config: object, peer_list: list):
         LOGGER.info('Coordinator Initialized.')
         Coordinator.__init__(self, config, peer_list)
-        self.frames_per_sample = self.config.get_config('frames_per_sample')
-        self.message_channel_data = self.single_channel if self.config.get_config('merge_channels') else self.multi_channel
-        self.channels = []
+        self.update_attributes()
 
-    def message_channel_peer(self, data: object, channel: int = 0):
-        for peer in self.peer_list[channel]:
-            peer.queue.put(data)
-
-    def pad_signal_length(self, data: object):
-        return append(data, zeros(self.frames_per_sample - len(data)))
-
-    def single_channel(self, data: object, channels: int):
-        """ Task configuration to handle analysis of an averaged single channel.
-
-            **Args**:
-                - `data` : signal data to average and send to peered threads.
-                - `channels` : number of channels of input source.
-        """
-        channel_signals = []
-
-        for channel in range(channels):
-                # Extract individual channel signals.
-                signal_data = self.pad_signal_length(data[channel::channels])
-                # Zero pad array as the data length is not always guaranteed to be == frames_per_sample (i.e. end of recording.)
-                channel_signals.append(signal_data)
-
-        averaged_signal = mean(channel_signals, axis=0, dtype=int16) # Average all channels.
-        self.message_channel_peer(averaged_signal)
-        dispatcher.send(signal='signal', sender=channel, data=averaged_signal)
-
-    def multi_channel(self, data: object, channels: int):
-        """ Task configuration to handle analysis of multiple channels at the same time.
-
-            **Args**:
-                - `data` : signal data to send to peered channel threads.
-                - `channels` : number of channels of input source.
-        """
-        for channel in range(channels):
-            channel_signal = self.pad_signal_length(data[channel::channels])
-            dispatcher.send(signal='signal', sender=channel + 1, data=channel_signal)
-            self.message_channel_peer(channel_signal, channel)
+    def update_attributes(self):
+        """ Update attributes of a hierarchy object using latest config values. """
+        self.merge_channels = self.config.get_config('merge_channels')
+        self.channels = self.config.get_config('channels')
+        self.frame_size = self.config.get_config('frames_per_sample') * self.channels
 
     def run(self):
-        channels = self.config.get_config('channels')
-
+        """ RUN PROCESS
+            1. Get signal data.
+            2. Zero pad signal data to be equal to frame_size.
+            3. Extract each channel's signal.
+            4. (Optional): Average channel data, controlled by config.
+            5. Send channel signals to peers.
+        """
         while True:
-            data = fromstring(self.queue.get(), dtype=int16)
-            self.message_channel_data(data, channels)
+            signal = self.queue.get()
+            signal = pad(signal, (0, self.frame_size - len(signal)), 'constant')
+
+            channel_signals = [signal[channel::self.channels] for channel in range(self.channels)]
+
+            if self.merge_channels:
+                channel_signals = [mean(channel_signals, axis=0, dtype=int16)]
+
+            for index, channel_signal in enumerate(channel_signals):
+                for peer in self.peer_list[index]:
+                    peer.queue.put(channel_signal)
+                dispatcher.send(signal='signal', sender=index, data=channel_signal)
 
 class FrequencyCoordinator(Coordinator):
     """ Frequency coordinator responsible for extending signal data before further analysis.
@@ -115,22 +96,17 @@ class FrequencyCoordinator(Coordinator):
     """
     def __init__(self, config: object, peer_list: list, channel_id: int):
         Coordinator.__init__(self, config, peer_list)
-
         self.channel_id = channel_id
 
     def run(self):
         """ Extend signal data to configured resolution before transmitting to peers. """
-
         frequency_resolution = self.config.get_config('frequency_resolution')
-        start_analysis = False
         signal = []
 
-        while not start_analysis:
+        while len(signal) < frequency_resolution:
             signal.extend(self.queue.get_all())
-            if len(signal) >= frequency_resolution:
-                start_analysis = True
 
-        while start_analysis:
+        while True:
             data = self.queue.get_all()
             signal = signal[len(data):]
             signal.extend(data)
