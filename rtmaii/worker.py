@@ -27,15 +27,6 @@ class Worker(threading.Thread):
     def run(self):
         raise NotImplementedError("Run should be implemented")
 
-class PitchWorker(Worker):
-    """ Specialised worker that has a method to analyse the key given the pitch. """
-    def __init__(self, channel_id: int):
-        Worker.__init__(self, args=(), kwargs=None)
-
-    def analyse_key(self, pitch):
-        estimated_key = key.note_from_pitch(pitch)
-        dispatcher.send(signal='key', sender=self.channel_id, data=estimated_key)
-
 class GenrePredictorWorker(Worker):
     """ Worker responsible for creating spectograms ... .
 
@@ -87,11 +78,17 @@ class BandsWorker(Worker):
             dispatcher.send(signal='bands', sender=self.channel_id, data=frequency_bands) #TODO: Move to a locator.
 
 class Key(object):
-    """ Abstract class that has a method to analyse the key given the pitch. """
+    """ Abstract class that has methods to analyse the key/note given a pitch. """
     @staticmethod
-    def analyse_key(pitch, channel_id):
-        estimated_key = key.note_from_pitch(pitch)
-        dispatcher.send(signal='key', sender=channel_id, data=estimated_key)
+    def analyse_key(freq: float, channel_id: int):
+        """ Extract the note of a given frequency and other key tasks.
+
+            **Args**
+                - `freq`: estimated frequency to analyse.
+                - `channel_id`: channel the frequency was analysed from.
+        """
+        estimated_note = key.note_from_pitch(freq)
+        dispatcher.send(signal='note', sender=channel_id, data=estimated_note)
 
 class ZeroCrossingWorker(Worker, Key):
     """ Worker responsible for analysing the fundamental pitch using the zero-crossings method.
