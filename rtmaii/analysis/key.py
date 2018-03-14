@@ -1,7 +1,11 @@
 """ KEY MODULE
-
     This module contains any methods relating to extracting the key/note of a frequency.
 
+    **INPUTS**
+        Frequency: Frequency in Hertz to analyse.
+
+    **OUTPUTS**
+        Note: Dictionary containing Note and cents off
 """
 from math import log
 

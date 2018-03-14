@@ -7,7 +7,6 @@
 
     **OUTPUTS**:
         Pitch (Fundamental Frequency): the pitch of the input.
-
 """
 from numpy import argmax, mean, diff
 from scipy.signal import decimate
@@ -25,8 +24,6 @@ def pitch_from_fft(spectrum: list, sampling_rate: int) -> float:
         *Disadvantages*:
             - Not great at detecting pitch with multiple harmonics that
               have a higher amplitude than the fundamental frequency.
-
-
     """
     basic_frequency = argmax(spectrum)
     estimated_frequency = interpolate_peak(spectrum, basic_frequency)
@@ -46,7 +43,6 @@ def pitch_from_auto_correlation(convolved_signal: list, sampling_rate: int) -> f
         *Disadvantages*:
             - Requires an FFT which can be expensive.
             - Not great with inharmonics i.e. Guitars/Pianos.
-
     """
     signal_distances = diff(convolved_signal)
     first_low_point = next(
@@ -69,7 +65,6 @@ def pitch_from_zero_crossings(signal: list, sampling_rate: int) -> float:
 
         *Disadvantages*:
             - If there is lots of noise or multiple frequencies doesn't work.
-
     """
     indices = []
     for i, _ in enumerate(signal): # Find indices of zero-crossings
@@ -87,7 +82,6 @@ def pitch_from_hps(spectrum: list, sampling_rate: int, max_harmonics: int) -> fl
             - spectrum: the frequency bin to analyze.
             - sampling_rate: the sampling rate of the audio source.
             - max_framonics the sampling rate of the audio source.
-
     """
     harmonic_spectrum = spectrum
 

@@ -1,9 +1,14 @@
 """ FREQUENCY ANALYSIS MODULE.
-    - Analyses parts of the frequency spectrum, including the presence of each band.
-"""
-# INPUTS spectrum
-# OUTPUTS frequency_bands
+    Analyses parts of the frequency spectrum, including the presence of each band.
 
+    **INPUTS**
+        Spectrum: The spectrum to be analysed.
+        Bands: The frequency bands to compare the presence of.
+        Sampling_rate: The sampling rate of the signal being analysed.
+
+    **OUTPUTS**
+        Frequency_bands_presence: The normalised presence of each band analysed.
+"""
 from scipy.fftpack import fftfreq
 from numpy import absolute, real
 
@@ -24,7 +29,6 @@ def normalize_dict(dictionary: dict, dict_sum: float) -> dict:
             - dict_sum: the sum value to normalize with.
     """
     return {key: real(value)/dict_sum if dict_sum > 0 else 0 for key, value in dictionary.items()}
-
 
 def get_band_power(spectrum: list, bands: dict) -> dict:
     """ Get the summed power of each frequency range provided by bands.
