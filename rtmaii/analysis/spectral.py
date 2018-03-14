@@ -70,11 +70,11 @@ def spectrum(signal: list,
              bp_filter: dict = None) -> list:
     """ Return the frequency spectrum of an input signal.
 
-    **Args**
-        - `signal`: the temporal signal to be converted to a spectrum.
-        - `window`: the smoothing window to be applied.
-        - `bp_filter`: the bandpass filter polynomial coefficents to apply to the signal.
-             In the form of {'numerator': list, 'denominator': list}
+        **Args**
+            - `signal`: the temporal signal to be converted to a spectrum.
+            - `window`: the smoothing window to be applied.
+            - `bp_filter`: the bandpass filter polynomial coefficents to apply to the signal.
+                In the form of {'numerator': list, 'denominator': list}
     """
     windowed_signal = signal * window
     filtered_signal = windowed_signal if bp_filter is None else band_pass_filter(windowed_signal, bp_filter['numerator'], bp_filter['denominator'])
