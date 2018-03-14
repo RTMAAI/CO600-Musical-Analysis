@@ -130,7 +130,7 @@ class SpectrumCoordinator(Coordinator):
         self.sampling_rate = config.get_config('sampling_rate')
         self.channel_id = channel_id
         self.window = spectral.new_window(frequency_resolution, 'hanning')
-        self.filter = spectral.butter_bandpass(10, 20000, self.sampling_rate, 5)
+        self.filter = spectral.butter_bandpass(60, 18000, self.sampling_rate, 5)
 
     def run(self):
         while True:
