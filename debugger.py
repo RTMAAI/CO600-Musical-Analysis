@@ -31,15 +31,22 @@ FONT_SIZE = 15
 Y_PADDING = 0.3 # Amount to pad the maximum Y value of a graph by. (Percentage i.e. 0.1 = 10% padding.)
 STATE_COUNT = 50 # Amount of states to store that can be moved through.
 SPECTRO_DELAY = 2 # Seconds to wait between each spectrogram plot.
-SIGNAL_COUNT = 8
+SIGNAL_COUNT = 10
 
 class Listener(threading.Thread):
-    """ Starts analysis and holds a state of analysed results. """
-    def __init__(self):
+    """ Starts analysis and holds a state of analysed results.
 
+        As the analysis runs, rtmaii will sends signals to Pydispatcher.
+        The listener connects a few callbacks to each signal in rtmaii.
+
+        When a callback is run, it will be added to a UI thread queue to be displayed,
+        as well as being stored in the Listener's state.
+    """
+    def __init__(self):
+        # The amount of states that can be backtracked is specified by STATE_COUNT
         self.state = {
             'pitch': [0],
-            'key': [{'key':"N/A", 'cents_off': 0}],
+            'note': [{'note':"N/A", 'cents_off': 0}],
             'bands': [{
                 'sub-bass': 0,
                 'bass': 0,
@@ -57,9 +64,10 @@ class Listener(threading.Thread):
             'bpm': [0]
         }
 
+        # These set which callback to use when updating a state on the UI.
         self.callbacks = {
             'bands': self.label_callback,
-            'key': self.label_callback,
+            'note': self.label_callback,
             'genre': self.label_callback,
             'pitch': self.label_callback,
             'beats': self.beat_callback,
@@ -70,9 +78,7 @@ class Listener(threading.Thread):
         }
 
         self.handlers = {}
-
-        self.max_index = STATE_COUNT - 1
-        self.condition = threading.Condition()
+        self.max_index = STATE_COUNT - 1 # Max index to restrict state changes to.
         self.current_index = 0
 
         callbacks = []
@@ -81,13 +87,13 @@ class Listener(threading.Thread):
 
         self.analyser = rtmaii.Rtmaii(callbacks,
                                       mode='INFO',
-                                      track=r'./test_data/spectogramTest.wav',
+                                      track=r'./test_data/sine_440.wav',
                                      )
 
         self.state['spectrum'].append(arange(self.analyser.config.get_config('frequency_resolution') // 2))
         self.state['signal'].append(arange(self.analyser.config.get_config('frames_per_sample')))
 
-        for key, _ in self.state.items():
+        for key, _ in self.state.items(): # Fill previous 50 states with default values.
             self.state[key] = self.state[key] * STATE_COUNT
 
         threading.Thread.__init__(self, args=(), kwargs=None)
@@ -99,7 +105,8 @@ class Listener(threading.Thread):
         self.current_index = 0
         self.analyser.start()
 
-    def add_handler(self, name, handler):
+    def add_handler(self, name: str, handler: object):
+        """ """
         self.handlers[name] = handler
 
     def pause_analysis(self):
@@ -110,8 +117,12 @@ class Listener(threading.Thread):
         """ Stop analysis and clear existing state. """
         self.analyser.stop()
 
-    def change_analysis(self, amount):
-        """ Rewind through one state of the analysis. """
+    def change_analysis(self, amount: int):
+        """ Go to a particular state in the analysis.
+
+            **Args**:
+                - `amount` : amount to change current state by (Neg or Pos)
+        """
         new_value = self.current_index + amount
         self.current_index = 0 if new_value < 0 else self.max_index if new_value > self.max_index else new_value
         for key, fun in self.callbacks.items():
@@ -122,8 +133,8 @@ class Listener(threading.Thread):
                 fun(key, self.state[key][self.current_index])
 
 
-    def set_source(self, track):
-        """ Change the source. """
+    def set_source(self, track: str):
+        """ Change the analysed source. """
         self.analyser.set_source(track)
 
     def is_active(self):
@@ -132,12 +143,14 @@ class Listener(threading.Thread):
 
     def run(self):
         """ Keep thread alive. """
+        condition = threading.Condition()
         while True:
-            self.condition.acquire()
-            self.condition.wait() # Non-blocking sleep.
-            self.condition.release()
+            condition.acquire()
+            condition.wait() # Non-blocking sleep.
+            condition.release()
 
     def put_handler(self, handler, data):
+        """ """
         self.handlers[handler].queue.put(data)
 
     def graph_callback(self, signal, data):
@@ -238,9 +251,9 @@ class LabelHandler(threading.Thread):
     def run(self):
         while True:
             data = self.queue.get()
-            if data[0] == 'key':
+            if data[0] == 'note':
                 self.labels['cents'].set(data[1]['cents_off'])
-                self.labels['key'].set(data[1]['key'])
+                self.labels['note'].set(data[1]['note'])
             elif data[0] == 'bands':
                 for key, value in data[1].items():
                     self.labels[key].set("{0:.2f}".format(value))
@@ -262,7 +275,7 @@ class BeatHandler(threading.Thread):
         while True:
             beat = self.queue.get()
             if beat:
-                self.beat_cooldown = time.time() + 0.2
+                self.beat_cooldown = time.time() + 0.1
                 self.beat.set('[O]')
             if self.beat_cooldown - time.time() <= 0:
                 self.beat.set('[X]')
@@ -454,14 +467,14 @@ class Debugger(tk.Tk):
         pitch_value.place(x=500, y=0, height=30, width=100)
         self.label_handler.add_label(self.pitch, 'pitch')
 
-    def setup_key_label(self, frame):
-        # --- KEY LABEL --- #
-        self.key = tk.StringVar()
-        key_label = tk.Label(frame, text=str('Root Note:'), bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, FONT_SIZE))
-        key_label.place(x=40, y=0, height=30, width=110)
-        key_value = tk.Label(frame, textvariable=self.key, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, FONT_SIZE))
-        key_value.place(x=140, y=0, height=30, width=80)
-        self.label_handler.add_label(self.key, 'key')
+    def setup_note_label(self, frame):
+        # --- NOTE LABEL --- #
+        self.note = tk.StringVar()
+        note_label = tk.Label(frame, text=str('Root Note:'), bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, FONT_SIZE))
+        note_label.place(x=40, y=0, height=30, width=110)
+        note_value = tk.Label(frame, textvariable=self.note, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, FONT_SIZE))
+        note_value.place(x=140, y=0, height=30, width=80)
+        self.label_handler.add_label(self.note, 'note')
 
         self.cent = tk.StringVar()
         cent_value = tk.Label(frame, textvariable=self.cent, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, FONT_SIZE))
@@ -517,7 +530,7 @@ class Debugger(tk.Tk):
         pitch_frame = tk.Frame(frame, borderwidth=1, bg=ACCENT_COLOR, height=32)
         pitch_frame.pack(padx=10, fill=tk.X)
         pitch_frame.pack_propagate(0)
-        self.setup_key_label(pitch_frame)
+        self.setup_note_label(pitch_frame)
         self.setup_pitch_label(pitch_frame)
 
     def setup_genrebeat_frame(self, frame):
