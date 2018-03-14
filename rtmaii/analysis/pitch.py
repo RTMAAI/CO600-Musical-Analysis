@@ -1,4 +1,4 @@
-"""
+""" PITCH MODULE
     This module handles any pitch based analysis.
 
     **INPUTS**:
@@ -8,16 +8,11 @@
     **OUTPUTS**:
         Pitch (Fundamental Frequency): the pitch of the input.
 
-    **Example**:
-
-    TODO:
-        * Look into other areas i.e. harmonic product spectrum.
-        * Finish comments and documentation.
 """
-from numpy import argmax, mean, diff, arange, copy
+from numpy import argmax, mean, diff
 from scipy.signal import decimate
 
-def pitch_from_fft(spectrum: list, sampling_rate: int):
+def pitch_from_fft(spectrum: list, sampling_rate: int) -> float:
     """ Estimate pitch from the frequency spectrum.
 
         **Args**:
@@ -35,9 +30,9 @@ def pitch_from_fft(spectrum: list, sampling_rate: int):
     """
     basic_frequency = argmax(spectrum)
     estimated_frequency = interpolate_peak(spectrum, basic_frequency)
-    return sampling_rate * basic_frequency / (len(spectrum) * 2)
+    return sampling_rate * basic_frequency / (len(spectrum) * 2) # Convert to Hz
 
-def pitch_from_auto_correlation(convolved_signal: list, sampling_rate: int):
+def pitch_from_auto_correlation(convolved_signal: list, sampling_rate: int) -> float:
     """ Estimate pitch using the autocorrelation method.
 
         **Args**:
@@ -53,16 +48,15 @@ def pitch_from_auto_correlation(convolved_signal: list, sampling_rate: int):
             - Not great with inharmonics i.e. Guitars/Pianos.
 
     """
-
     signal_distances = diff(convolved_signal)
     first_low_point = next(
         i for i, _ in enumerate(signal_distances) if signal_distances[i] > 0
     ) # Finds first rising edge
     peak = argmax(convolved_signal[first_low_point:]) + first_low_point
     interpolated_peak = interpolate_peak(convolved_signal, peak)
-    return sampling_rate / peak
+    return sampling_rate / peak # Convert to Hz
 
-def pitch_from_zero_crossings(signal: list, sampling_rate: int):
+def pitch_from_zero_crossings(signal: list, sampling_rate: int) -> float:
     """ Estimate pitch by simply counting the amount of zero-crossings.
 
         **Args**:
@@ -84,9 +78,9 @@ def pitch_from_zero_crossings(signal: list, sampling_rate: int):
     crossings = indices
     #crossings = [i - signal[i] / (signal[i + 1] - signal[i]) for i in indices]
 
-    return sampling_rate / mean(diff(crossings))
+    return sampling_rate / mean(diff(crossings)) # Convert to Hz
 
-def pitch_from_hps(spectrum: list, sampling_rate: int, max_harmonics: int):
+def pitch_from_hps(spectrum: list, sampling_rate: int, max_harmonics: int) -> float:
     """ Estimate pitch using the harmonic product spectrum (HPS) Algorithm
 
         **Args**:
@@ -98,17 +92,20 @@ def pitch_from_hps(spectrum: list, sampling_rate: int, max_harmonics: int):
     harmonic_spectrum = spectrum
 
     for harmonic_level in range(2, max_harmonics):
-        spectrum_c = harmonic_spectrum.copy() # Shallow copy, allowing values to be changed in original array.
-        downsampled_spectrum = decimate(spectrum, harmonic_level) # Downsample using anti-aliasing, = better results.
-        spectrum_c[:len(downsampled_spectrum)] *= downsampled_spectrum # Amplify any frequencies based on harmnonics.
+        # Shallow copy, allowing values to be changed in original array.
+        spectrum_c = harmonic_spectrum.copy()
+        # Downsample using anti-aliasing, = better results
+        downsampled_spectrum = decimate(spectrum, harmonic_level)
+        # Amplify any frequencies based on harmonics.
+        spectrum_c[:len(downsampled_spectrum)] *= downsampled_spectrum
 
     pitch = argmax(harmonic_spectrum)
 
     #interpolated_pitch = interpolate_peak(harmonic_spectrum, pitch)
 
-    return sampling_rate * pitch / (len(spectrum) * 2)
+    return sampling_rate * pitch / (len(spectrum) * 2) # Convert to Hz
 
-def interpolate_peak(spectrum: list, peak: int):
+def interpolate_peak(spectrum: list, peak: int) -> float:
     """ Uses quadratic interpolation of spectral peaks to get a better estimate of the peak.
 
         **Args**:
