@@ -3,7 +3,6 @@
 '''
 import wave
 import logging
-import os
 from rtmaii.hierarchy import new_hierarchy
 from rtmaii.configuration import Config
 from numpy import int16, frombuffer
@@ -157,6 +156,8 @@ class Rtmaii(object):
 
         pyaudio_kwargs['frames_per_buffer'] = self.config.get_config('frames_per_sample')
         self.config.set_source(pyaudio_kwargs)
+        if hasattr(self, 'root'):
+            self.root.update_attributes()
 
     def get_input_devices(self):
         """ Lists the names and IDs of the input devices on your system. """
