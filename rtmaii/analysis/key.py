@@ -20,7 +20,7 @@ def note_from_pitch(frequency: float) -> dict:
     """
     midi_num = get_midi_num(frequency)
     offset = get_cents_off(frequency, midi_num)
-    note = ROOT_NOTES[round(midi_num % 12)] # Remainder = note index position in NOTE_STRINGS.
+    note = ROOT_NOTES[midi_num % 12] # Remainder = note index position in NOTE_STRINGS.
     return {'note': note, 'cents_off': offset}
 
 def get_midi_num(frequency: float) -> float:
@@ -32,7 +32,7 @@ def get_midi_num(frequency: float) -> float:
             - `frequency`: Frequency to compare against.
     """
     semitones_off_a4 = frequency if frequency == 0 else 12 * (log(frequency / 440)/log(2))
-    midi_num = semitones_off_a4 + 69
+    midi_num = round(semitones_off_a4) + 69
     return midi_num
 
 def get_cents_off(frequency: float, midi_num: float) -> float:
