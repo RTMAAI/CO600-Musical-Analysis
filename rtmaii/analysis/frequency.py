@@ -6,7 +6,7 @@
 # OUTPUTS frequency_bands
 
 from scipy.fftpack import fftfreq
-from numpy import argmin, abs
+from numpy import absolute, real
 
 def remove_noise(spectrum: list, noise_level: float):
     """ Remove any frequencies with an amplitude under the noise_level param when calculating balance. """
@@ -19,7 +19,7 @@ def normalize_dict(dictionary: dict, dict_sum: float):
             - dictionary: the dictionary to be normalized.
             - dict_sum: the sum value to normalize with.
     """
-    return { key: float(value)/dict_sum if dict_sum > 0 else 0 for key, value in dictionary.items() }
+    return {key: real(value)/dict_sum if dict_sum > 0 else 0 for key, value in dictionary.items()}
 
 
 def get_band_power(spectrum: list, bands: dict):
@@ -29,7 +29,7 @@ def get_band_power(spectrum: list, bands: dict):
             - spectrum: the spectrum to be summed against.
             - bands: the bands to sum powers of.
     """
-    return {band: sum(spectrum[int(values[0]):int(values[1])])
+    return {band: sum(spectrum[values[0]:values[1]])
                      for band, values in bands.items()}
 
 def frequency_bands(spectrum: list, bands: dict, sampling_rate: int):
@@ -41,9 +41,9 @@ def frequency_bands(spectrum: list, bands: dict, sampling_rate: int):
             - bands: the band ranges to find the presence of.
     """
     matched_bands = frequency_bands_to_bins(spectrum, bands, sampling_rate)
-    filtered_spectrum = remove_noise(spectrum, 0.5)
-    band_power = get_band_power(spectrum, matched_bands)
-    normalized_presence = normalize_dict(band_power, sum(filtered_spectrum))
+    filtered_spectrum = remove_noise(spectrum, 5)
+    band_power = get_band_power(filtered_spectrum, matched_bands)
+    normalized_presence = normalize_dict(band_power, real(sum(filtered_spectrum)))
 
     return normalized_presence
 
@@ -58,7 +58,7 @@ def find_nearest_bin(bins: list, target: int):
     """
         test
     """
-    return (abs(bins-target)).argmin()
+    return (absolute(bins-target)).argmin()
 
 # NOTE: Could analyse other frequencies in spectrum, find overtones and harmonics
 # Default configuration should be bass, lows, highs

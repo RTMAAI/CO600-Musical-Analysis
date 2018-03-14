@@ -83,7 +83,7 @@ class BandsWorker(Worker):
     def run(self):
         while True:
             spectrum = self.queue.get()
-            frequency_bands = frequency.frequency_bands(abs(spectrum), self.bands_of_interest, self.sampling_rate)
+            frequency_bands = frequency.frequency_bands(spectrum, self.bands_of_interest, self.sampling_rate)
             dispatcher.send(signal='bands', sender=self.channel_id, data=frequency_bands) #TODO: Move to a locator.
 
 class Key(object):
