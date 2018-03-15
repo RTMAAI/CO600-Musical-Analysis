@@ -213,8 +213,10 @@ class SignalPlotter(threading.Thread):
             new_data = self.queue.get()
             signal = append(signal, new_data)
             signal = signal[len(new_data):]
-            signal_max = max(abs(signal)) * (1 + Y_PADDING) # Pad Y maximum/minimum so line doesn't hit top of graph.
-            y_max = signal_max if signal_max > min_power else min_power # If mainly noise in signal use min_power as graph max/min.
+            # Pad Y maximum/minimum so line doesn't hit top of graph.
+            signal_max = max(abs(signal)) * (1 + Y_PADDING)
+            # If mainly noise in signal use min_power as graph max/min.
+            y_max = signal_max if signal_max > min_power else min_power
             self.plot.set_ylim([-y_max, y_max])
             self.line.set_ydata(resample(signal, 1024 // DOWNSAMPLE_RATE))
 
@@ -297,7 +299,8 @@ class Debugger(tk.Tk):
 
     def changetrack(self):
         self.is_live = False
-        self.track = tk.filedialog.askopenfilename(initialdir = "/", title = "Select track", filetypes = (("wave files","*.wav"),("all files","*.*")))
+        self.track = tk.filedialog.askopenfilename(initialdir = "/", title = "Select track",
+                                                   filetypes = (("wave files","*.wav"),("all files","*.*")))
         if self.track :
             self.listener.set_source(self.track)
 

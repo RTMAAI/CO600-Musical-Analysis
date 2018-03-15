@@ -49,7 +49,10 @@ class Config(object):
                 "bands": True
             },
 
-            "frequency_resolution": 20480, # Size of sample to take before performing pitch tasks (Higher = More accurate, but more computationally expensive.)
+            # Size of sample to take before performing pitch tasks
+            # (Higher = More accurate, but more computationally expensive.)
+            "frequency_resolution": 20480,
+
             "pitch_algorithm": "auto-correlation",
             "frames_per_sample": 1024,
         }

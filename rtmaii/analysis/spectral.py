@@ -77,6 +77,8 @@ def spectrum(signal: list,
                 In the form of {'numerator': list, 'denominator': list}
     """
     windowed_signal = signal * window
-    filtered_signal = windowed_signal if bp_filter is None else band_pass_filter(windowed_signal, bp_filter['numerator'], bp_filter['denominator'])
+    filtered_signal = windowed_signal if bp_filter is None else band_pass_filter(windowed_signal,
+                                                                                 bp_filter['numerator'],
+                                                                                 bp_filter['denominator'])
     frequency_spectrum = spectrum_transform(filtered_signal)
     return frequency_spectrum
