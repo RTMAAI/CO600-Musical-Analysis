@@ -1,10 +1,13 @@
+""" HIERARCHY MODULE
+
+"""
 from rtmaii.coordinator import Coordinator
 from rtmaii.worker import Worker
 
-# TODO: Allow for restructuring of existing hierarchy.
-# NOTE: I don't particulary like the way a worker/coordinator has their type added to their class name i.e. BPMCoordinator, these might change to just BPM etc.
-
 class Hierarchy(object):
+    """ Builds a hierarchy for the musical analysis tasks.
+
+    """
     def __init__(self, config):
         self.config = config
         self.root = {
@@ -15,9 +18,9 @@ class Hierarchy(object):
         self.reset_hierarchy()
 
     def reset_hierarchy(self):
+        """ Reset hierarchy back to library default tasks based on config settings. """
         pitch_algorithm = self.config.get_config('pitch_algorithm')
         sampling_rate = self.config.get_config('sampling_rate')
-        bands_of_interest = self.config.get_config('bands')
         tasks = self.config.get_config('tasks') # The tasks that have been enabled.
 
         for channel in range(self.channels):
@@ -28,12 +31,14 @@ class Hierarchy(object):
 
         self.add_node('FrequencyCoordinator', **{'config': self.config, 'peer_list': []})
         self.add_node('SpectrumCoordinator', 'FrequencyCoordinator', **{'config': self.config, 'peer_list': []})
+        self.add_node('BPMCoordinator', **{'config': self.config, 'peer_list': []})
+        self.add_node('FFTSCoordinator', **{'config': self.config, 'peer_list': []})
+        self.add_node('SpectrogramCoordinator', 'FFTSCoordinator',  **{'config': self.config, 'peer_list': [], 'sampling_rate': sampling_rate})
 
         if tasks['beat']:
-            self.add_node('BPMCoordinator', **{'config': self.config, 'peer_list': []})
             self.add_node('BPMWorker', 'BPMCoordinator', **{'sampling_rate' : sampling_rate})
         if tasks['bands']:
-            self.add_node('BandsWorker', 'SpectrumCoordinator', **{'bands_of_interest' : bands_of_interest, 'sampling_rate' : sampling_rate})
+            self.add_node('BandsWorker', 'SpectrumCoordinator', **{'bands_of_interest' : self.config.get_config('bands'), 'sampling_rate' : sampling_rate})
         if tasks['pitch']:
             if pitch_algorithm == 'hps':
                 self.add_node('HPSWorker', 'SpectrumCoordinator', **{'sampling_rate' : sampling_rate})
@@ -44,9 +49,14 @@ class Hierarchy(object):
             else:
                 self.add_node('AutoCorrelationWorker', 'FrequencyCoordinator', **{'sampling_rate' : sampling_rate})
         if tasks['genre']:
-            self.add_node('FFTSCoordinator', **{'config': self.config, 'peer_list': []})
-            self.add_node('SpectrogramCoordinator', 'FFTSCoordinator',  **{'config': self.config, 'peer_list': [], 'sampling_rate': sampling_rate})
             self.add_node('GenrePredictorWorker', 'SpectrogramCoordinator', **{'sampling_rate' : sampling_rate})
+
+        for channel in self.root['channels']:
+            for node_name, node in channel.items():
+                if hasattr(node, 'peer_list'):
+                    if len(node['peer_list']) <= 0:
+                        print(node_name)
+                        self.remove_node(node_name)
 
     def update_nodes(self):
         """ Propagate updated config settings to nodes of Hierarchy. """
@@ -55,19 +65,20 @@ class Hierarchy(object):
             for peer in channel:
                 peer['thread'].update_config()
 
-    def add_node(self, node_name, parent = None, **kwargs):
+    def add_node(self, node_name, parent=None, **kwargs):
         """ Add a new node to the hierarchy on each channel tree. """
         for channel in range(self.channels):
+            channel_hierarchy = self.root['channels'][channel]
             kwargs['channel_id'] = channel
-            self.root['channels'][channel][node_name] = {
+            channel_hierarchy[node_name] = {
                 'thread': new_node(node_name, kwargs)
             }
             if 'peer_list' in kwargs:
-                self.root['channels'][channel][node_name]['peer_list'] = kwargs['peer_list']
+                channel_hierarchy[node_name]['peer_list'] = kwargs['peer_list']
             if parent:
-                self.root['channels'][channel][parent]['peer_list'].append(self.root['channels'][channel][node_name]['thread'])
+                channel_hierarchy[parent]['peer_list'].append(channel_hierarchy[node_name]['thread'])
             else:
-                self.root['channels'][channel]['root_peers'].append(self.root['channels'][channel][node_name]['thread'])
+                channel_hierarchy['root_peers'].append(channel_hierarchy[node_name]['thread'])
 
     def remove_node(self, node_name):
         """ Remove a node from the hierarchy tasks. """
@@ -78,14 +89,18 @@ class Hierarchy(object):
                     self.remove_node(peer.__name__)
 
     def put(self, data):
+        """ Push data to root node of hierarchy. """
         self.root['thread'].queue.put(data)
 
 COORDINATORS = {subclass.__name__ : subclass for subclass in Coordinator.__subclasses__()}
 WORKERS = {subclass.__name__ : subclass for subclass in Worker.__subclasses__()}
 NODES = {**COORDINATORS, **WORKERS}
 
-def new_node(type, kwargs):
-    if type in NODES:
-        return NODES[type](**kwargs)
+def new_node(node_class, kwargs):
+    """ Create a new node of the given type.
+        The node must inherit from either a worker or coordinator.
+    """
+    if node_class in NODES:
+        return NODES[node_class](**kwargs)
     else:
-        raise ValueError("Class not found.")
+        raise ValueError("{} Class not found.".format(node_class))
