@@ -47,12 +47,6 @@ def beatdetection(data):
 def energydetect(data):
         return False
 
-#brokenbrokenbroken
-def gettimedif():
-    if(timedif!=0):
-        #this needs to be seconds
-        return timedif
-
 def bpmsimple(beatlist, hbeatarray):
     """
     computes bpm based on low-passed and high-passed beat times
