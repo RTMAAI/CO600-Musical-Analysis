@@ -60,10 +60,11 @@ class Hierarchy(object):
 
     def update_nodes(self):
         """ Propagate updated config settings to nodes of Hierarchy. """
-        self.root['thread'].update_config()
+        self.root['thread'].update_attributes()
         for channel in range(self.channels):
             for peer in channel:
-                peer['thread'].update_config()
+                pass
+                # peer['thread'].update_attributes() Need to add an update method to workers/coordinators.
 
     def add_node(self, node_name, parent=None, **kwargs):
         """ Add a new node to the hierarchy on each channel tree. """
