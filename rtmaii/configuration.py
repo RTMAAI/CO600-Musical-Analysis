@@ -46,9 +46,10 @@ class Config(object):
                 "pitch": True,
                 "genre": True,
                 "beat": True,
+                "export_spectrograms" : True,
                 "bands": True
             },
-
+            
             "frequency_resolution": 20480, # Size of sample to take before performing pitch tasks (Higher = More accurate, but more computationally expensive.)
             "pitch_algorithm": "auto-correlation",
             "frames_per_sample": 1024,

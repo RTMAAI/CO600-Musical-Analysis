@@ -6,8 +6,18 @@ import logging
 from rtmaii.workqueue import WorkQueue
 from rtmaii.analysis import spectral, bpm
 from pydispatch import dispatcher
-from numpy import mean, int16, pad, hanning, column_stack, absolute, power, log10, arange
+from numpy import mean, int16, pad, hanning, column_stack, absolute, power, log10, arange, sum
 from numpy.fft import fft as numpyFFT
+from numpy.linalg import norm
+
+def normalize(v):
+    Norm = norm(v)
+    #print(norm)
+    if Norm == 0: 
+       return v
+    return v / Norm
+
+
 
 LOGGER = logging.getLogger()
 class Coordinator(threading.Thread):
@@ -156,6 +166,7 @@ class FFTSCoordinator(Coordinator):
             fft = self.queue.get()
             if fft is not None:
                 fft = numpyFFT(fft * self.window)[:1024//2]
+                fft = normalize(fft)
                 #print("bar")
                 if fft is None:
                     self.message_peers(None)
@@ -198,9 +209,8 @@ class SpectrogramCoordinator(Coordinator):
             self.window = 1024
             
             ffts = column_stack(ffts)
-            print(ffts.shape)
-            ffts = absolute(ffts) * 2.0 / self.window
-            ffts = ffts / power(2.0, 8* 2 - 1)
+            ffts = absolute(ffts) * 2.0 / sum(self.window)
+            ffts = ffts / power(2.0, 8* 0)
             ffts = (20 * log10(ffts)).clip(-120)
 
             time = arange(0, ffts.shape[1], dtype=float) * self.window / self.sampling_rate / 2

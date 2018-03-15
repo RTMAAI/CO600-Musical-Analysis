@@ -39,7 +39,7 @@ def beatdetection(data):
         if(timelast!=0):
             timedif = currenttime - timelast
         timelast = currenttime
-        LOGGER.info('BEAT!')
+        #LOGGER.info('BEAT!')
         return True
     else:
         return False
