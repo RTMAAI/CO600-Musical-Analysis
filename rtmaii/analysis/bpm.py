@@ -44,6 +44,19 @@ def beatdetection(data):
     else:
         return False
 
+def beatdetectionnew(data, threshold):
+    """
+    Takes data as input and returns true for when a beat occurs
+    :param data: raw, high-pass or low-pass music info
+    :return: true or false depending on if there was a beat
+    """
+    amp = audioop.rms(data, 2)
+
+    if(amp >= threshold):
+        return amp
+    else:
+        return False
+
 def energydetect(data):
         return False
 
