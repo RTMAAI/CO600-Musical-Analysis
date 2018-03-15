@@ -1,9 +1,11 @@
 """ HIERARCHY MODULE
 
 """
+import logging
 from rtmaii.coordinator import Coordinator
 from rtmaii.worker import Worker
 
+LOGGER = logging.getLogger()
 class Hierarchy(object):
     """ Builds a hierarchy for the musical analysis tasks.
 
@@ -51,18 +53,17 @@ class Hierarchy(object):
         if tasks['genre']:
             self.add_node('GenrePredictorWorker', 'SpectrogramCoordinator', **{'sampling_rate' : sampling_rate})
 
-        for channel in self.root['channels']:
-            for node_name, node in channel.items():
-                if hasattr(node, 'peer_list'):
-                    if len(node['peer_list']) <= 0:
-                        print(node_name)
-                        self.remove_node(node_name)
+        for node_name, node in self.root['channels'][0].items(): # Only need to remove from one side as function will clear both.
+            if 'peer_list' in node:
+                if len(node['peer_list']) <= 0:
+                    self.remove_node(node_name)
 
     def update_nodes(self):
         """ Propagate updated config settings to nodes of Hierarchy. """
         self.root['thread'].update_attributes()
+        LOGGER.debug('Updating hierarchy nodes.')
         for channel in range(self.channels):
-            for peer in channel:
+            for peer in channel.items():
                 pass
                 # peer['thread'].update_attributes() Need to add an update method to workers/coordinators.
 
@@ -85,22 +86,24 @@ class Hierarchy(object):
         """ Remove a node from the hierarchy tasks. """
         for channel in range(self.channels):
             node = self.root['channels'][channel][node_name]
+            LOGGER.debug('Removing node %s from channel hierarchy %d', node_name, channel)
             if hasattr(node, 'peer_list'):
                 for peer in node['peer_list']:
+                    LOGGER.debug('Removing child node %s of %s from channel hierarchy %d', peer, node_name, channel)
                     self.remove_node(peer.__name__)
 
     def put(self, data):
         """ Push data to root node of hierarchy. """
         self.root['thread'].queue.put(data)
 
-COORDINATORS = {subclass.__name__ : subclass for subclass in Coordinator.__subclasses__()}
-WORKERS = {subclass.__name__ : subclass for subclass in Worker.__subclasses__()}
-NODES = {**COORDINATORS, **WORKERS}
 
 def new_node(node_class, kwargs):
     """ Create a new node of the given type.
         The node must inherit from either a worker or coordinator.
     """
+    COORDINATORS = {subclass.__name__ : subclass for subclass in Coordinator.__subclasses__()}
+    WORKERS = {subclass.__name__ : subclass for subclass in Worker.__subclasses__()}
+    NODES = {**COORDINATORS, **WORKERS}
     if node_class in NODES:
         return NODES[node_class](**kwargs)
     else:
