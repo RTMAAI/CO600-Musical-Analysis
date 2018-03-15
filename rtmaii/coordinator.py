@@ -3,6 +3,7 @@
 """
 import threading
 import logging
+import time
 from rtmaii.workqueue import WorkQueue
 from rtmaii.analysis import spectral, bpm
 from pydispatch import dispatcher
@@ -243,13 +244,16 @@ class BPMCoordinator(Coordinator):
     def run(self):
         beats = [] # List of beat intervals
         hbeats = [] # placeholder
+        timelast = time.clock()
         #bpmestimate = 0
         while True:
             data = self.queue.get()
             beat = bpm.beatdetection(data)
             if(beat == True):
-                timedif = bpm.gettimedif()
-                beats.append(timedif)
+                #timedif = bpm.gettimedif()
+                beattime = time.clock()
+                beats.append(beattime - timelast)
+                timelast = beattime
                 beatdata = [beats, hbeats]
                 self.message_peers(beatdata)
 

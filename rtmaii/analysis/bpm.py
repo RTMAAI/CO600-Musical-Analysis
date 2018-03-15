@@ -39,7 +39,7 @@ def beatdetection(data):
         if(timelast!=0):
             timedif = currenttime - timelast
         timelast = currenttime
-        LOGGER.info('BEAT!')
+        #LOGGER.info('BEAT!')
         return True
     else:
         return False
@@ -47,24 +47,30 @@ def beatdetection(data):
 def energydetect(data):
         return False
 
+#brokenbrokenbroken
 def gettimedif():
     if(timedif!=0):
         #this needs to be seconds
         return timedif
 
-def bpmsimple(beatarray, hbeatarray):
+def bpmsimple(beatlist, hbeatarray):
     """
     computes bpm based on low-passed and high-passed beat times
     :param beatarray: array of low-passed beats
     :param hbeatarray: array of high-passed beats
     :return: approximate bpm
     """
-    if (len(beatarray)>=2):
+    length = len(beatlist)
+    if (length>=2):
         total=0
-        for dif in beatarray:
-            total += dif
-        avg = total/len(beatarray)
+        for dif in beatlist:
+            adddif = dif
+            total = total + adddif
+            #LOGGER.info(dif)
+
+        avg = total/length
         return 60/avg
+        return 38
     else:
         return 39
 
