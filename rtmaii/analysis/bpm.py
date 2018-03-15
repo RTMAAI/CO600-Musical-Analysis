@@ -91,7 +91,7 @@ def cleanbeatarray(beatlist):
     :param beatarray: A list of beat time differences
     :return: beatarray: A list of beat time differences with validated info
     """
-    LOGGER.info('cleanhere')
+    #LOGGER.info('cleanhere')
     newlist = []
     for dif in beatlist:
         if(dif>0.18 and dif<=2):
@@ -108,7 +108,7 @@ def cleanbeatarrayalt(beatlist):
     :param beatarray: A list of beat time differences
     :return: beatarray: A list of beat time differences with validated info
     """
-    LOGGER.info('cleanhere')
+    #LOGGER.info('cleanhere')
     for dif in beatlist:
         if(dif<=0.18 or dif>2):
             beatlist.remove(dif)
