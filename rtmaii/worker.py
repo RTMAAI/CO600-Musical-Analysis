@@ -191,6 +191,7 @@ class BPMWorker(Worker):
             data = self.queue.get()
             beats = data[0]
             hbeats = data[1]
+            beats = bpm.cleanbeatarray(beats)
             bpmestimate = bpm.bpmsimple(beats,hbeats)
 
             dispatcher.send(signal='bpm', sender=self.channel_id, data=bpmestimate)
