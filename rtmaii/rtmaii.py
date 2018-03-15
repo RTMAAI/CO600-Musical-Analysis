@@ -3,7 +3,7 @@
 '''
 import wave
 import logging
-from rtmaii.hierarchy import new_hierarchy
+from rtmaii.hierarchy import Hierarchy
 from rtmaii.configuration import Config
 from numpy import int16, frombuffer
 from pydispatch import dispatcher
@@ -51,14 +51,14 @@ class Rtmaii(object):
         self.audio = pyaudio.PyAudio()
         self.set_source(track)
         self.set_callbacks(callbacks)
-        self.root = new_hierarchy(self.config)
+        self.root = Hierarchy(self.config)
         SH.setLevel(mode)
         LOGGER.debug('RTMAAI Initiliazed')
 
     def __stream_callback__(self, in_data, frame_count, time_info, status):
         """ Convert raw stream data into signal bin and put data on the coordinator's queue. """
         data = self.waveform.readframes(frame_count) if hasattr(self, 'waveform') else in_data
-        self.root.queue.put(frombuffer(data, int16))
+        self.root.put(frombuffer(data, int16))
         return (data, pyaudio.paContinue)
 
     def is_active(self):
@@ -97,6 +97,8 @@ class Rtmaii(object):
     def set_config(self, **kwargs: dict):
         """ Change configuration options, i.e. what bands should be look at. """
         self.config.set_config(**kwargs)
+        if hasattr(self, 'root'):
+            self.root.update_nodes()
 
     def set_source(self, source: object = None, **kwargs: dict):
         """ Change the analyzed source. By default this sets the stream to use your default input device with it's default configuration.
@@ -157,7 +159,7 @@ class Rtmaii(object):
         pyaudio_kwargs['frames_per_buffer'] = self.config.get_config('frames_per_sample')
         self.config.set_source(pyaudio_kwargs)
         if hasattr(self, 'root'):
-            self.root.update_attributes()
+            self.root.update_nodes()
 
     def get_input_devices(self):
         """ Lists the names and IDs of the input devices on your system. """
