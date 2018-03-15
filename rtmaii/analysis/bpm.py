@@ -44,8 +44,12 @@ def beatdetection(data):
     else:
         return False
 
+def energydetect(data):
+        return False
+
 def gettimedif():
     if(timedif!=0):
+        #this needs to be seconds
         return timedif
 
 def bpmsimple(beatarray, hbeatarray):
@@ -55,7 +59,7 @@ def bpmsimple(beatarray, hbeatarray):
     :param hbeatarray: array of high-passed beats
     :return: approximate bpm
     """
-    if (len(beatarray)>=4):
+    if (len(beatarray)>=2):
         total=0
         for dif in beatarray:
             total += dif
@@ -64,15 +68,55 @@ def bpmsimple(beatarray, hbeatarray):
     else:
         return 39
 
-def cleanbeatarray(beatarray):
+def cleanbeatarray(beatlist):
     """
-    placeholder
-    validates the data from the beat array and discards outliers and wrong results
-    :param beatarray: the array of beats
-    :return:
+    Validates the data from the beat array and discards outliers and wrong results
+    including 0, negative entries or timedif entries higher than 2 seconds (sub-30 bpm
+    are unrealistic and the threshold needs to be somewhere)
+
+
+    :param beatarray: A list of beat time differences
+    :return: beatarray: A list of beat time differences with validated info
     """
     LOGGER.info('cleanhere')
-    return beatarray
+    newlist = []
+    for dif in beatlist:
+        if(dif>0 and dif<=2):
+            newlist.append(dif)
+    return newlist
+
+def cleanbeatarrayalt(beatlist):
+    """
+    Validates the data from the beat array and discards outliers and wrong results
+    including 0, negative entries or timedif entries higher than 2 seconds (sub-30 bpm
+    are unrealistic and the threshold needs to be somewhere)
+
+
+    :param beatarray: A list of beat time differences
+    :return: beatarray: A list of beat time differences with validated info
+    """
+    LOGGER.info('cleanhere')
+    for dif in beatlist:
+        if(dif<=0 or dif>2):
+            beatlist.remove(dif)
+    return beatlist
+
+
+def limitsize(beatlist, size):
+    """
+    This method takes a list as an input and shortens it to a desirable length
+
+    :param beatlist: A list of beat time differences
+    :param size: an int describing the target size of the list
+    :return: newlist: a list of beat time differences of the length given in the size int
+    """
+    LOGGER.info('limitsize called')
+    oldentries = len(beatlist - size)
+    if(oldentries>0):
+        newlist = beatlist[oldentries:]
+        return newlist
+    else:
+        return beatlist
 
 def lowpass(data):
     """
