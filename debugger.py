@@ -177,7 +177,7 @@ class Listener(threading.Thread):
 class SpectrogramCompression(threading.Thread):
     """ Compresses the data in the spectrogram, making plotting faster. """
     def __init__(self):
-        self.queue = WorkQueue()
+        self.queue = WorkQueue(1)
         threading.Thread.__init__(self, args=(), kwargs=None)
         self.compressed_data = [zeros(64), zeros(64), zeros([64, 64])]
         self.setDaemon(True)
@@ -200,7 +200,7 @@ class SignalPlotter(threading.Thread):
     def __init__(self, plot, line):
         self.plot = plot
         self.line = line
-        self.queue = WorkQueue()
+        self.queue = WorkQueue(1)
 
         threading.Thread.__init__(self, args=(), kwargs=None)
         self.setDaemon(True)
@@ -223,7 +223,7 @@ class SpectrumPlotter(threading.Thread):
     def __init__(self, plot, line):
         self.plot = plot
         self.line = line
-        self.queue = WorkQueue()
+        self.queue = WorkQueue(1)
 
         threading.Thread.__init__(self, args=(), kwargs=None)
         self.setDaemon(True)
@@ -237,15 +237,17 @@ class SpectrumPlotter(threading.Thread):
             self.line.set_ydata(downsampled_spectrum)
 
 class LabelHandler(threading.Thread):
+    """ Label handler responsible for updating labels, """
     def __init__(self):
         self.labels = {}
-        self.queue = WorkQueue()
+        self.queue = WorkQueue(5)
 
         threading.Thread.__init__(self, args=(), kwargs=None)
         self.setDaemon(True)
         self.start()
 
     def add_label(self, variable, key):
+        """ Add a label for the thread to update. """
         self.labels[key] = variable
 
     def run(self):
@@ -264,7 +266,7 @@ class LabelHandler(threading.Thread):
 
 class BeatHandler(threading.Thread):
     def __init__(self, beat):
-        self.queue = WorkQueue()
+        self.queue = WorkQueue(1)
         self.beat = beat
         self.beat_cooldown = time.time()
         threading.Thread.__init__(self, args=(), kwargs=None)
