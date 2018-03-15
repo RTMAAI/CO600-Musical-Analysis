@@ -1,6 +1,16 @@
 """ BASIC USER IMPLEMENTATION """
 import time
 from rtmaii import rtmaii # Replace with just import rtmaii in actual implementation.
+from rtmaii.worker import Worker
+
+class NewWorker(Worker):
+    def __init__(self, channel_id: int):
+        Worker.__init__(self, channel_id)
+
+    def run(self):
+        data = self.queue.get()
+        print("I'm a new worker running on the library.")
+
 
 def main():
     def frequency_callback(data):
@@ -13,6 +23,8 @@ def main():
                               {'function': spectrogram_callback, 'signal':'spectrogram'}],
                               track=r'./test_data/spectogramTest.wav',
                               mode='DEBUG')
+
+    analyser.add_node('NewWorker')
 
     analyser.start()
 
