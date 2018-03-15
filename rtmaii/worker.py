@@ -50,17 +50,17 @@ class GenrePredictorWorker(Worker):
             spectrogram = self.queue.get()
             spectrodata = spectrogram[2]
 
-            print(spectrodata[0])
+            #print(spectrodata[0])
 
             testPhoto = array(spectrodata)
             testPhoto = testPhoto.astype('float32')
             testPhoto = reshape(testPhoto, (1,128,128,1))
-            predictions = self.predict_fnpredict_fn({'x': testPhoto})
-            print(predictions)
+            predictions = self.predict_fn({'x': testPhoto})
+            #print(predictions)
             predictionClass = predictions['classes'][0]
-            print(predictionClass)
+            #print(predictionClass)
             prediction = self.dict[predictionClass]
-            print(predictions['probabilities'])
+            #print(predictions['probabilities'])
 
             export_data = [spectrodata,prediction]
 

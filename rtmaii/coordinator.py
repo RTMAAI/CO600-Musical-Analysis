@@ -166,6 +166,7 @@ class FFTSCoordinator(Coordinator):
             fft = self.queue.get()
             if fft is not None:
                 fft = numpyFFT(fft * self.window)[:1024//2]
+
                 fft = normalize(fft)
                 #print("bar")
                 if fft is None:
@@ -207,11 +208,11 @@ class SpectrogramCoordinator(Coordinator):
                 break # No more data so cleanup and end thread.
             
             self.window = 1024
-            
             ffts = column_stack(ffts)
             ffts = absolute(ffts) * 2.0 / sum(self.window)
             ffts = ffts / power(2.0, 8* 0)
             ffts = (20 * log10(ffts)).clip(-120)
+            print(ffts)
 
             time = arange(0, ffts.shape[1], dtype=float) * self.window / self.sampling_rate / 2
             frequecy = arange(0, self.window / 2, dtype=float) * self.sampling_rate / self.window
@@ -222,19 +223,32 @@ class SpectrogramCoordinator(Coordinator):
             for i in range(0, len(ffts), 4):
                 if i + 4 > len(ffts):
                     break
+                
+                meanFreq = (frequecy[i] + frequecy[i+1] + frequecy[i + 2] + frequecy[i + 3])
+                meanffts = (ffts[i] + ffts[i+1] + ffts[i+2] + ffts[i+3])/4
+                smallerFFTS.append(meanffts)
+                smallerF.append(meanFreq)
+                #print(meanffts)
 
-                meanF = 0
-                meanFFTS = 0
+            
 
-                for j in range(i , i + 3):
-                    meanF = meanF + frequecy[j] 
-                    meanFFTS = meanFFTS + ffts[j]
+            # for i in range(0, len(ffts), 4):
+            #     if i + 4 > len(ffts):
+            #         break
 
-                meanF = meanF + frequecy[j]/4 
-                meanFFTS = meanFFTS + ffts[j]/4
+            #     meanF = 0
+            #     meanFFTS = 0
 
-                smallerF.append(meanF)
-                smallerFFTS.append(meanFFTS)
+            #     for j in range(i , i + 3):
+            #         meanF = meanF + frequecy[j] 
+            #         meanFFTS = meanFFTS + ffts[j]
+
+            #     meanF = meanF + frequecy[j]/4 
+            #     meanFFTS = meanFFTS + ffts[j]/4
+            #     #print(meanFFTS)
+
+            #     smallerF.append(meanF)
+            #     smallerFFTS.append(meanFFTS)
 
             spectroData = [time, smallerF, smallerFFTS]
             self.message_peers(spectroData)
