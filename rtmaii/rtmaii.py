@@ -177,3 +177,12 @@ class Rtmaii(object):
         """
         for callback in callbacks:
             dispatcher.connect(callback['function'], callback['signal'], sender=dispatcher.Any)
+
+    def add_node(self, node_name, parent=None, **kwargs):
+        self.root.add_node(node_name, parent, **kwargs)
+
+    def remove_node(self, node_name):
+        self.root.remove_node(node_name)
+
+    def reset_hierarchy(self):
+        self.root.reset_hierarchy()
