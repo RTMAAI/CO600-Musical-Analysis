@@ -87,7 +87,7 @@ def cleanbeatarray(beatlist):
     LOGGER.info('cleanhere')
     newlist = []
     for dif in beatlist:
-        if(dif>0 and dif<=2):
+        if(dif>0.18 and dif<=2):
             newlist.append(dif)
     return newlist
 
@@ -103,7 +103,7 @@ def cleanbeatarrayalt(beatlist):
     """
     LOGGER.info('cleanhere')
     for dif in beatlist:
-        if(dif<=0 or dif>2):
+        if(dif<=0.18 or dif>2):
             beatlist.remove(dif)
     return beatlist
 
