@@ -43,6 +43,7 @@ class GenrePredictorWorker(Worker):
         self.dict[1] = 'Folk'
         self.dict[2] = 'Hip-Hop'
         self.dict[0] = 'Rock'
+        self.dict[3] = 'Electric'
     
     def run(self):
         
@@ -54,17 +55,22 @@ class GenrePredictorWorker(Worker):
 
             testPhoto = array(spectrodata)
             testPhoto = testPhoto.astype('float32')
-            testPhoto = reshape(testPhoto, (1,128,128,1))
-            predictions = self.predict_fn({'x': testPhoto})
-            #print(predictions)
-            predictionClass = predictions['classes'][0]
-            #print(predictionClass)
-            prediction = self.dict[predictionClass]
-            #print(predictions['probabilities'])
 
-            export_data = [spectrodata,prediction]
-
-            self.exporter.queue.put(export_data)
+            prediction = "N/A"
+            
+            try:
+                testPhoto = reshape(testPhoto, (1,128,128,1))
+                predictions = self.predict_fn({'x': testPhoto})
+                #print(predictions)
+                predictionClass = predictions['classes'][0]
+                print(predictionClass)
+                prediction = self.dict[predictionClass]
+                print(predictions['probabilities'])
+                export_data = [spectrodata,prediction]
+                self.exporter.queue.put(export_data)
+            except:
+                pass
+            
             spectrogram = []
 
 

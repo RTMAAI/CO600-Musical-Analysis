@@ -212,7 +212,7 @@ class SpectrogramCoordinator(Coordinator):
             ffts = absolute(ffts) * 2.0 / sum(self.window)
             ffts = ffts / power(2.0, 8* 0)
             ffts = (20 * log10(ffts)).clip(-120)
-            print(ffts)
+            #print(ffts)
 
             time = arange(0, ffts.shape[1], dtype=float) * self.window / self.sampling_rate / 2
             frequecy = arange(0, self.window / 2, dtype=float) * self.sampling_rate / self.window

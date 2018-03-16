@@ -27,6 +27,7 @@ class Circle(object):
         self.speedY = random.randint(1, 2)
         self.spring = 0.05
         self.colour = (0,0,0)
+        self.bkgColour = (255,255,255)
 
 
         self.rect =  pygame.rect.Rect((self.x, self.y, self.width, self.height))
@@ -59,8 +60,11 @@ class Circle(object):
 
         self.rect.move_ip(self.speedX, self.speedY)
 
-    def update(self, boxColour):
+    def update(self, screen, boxColour):
         self.colour = boxColour
+        #screen.fill(backgroundColour)
+
+
         #pitch = listener.get_item('key')
         #print(pitch)
 
@@ -69,7 +73,7 @@ class Circle(object):
         #genre = listener.get_item('spectogramData')[3]
         
 
-    def draw(self, surface):
+    def draw(self, surface, backgroundColour):
         pygame.draw.rect(screen, self.colour, self.rect)
 
 
@@ -82,7 +86,7 @@ class Listener(threading.Thread):
         self.state = {
             'pitch': 0,
             'key': "A",
-            'Genre': "N/A",
+            'genre': "N/A",
             'spectogramData':numpy.zeros([128,128,128])}
 
         callbacks = []
@@ -144,10 +148,11 @@ pitchDict = {'C' : (202,21,116),
                     "A#/Bb" : (76,71,140), 
                     "B" : (185,207,57)}
 
-genreDict = {'0' : (10,21,116),
-                    '1' : (40,70,160),
-                    '2' : (130,160,182),
-                    '3' : (172,255,1)}
+genreDict = {'Rock' : (10,21,116),
+                    'Hip-Hop' : (40,70,160),
+                    'Folk' : (130,160,182),
+                    'Electric' : (172,255,1),
+                    'N/A': (255,255,255)}
 
 
 for i in range(0, circleNumbers):
@@ -163,16 +168,21 @@ while running:
             break
             running = False
 
-    screen.fill((255, 255, 255))
+    #screen.fill((255, 255, 255))
 
     pitch = listener.get_item('key')
     newColour = pitchDict[pitch]
+    genre = listener.get_item('genre')
+    newBKGColour = genreDict[genre]
+
+    screen.fill(newBKGColour)
+    #pygame.display.update()
 
 
     for circle in circles:
         
-        circle.update(newColour)
-        circle.draw(screen)
+        circle.draw(screen, newBKGColour)
+        circle.update(screen, newColour)
         circle.untangle()
         circle.collision()
         circle.move()
