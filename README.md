@@ -99,6 +99,32 @@ while analyser.is_active():
 
 For detailed information on how to develop your own analysis task, please see our Hierarchy section.
 
+### Tasks
+
+Our library offers a number of built in tasks, each analysing different aspects of a signal.
+
+#### Beat detection & BPM analysis
+
+If you need to detect when a beat has occured in a track or in live audio, you can enable our 'Beat' task.
+
+We also calculate an estimate of the BPM based on the time difference between each beat in a track.
+
+Task: ['Beat']
+Signal: ['Beat', 'BPM']
+
+#### Pitch & Note
+
+We analyse the fundamental frequency (Pitch) of each sample, generating an event containing the result in Hertz.
+
+Further to this, we also perform some small mathmetical equations to find the closest root note on a piano to the fundamental frequency.
+
+Task: ['Pitch']
+Signal: ['Pitch', 'Note']
+
+#### Genre
+
+#### Frequency band presence
+
 ### Config
 
 There are a variety of configuration options for the library that can help to tune performance and accuracy if correctly configured.
@@ -140,7 +166,7 @@ The merge channels setting controls whether analysis should be done against each
 There are multiple pitch detection methods available in the library, each with their own advantages in different environments.
 
 ```python
-"pitch_algorithm": "auto-correlation" || "zc" || "hps" || "fft"
+"pitch_algorithm": "auto-correlation" | "zc" | "hps" | "fft"
 ```
 
 ##### Auto-Correlation
@@ -157,7 +183,7 @@ Estimate pitch using the autocorrelation method.
 * Requires an FFT which can be expensive.
 * Not great with inharmonics i.e. Guitars/Pianos.
 
-##### Zero-Crossings (zc):
+##### Zero-Crossings (ZC)
 
 Estimate pitch by simply counting the amount of zero-crossings.
 
@@ -170,7 +196,7 @@ Estimate pitch by simply counting the amount of zero-crossings.
 
 * If there is lots of noise or multiple frequencies doesn't work.
 
-##### Harmonic Product Spectrum (hps):
+##### Harmonic Product Spectrum (HPS)
 
 Estimate pitch using the harmonic product spectrum (HPS) Algorithm.
 
@@ -182,7 +208,7 @@ Estimate pitch using the harmonic product spectrum (HPS) Algorithm.
 
 * Slower than using a naive FFT peak detection and requires a fourier transform, which can be computationally expensive.
 
-##### FFT Peak (fft):
+##### FFT Peak (FFT)
 
 Estimate pitch by finding the peak bin value of the frequency spectrum.
 
