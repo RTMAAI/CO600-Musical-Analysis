@@ -15,7 +15,8 @@ class Worker(threading.Thread):
         **Attributes**:
             - `queue`: queue of data to be processed by a worker.
             - `channel_id`: id of channel being analysed.
-            - `queue_length`: length of queue structure. [Default = 1] Workers are greedy and will only consider the latest item.
+            - `queue_length`: length of queue structure. [Default = 1]
+                Workers are greedy and will only consider the latest item.
     """
     def __init__(self, channel_id: int, queue_length: int = 1):
         threading.Thread.__init__(self, args=(), kwargs=None)
@@ -208,6 +209,7 @@ class BPMWorker(Worker):
             data = self.queue.get()
             beats = data[0]
             hbeats = data[1]
+            beats = bpm.cleanbeatarray(beats)
             bpmestimate = bpm.bpmsimple(beats,hbeats)
 
             dispatcher.send(signal='bpm', sender=self.channel_id, data=bpmestimate)

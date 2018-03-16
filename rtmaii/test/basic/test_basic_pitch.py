@@ -11,9 +11,12 @@ from numpy import fft
 
 
 class TestSuite(unittest.TestCase):
-    '''
-        Test Suite for pitch module.
-    '''
+    """ Test Suite for pitch module.
+
+        The pitch methods are asserted to 2 decimal points, i.e. if the expected frequency was 5 then a frequency of 4.995+ would pass.
+
+        This is because the methods make use of interpolation, which gives a closer estimate to the frequency, which can move the decimal points down.
+    """
 
     def setUp(self):
         """ Perform setup of initial parameters. """
@@ -32,12 +35,12 @@ class TestSuite(unittest.TestCase):
 
     def test_basic_auto_correlation(self):
         """ Test that the zero-crossings algorithm can detect the correct pitch for a basic sine wave. """
-        self.assertEqual(pitch.pitch_from_auto_correlation(self.convolved_spectrum, self.sampling_rate), 5)
+        self.assertAlmostEqual(pitch.pitch_from_auto_correlation(self.convolved_spectrum, self.sampling_rate), 5, 2)
 
     def test_basic_FFT(self):
         """ Test that the zero-crossings algorithm can detect the correct pitch for a basic sine wave. """
-        self.assertEqual(pitch.pitch_from_fft(self.frequency_spectrum, self.sampling_rate), 5)
+        self.assertAlmostEqual(pitch.pitch_from_fft(self.frequency_spectrum, self.sampling_rate), 5, 2)
 
     def test_basic_HPS(self):
         """ Test that the zero-crossings algorithm can detect the correct pitch for a basic sine wave. """
-        self.assertEqual(pitch.pitch_from_hps(self.frequency_spectrum, self.sampling_rate, 8), 5)
+        self.assertAlmostEqual(pitch.pitch_from_hps(self.frequency_spectrum, self.sampling_rate, 8), 5, 2)

@@ -1,4 +1,7 @@
 """ WORK QUEUE MODULE
+
+    This module contains the Workqueue datastructure.
+    This is used by Workers and Coordinators to handle their processing queue.
 """
 from collections import deque
 from threading import Condition
@@ -7,8 +10,8 @@ class WorkQueue(object):
     """ Used by workers and coordinators to manage their internal work queue.
 
         **Attributes**:
-                - `condition`: Queue Lock, allowing threads to wait until they are notified.
-                - `queue`: Queue of data to be processed.
+            - `condition`: Queue Lock, allowing threads to wait until they are notified.
+            - `queue`: Queue of data to be processed.
     """
     def __init__(self, queue_length: int = None):
         self.condition = Condition()
@@ -39,7 +42,7 @@ class WorkQueue(object):
         """ Put item onto the work queue and send a notification that new item has been added.
 
             **Args**
-            - `data`: data to be added.
+                - `data`: data to be added.
         """
         with self.condition:
             self.queue.append(data)
