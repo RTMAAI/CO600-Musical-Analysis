@@ -1,5 +1,6 @@
 from rtmaii.coordinator import Coordinator
 from rtmaii.worker import Worker
+from rtmaii.exporter import Exporter
 
 # TODO: Clean up structure, classify
 # TODO: Allow for restructuring of existing hierarchy.
@@ -28,6 +29,7 @@ def new_hierarchy(config: object):
         spectrogram_list = []
         prediction_list = []
         bpm_list = []
+        exporter_list = []
 
         #--- LEAF NODES (WORKERS) - Any endpoints must be created first in order be attached to their peer at creation. --#
         if tasks['beat']:
@@ -45,7 +47,9 @@ def new_hierarchy(config: object):
                 freq_list.append(new_worker('AutoCorrelation', {'sampling_rate' : sampling_rate, 'channel_id': channel_id}))
 
         if tasks['genre']:
-            prediction_list.append(new_worker('GenrePredictor', {'sampling_rate' : sampling_rate, 'channel_id': channel_id}))
+            prediction_list.append(new_worker('GenrePredictor', {'sampling_rate' : sampling_rate, 'channel_id': channel_id, 'exporter': Exporter()}))
+            if tasks['export_spectrograms']:
+                    exporter_list.append(Exporter())
 
         if tasks['bands']:
             bands_of_interest = config.get_config('bands')

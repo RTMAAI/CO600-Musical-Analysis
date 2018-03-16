@@ -4,7 +4,7 @@ import logging
 from rtmaii.workqueue import WorkQueue
 from rtmaii.analysis import frequency, pitch, key, spectral, bpm
 from pydispatch import dispatcher
-from numpy import arange, mean, int16, resize, column_stack, power, log10, absolute, reshape
+from numpy import arange, mean, int16, resize, column_stack, power, log10, absolute, reshape, array 
 from matplotlib import pyplot as plt
 from tensorflow.contrib import predictor
 
@@ -35,28 +35,45 @@ class GenrePredictorWorker(Worker):
             - `sampling_rate`: sampling_rate of source being analysed.
             - `channel_id`: id of channel being analysed.
     """
-    def __init__(self, sampling_rate: int, channel_id: int):
+    def __init__(self, sampling_rate: int, channel_id: int,  exporter: object):
         Worker.__init__(self, channel_id)
         self.sampling_rate = sampling_rate
+        self.exporter = exporter
         self.predict_fn = predictor.from_saved_model(os.path.join(os.path.dirname(__file__), 'model'))
         self.dict = {}
-        self.dict[0] = 'Folk'
-        self.dict[1] = 'Hip-Hop'
-        self.dict[2] = 'Pop'
-        self.dict[3] = 'Rock'
+        self.dict[1] = 'Folk'
+        self.dict[2] = 'Hip-Hop'
+        self.dict[0] = 'Rock'
+        self.dict[3] = 'Electric'
     
     def run(self):
         
         while True:
-            spectrogram = self.queue.get()[2]
-            spectrogram = reshape(spectrogram, (1,128,128,1))
-            predictions = self.predict_fn({'x': spectrogram})
-            predictionClass = predictions['classes'][0]
-            print(predictionClass)
-            
-            prediction = self.dict[predictionClass]
+            spectrogram = self.queue.get()
+            spectrodata = spectrogram[2]
 
-            print(predictions['probabilities'])
+            #print(spectrodata[0])
+
+            testPhoto = array(spectrodata)
+            testPhoto = testPhoto.astype('float32')
+
+            prediction = "N/A"
+            
+            try:
+                testPhoto = reshape(testPhoto, (1,128,128,1))
+                predictions = self.predict_fn({'x': testPhoto})
+                #print(predictions)
+                predictionClass = predictions['classes'][0]
+                print(predictionClass)
+                prediction = self.dict[predictionClass]
+                print(predictions['probabilities'])
+                export_data = [spectrodata,prediction]
+                self.exporter.queue.put(export_data)
+            except:
+                pass
+            
+            spectrogram = []
+
 
             dispatcher.send(signal='genre', sender=self.channel_id, data=prediction)
 
