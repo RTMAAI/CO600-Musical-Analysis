@@ -1,3 +1,7 @@
+""" RTMA PROFILER/BENCHMARK
+
+    This module is a commandline script, which can run the library tasks in a sandboxed setting.
+"""
 from rtmaii import hierarchy, configuration
 from numpy import arange, sin, pi, ndarray, int16, frombuffer
 from pydispatch import dispatcher
@@ -5,7 +9,7 @@ import argparse
 import time
 import statistics
 
-parser = argparse.ArgumentParser(description="Benchmark each task based on configuration options used.")
+parser = argparse.ArgumentParser(description="Benchmark each task based on configuration options used in a sandbox simulation.")
 
 ## DEFAULTS ##
 BANDS = {
@@ -21,15 +25,19 @@ BANDS = {
 parser.add_argument("-b", "--bands", help="Frequency bands to analyse as a dictionary.", type=dict, default=BANDS)
 parser.add_argument("-s", "--samplingrate", help="Sampling rate in Hertz, i.e. 44100", type=int, default=44100)
 parser.add_argument("-f", "--framespersample", help="Frames per buffer sample, default is 1024", type=int, default=1024)
-parser.add_argument("-r", "--frequencyresolution", help="Frames per buffer sample, default is 1024", type=int, default=20480)
-parser.add_argument("-t", "--tasks", help="Frames per buffer sample, default is 1024", type=dict, default=1024)
-parser.add_argument("-p", "--pitchmethod", help="Frames per buffer sample, default is 1024", type=str, default='hps')
+parser.add_argument("-r", "--frequencyresolution", help="Resolution of signal before performing frequency analysis. Default is 20480.", type=int, default=20480)
+parser.add_argument("-t", "--tasks", help="Analysis Tasks to run.", type=dict, default=1024)
+parser.add_argument("-p", "--pitchmethod", help="Pitch method to use for analysis.", type=str, default='hps')
+parser.add_argument("-n", "--noruns", help="Number of runs to perform.", type=int, default=10)
+parser.add_argument("-c", "--channelcount", help="Number of channels to be analysed.", type=int, default=10)
 args = parser.parse_args()
 
 bands_of_interest = args.bands
 sampling_rate = args.samplingrate
 frames_per_sample = args.framespersample
 frequency_resolution = args.frequencyresolution
+no_runs = args.noruns
+pitch_algorithm = args.pitchmethod
 stub_wave = arange(frames_per_sample, dtype=int16).tobytes()
 stub_count = frequency_resolution // frames_per_sample
 
@@ -68,7 +76,7 @@ class Tracker(object):
             pass
 
 tr = Tracker()
-config = configuration.Config(**{'bands': bands_of_interest, 'frames_per_sample': frames_per_sample})
+config = configuration.Config(**{'bands': bands_of_interest, 'frames_per_sample': frames_per_sample, 'pitch_algorithm': pitch_algorithm})
 config.set_source({'channels': 1, 'rate': sampling_rate})
 root = hierarchy.new_hierarchy(config)
 dispatcher.connect(tr.set_switch, sender=0)
@@ -94,4 +102,4 @@ def profile_hierarchy(number):
         tr.store_times(start_time)
     tr.print_times()
 
-profile_hierarchy(10)
+profile_hierarchy(no_runs)
