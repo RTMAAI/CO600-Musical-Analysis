@@ -45,13 +45,13 @@ class Rtmaii(object):
                     pass #Keep main thread running.
             ```
     """
-    def __init__(self, callbacks: list, track: str = None, config: dict = {}, mode: str = 'ERROR'):
+    def __init__(self, callbacks: list, track: str = None, config: dict = {}, custom_tasks: list = [], mode: str = 'DEBUG'):
 
         self.config = Config(**config)
         self.audio = pyaudio.PyAudio()
         self.set_source(track)
         self.set_callbacks(callbacks)
-        self.root = Hierarchy(self.config)
+        self.root = Hierarchy(self.config, custom_tasks)
         SH.setLevel(mode)
         LOGGER.debug('RTMAAI Initiliazed')
 
