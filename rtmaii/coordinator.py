@@ -121,12 +121,11 @@ class FrequencyCoordinator(Coordinator):
     def run(self):
         """ Extend signal data to configured resolution before transmitting to peers. """
         while True:
-            while len(self.signal) < self.frequency_resolution:
-                self.signal.extend(self.queue.get_all())
             data = self.queue.get_all()
-            self.signal = self.signal[len(data):]
             self.signal.extend(data)
-            self.message_peers(self.signal)
+            self.signal = self.signal[-self.frequency_resolution:]
+            if len(self.signal) >= self.frequency_resolution:
+                self.message_peers(self.signal)
 
 class SpectrumCoordinator(Coordinator):
     """ Spectrum coordinator responsible for creating spectrum data and transmitting to dependants.
