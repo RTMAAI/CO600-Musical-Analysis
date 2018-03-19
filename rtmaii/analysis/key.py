@@ -45,5 +45,5 @@ def get_cents_off(frequency: float, midi_num: float) -> float:
             - `midi_num`: Midi num to compare against.
     """
     midi_note_frequency = 440 * (2 ** ((midi_num - 69) / 12))
-    cents_off = round(1200 * log(frequency / midi_note_frequency, 2))
+    cents_off = round(1200 * log(frequency / midi_note_frequency))
     return cents_off

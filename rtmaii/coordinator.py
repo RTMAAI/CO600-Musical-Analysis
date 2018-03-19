@@ -3,11 +3,22 @@
 """
 import threading
 import logging
+import time
 from rtmaii.workqueue import WorkQueue
 from rtmaii.analysis import spectral, bpm
 from pydispatch import dispatcher
-from numpy import mean, int16, pad, hanning, column_stack, absolute, power, log10, arange
+from numpy import mean, int16, pad, hanning, column_stack, absolute, power, log10, arange, sum
 from numpy.fft import fft as numpyFFT
+from numpy.linalg import norm
+
+def normalize(v):
+    Norm = norm(v)
+    #print(norm)
+    if Norm == 0: 
+       return v
+    return v / Norm
+
+
 
 LOGGER = logging.getLogger()
 class Coordinator(threading.Thread):
@@ -156,6 +167,8 @@ class FFTSCoordinator(Coordinator):
             fft = self.queue.get()
             if fft is not None:
                 fft = numpyFFT(fft * self.window)[:1024//2]
+
+                fft = normalize(fft)
                 #print("bar")
                 if fft is None:
                     self.message_peers(None)
@@ -196,12 +209,11 @@ class SpectrogramCoordinator(Coordinator):
                 break # No more data so cleanup and end thread.
             
             self.window = 1024
-            
             ffts = column_stack(ffts)
-            print(ffts.shape)
-            ffts = absolute(ffts) * 2.0 / self.window
-            ffts = ffts / power(2.0, 8* 2 - 1)
+            ffts = absolute(ffts) * 2.0 / sum(self.window)
+            ffts = ffts / power(2.0, 8* 0)
             ffts = (20 * log10(ffts)).clip(-120)
+            #print(ffts)
 
             time = arange(0, ffts.shape[1], dtype=float) * self.window / self.sampling_rate / 2
             frequecy = arange(0, self.window / 2, dtype=float) * self.sampling_rate / self.window
@@ -212,19 +224,32 @@ class SpectrogramCoordinator(Coordinator):
             for i in range(0, len(ffts), 4):
                 if i + 4 > len(ffts):
                     break
+                
+                meanFreq = (frequecy[i] + frequecy[i+1] + frequecy[i + 2] + frequecy[i + 3])
+                meanffts = (ffts[i] + ffts[i+1] + ffts[i+2] + ffts[i+3])/4
+                smallerFFTS.append(meanffts)
+                smallerF.append(meanFreq)
+                #print(meanffts)
 
-                meanF = 0
-                meanFFTS = 0
+            
 
-                for j in range(i , i + 3):
-                    meanF = meanF + frequecy[j] 
-                    meanFFTS = meanFFTS + ffts[j]
+            # for i in range(0, len(ffts), 4):
+            #     if i + 4 > len(ffts):
+            #         break
 
-                meanF = meanF + frequecy[j]/4 
-                meanFFTS = meanFFTS + ffts[j]/4
+            #     meanF = 0
+            #     meanFFTS = 0
 
-                smallerF.append(meanF)
-                smallerFFTS.append(meanFFTS)
+            #     for j in range(i , i + 3):
+            #         meanF = meanF + frequecy[j] 
+            #         meanFFTS = meanFFTS + ffts[j]
+
+            #     meanF = meanF + frequecy[j]/4 
+            #     meanFFTS = meanFFTS + ffts[j]/4
+            #     #print(meanFFTS)
+
+            #     smallerF.append(meanF)
+            #     smallerFFTS.append(meanFFTS)
 
             spectroData = [time, smallerF, smallerFFTS]
             self.message_peers(spectroData)
@@ -243,16 +268,23 @@ class BPMCoordinator(Coordinator):
     def run(self):
         beats = [] # List of beat intervals
         hbeats = [] # placeholder
-        #bpmestimate = 0
+        timelast = time.clock()
+        threshold = 0
+        descrate = 100
+
         while True:
+            threshold -= descrate
             data = self.queue.get()
-            beat = bpm.beatdetection(data)
-            if(beat == True):
-                timedif = bpm.gettimedif()
-                beats.append(timedif)
+            beat = bpm.beatdetectionnew(data, threshold)
+            if(beat != False):
+                beattime = time.clock()
+                beats.append(beattime - timelast)
+                timelast = beattime
                 beatdata = [beats, hbeats]
                 self.message_peers(beatdata)
-
-            dispatcher.send(signal='beats', sender=self, data=beat)
+                threshold = beat;
+                dispatcher.send(signal='beats', sender=self, data=True)
+            else:
+                dispatcher.send(signal='beats', sender=self, data=False)
             #       add timeinterval from previous occurence of a beat to beats list.
             #       bpm = calculate average time interval

@@ -4,6 +4,7 @@
 import logging
 from rtmaii.coordinator import Coordinator
 from rtmaii.worker import Worker
+from rtmaii.exporter import Exporter
 
 LOGGER = logging.getLogger()
 class Hierarchy(object):
@@ -51,7 +52,10 @@ class Hierarchy(object):
             else:
                 self.add_node('AutoCorrelationWorker', 'FrequencyCoordinator', **{'sampling_rate' : sampling_rate})
         if tasks['genre']:
-            self.add_node('GenrePredictorWorker', 'SpectrogramCoordinator', **{'sampling_rate' : sampling_rate})
+            exporter_list = []
+            self.add_node('GenrePredictorWorker', 'SpectrogramCoordinator', **{'sampling_rate' : sampling_rate, 'exporter': exporter_list})
+            if tasks['export_spectrograms']:
+                    exporter_list.append(Exporter())
 
         for node_name, node in self.root['channels'][0].items(): # Only need to remove from one side as function will clear both.
             if 'peer_list' in node:

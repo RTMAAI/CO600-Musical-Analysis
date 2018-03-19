@@ -87,7 +87,7 @@ class Listener(threading.Thread):
 
         self.analyser = rtmaii.Rtmaii(callbacks,
                                       mode='INFO',
-                                      track=r'./test_data/sine_440.wav',
+                                      track=r'./test_data/bpmDemo.wav',
                                      )
 
         self.state['spectrum'].append(arange(self.analyser.config.get_config('frequency_resolution') // 2))
@@ -177,7 +177,7 @@ class Listener(threading.Thread):
 class SpectrogramCompression(threading.Thread):
     """ Compresses the data in the spectrogram, making plotting faster. """
     def __init__(self):
-        self.queue = WorkQueue()
+        self.queue = WorkQueue(1)
         threading.Thread.__init__(self, args=(), kwargs=None)
         self.compressed_data = [zeros(64), zeros(64), zeros([64, 64])]
         self.setDaemon(True)
@@ -200,7 +200,7 @@ class SignalPlotter(threading.Thread):
     def __init__(self, plot, line):
         self.plot = plot
         self.line = line
-        self.queue = WorkQueue()
+        self.queue = WorkQueue(1)
 
         threading.Thread.__init__(self, args=(), kwargs=None)
         self.setDaemon(True)
@@ -213,8 +213,10 @@ class SignalPlotter(threading.Thread):
             new_data = self.queue.get()
             signal = append(signal, new_data)
             signal = signal[len(new_data):]
-            signal_max = max(abs(signal)) * (1 + Y_PADDING) # Pad Y maximum/minimum so line doesn't hit top of graph.
-            y_max = signal_max if signal_max > min_power else min_power # If mainly noise in signal use min_power as graph max/min.
+            # Pad Y maximum/minimum so line doesn't hit top of graph.
+            signal_max = max(abs(signal)) * (1 + Y_PADDING)
+            # If mainly noise in signal use min_power as graph max/min.
+            y_max = signal_max if signal_max > min_power else min_power
             self.plot.set_ylim([-y_max, y_max])
             self.line.set_ydata(resample(signal, 1024 // DOWNSAMPLE_RATE))
 
@@ -223,7 +225,7 @@ class SpectrumPlotter(threading.Thread):
     def __init__(self, plot, line):
         self.plot = plot
         self.line = line
-        self.queue = WorkQueue()
+        self.queue = WorkQueue(1)
 
         threading.Thread.__init__(self, args=(), kwargs=None)
         self.setDaemon(True)
@@ -237,15 +239,17 @@ class SpectrumPlotter(threading.Thread):
             self.line.set_ydata(downsampled_spectrum)
 
 class LabelHandler(threading.Thread):
+    """ Label handler responsible for updating labels, """
     def __init__(self):
         self.labels = {}
-        self.queue = WorkQueue()
+        self.queue = WorkQueue(5)
 
         threading.Thread.__init__(self, args=(), kwargs=None)
         self.setDaemon(True)
         self.start()
 
     def add_label(self, variable, key):
+        """ Add a label for the thread to update. """
         self.labels[key] = variable
 
     def run(self):
@@ -264,7 +268,7 @@ class LabelHandler(threading.Thread):
 
 class BeatHandler(threading.Thread):
     def __init__(self, beat):
-        self.queue = WorkQueue()
+        self.queue = WorkQueue(1)
         self.beat = beat
         self.beat_cooldown = time.time()
         threading.Thread.__init__(self, args=(), kwargs=None)
@@ -295,7 +299,8 @@ class Debugger(tk.Tk):
 
     def changetrack(self):
         self.is_live = False
-        self.track = tk.filedialog.askopenfilename(initialdir = "/", title = "Select track", filetypes = (("wave files","*.wav"),("all files","*.*")))
+        self.track = tk.filedialog.askopenfilename(initialdir = "/", title = "Select track",
+                                                   filetypes = (("wave files","*.wav"),("all files","*.*")))
         if self.track :
             self.listener.set_source(self.track)
 
@@ -409,51 +414,69 @@ class Debugger(tk.Tk):
         self.spectro_thread = SpectrogramCompression()
         self.listener.add_handler('spectogramData', self.spectro_thread)
 
+    def setup_logo(self, frame):
+
+        self.logo = tk.PhotoImage(file="./assets/Logo.png", master=self)
+        self.imglabel = tk.Label(frame, image=self.logo, bg=ACCENT_COLOR, foreground=TEXT_COLOR,
+                                 font=(None, HEADER_SIZE))
+        #self.imglabel.place(x=10,y=15)
+        self.imglabel.pack(padx = XPADDING, fill=tk.X, side=tk.LEFT, ipadx=INNERPADDING, ipady=INNERPADDING)
+
+
     def setup_media_controls(self, frame):
         # --- MEDIA CONTROLS --- #
-        self.fast_rewind = tk.Button(frame, text="Fast Rewind", command=partial(self.listener.change_analysis, 10), bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, HEADER_SIZE))
+        self.fast_rewind = tk.Button(frame, text="Fast Rewind", command=partial(self.listener.change_analysis, 10),
+                                     bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, HEADER_SIZE))
         self.fast_rewind.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT, ipadx=INNERPADDING, ipady=INNERPADDING)
         self.fast_rewind_icon = tk.PhotoImage(file="./assets/FastRewind.png", master=self)
         self.fast_rewind.config(image=self.fast_rewind_icon)
 
-        self.rewind = tk.Button(frame, text="Rewind", command=partial(self.listener.change_analysis, 1), bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, HEADER_SIZE))
+        self.rewind = tk.Button(frame, text="Rewind", command=partial(self.listener.change_analysis, 1),
+                                bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, HEADER_SIZE))
         self.rewind.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT, ipadx=INNERPADDING, ipady=INNERPADDING)
         self.rewind_icon = tk.PhotoImage(file="./assets/Rewind.png", master=self)
         self.rewind.config(image=self.rewind_icon)
 
-        self.play = tk.Button(frame, text="Play", command=self.listener.start_analysis, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, HEADER_SIZE))
+        self.play = tk.Button(frame, text="Play", command=self.listener.start_analysis, bg=ACCENT_COLOR,
+                              foreground=TEXT_COLOR, font=(None, HEADER_SIZE))
         self.play.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT, ipadx=INNERPADDING, ipady=INNERPADDING)
         self.play_icon = tk.PhotoImage(file="./assets/Play.png", master=self)
         self.play.config(image=self.play_icon)
 
-        self.pause = tk.Button(frame, text="Pause", command=self.listener.pause_analysis, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, HEADER_SIZE))
+        self.pause = tk.Button(frame, text="Pause", command=self.listener.pause_analysis, bg=ACCENT_COLOR,
+                               foreground=TEXT_COLOR, font=(None, HEADER_SIZE))
         self.pause.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT, ipadx=INNERPADDING, ipady=INNERPADDING)
         self.pause_icon = tk.PhotoImage(file="./assets/Pause.png", master=self)
         self.pause.config(image=self.pause_icon)
 
-        self.stop = tk.Button(frame, text="Stop", command=self.listener.stop_analysis, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, HEADER_SIZE))
+        self.stop = tk.Button(frame, text="Stop", command=self.listener.stop_analysis, bg=ACCENT_COLOR,
+                              foreground=TEXT_COLOR, font=(None, HEADER_SIZE))
         self.stop.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT, ipadx=INNERPADDING, ipady=INNERPADDING)
         self.stop_icon = tk.PhotoImage(file="./assets/Stop.png", master=self)
         self.stop.config(image=self.stop_icon)
 
-        self.forward = tk.Button(frame, text="Forward", command=partial(self.listener.change_analysis, -1), bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, HEADER_SIZE))
+        self.forward = tk.Button(frame, text="Forward", command=partial(self.listener.change_analysis, -1),
+                                 bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, HEADER_SIZE))
         self.forward.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT, ipadx=INNERPADDING, ipady=INNERPADDING)
         self.forward_icon = tk.PhotoImage(file="./assets/Forward.png", master=self)
         self.forward.config(image=self.forward_icon)
 
-        self.fast_forward = tk.Button(frame, text="Fast Forward", command=partial(self.listener.change_analysis, -10), bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, HEADER_SIZE))
+        self.fast_forward = tk.Button(frame, text="Fast Forward", command=partial(self.listener.change_analysis, -10),
+                                      bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, HEADER_SIZE))
         self.fast_forward.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT, ipadx=INNERPADDING, ipady=INNERPADDING)
         self.fast_forward_icon = tk.PhotoImage(file="./assets/FastForward.png", master=self)
         self.fast_forward.config(image=self.fast_forward_icon)
 
     def setup_source_controls(self, frame):
         # --- SOURCE CONTROLS --- #
-        self.browse = tk.Button(frame, text="Browse", command=self.changetrack, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, HEADER_SIZE))
+        self.browse = tk.Button(frame, text="Browse", command=self.changetrack, bg=ACCENT_COLOR, foreground=TEXT_COLOR,
+                                font=(None, HEADER_SIZE))
         self.browse.pack(padx=(100, XPADDING), fill=tk.X, side=tk.LEFT, ipadx=INNERPADDING, ipady=INNERPADDING)
         self.browse_icon = tk.PhotoImage(file="./assets/Browse.png", master=self)
         self.browse.config(image=self.browse_icon)
 
-        self.live = tk.Button(frame, text="Live", command=self.liveinput, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, HEADER_SIZE))
+        self.live = tk.Button(frame, text="Live", command=self.liveinput, bg=ACCENT_COLOR, foreground=TEXT_COLOR,
+                              font=(None, HEADER_SIZE))
         self.live.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT, ipadx=INNERPADDING, ipady=INNERPADDING)
         self.live_icon = tk.PhotoImage(file="./assets/Live.png", master=self)
         self.live.config(image=self.live_icon)
@@ -461,32 +484,39 @@ class Debugger(tk.Tk):
     def setup_pitch_label(self, frame):
         # --- PITCH LABEL --- #
         self.pitch = tk.StringVar()
-        pitch_label = tk.Label(frame, text=str('Pitch:'), bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, FONT_SIZE))
+        pitch_label = tk.Label(frame, text=str('Pitch:'), bg=ACCENT_COLOR, foreground=TEXT_COLOR,
+                               font=(None, FONT_SIZE))
         pitch_label.place(x=450, y=0, height=30, width=50)
-        pitch_value = tk.Label(frame, textvariable=self.pitch, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, FONT_SIZE))
+        pitch_value = tk.Label(frame, textvariable=self.pitch, bg=ACCENT_COLOR, foreground=TEXT_COLOR,
+                               font=(None, FONT_SIZE))
         pitch_value.place(x=500, y=0, height=30, width=100)
         self.label_handler.add_label(self.pitch, 'pitch')
 
     def setup_note_label(self, frame):
         # --- NOTE LABEL --- #
         self.note = tk.StringVar()
-        note_label = tk.Label(frame, text=str('Root Note:'), bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, FONT_SIZE))
+        note_label = tk.Label(frame, text=str('Root Note:'), bg=ACCENT_COLOR, foreground=TEXT_COLOR,
+                              font=(None, FONT_SIZE))
         note_label.place(x=40, y=0, height=30, width=110)
-        note_value = tk.Label(frame, textvariable=self.note, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, FONT_SIZE))
+        note_value = tk.Label(frame, textvariable=self.note, bg=ACCENT_COLOR, foreground=TEXT_COLOR,
+                              font=(None, FONT_SIZE))
         note_value.place(x=140, y=0, height=30, width=80)
         self.label_handler.add_label(self.note, 'note')
 
         self.cent = tk.StringVar()
-        cent_value = tk.Label(frame, textvariable=self.cent, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, FONT_SIZE))
+        cent_value = tk.Label(frame, textvariable=self.cent, bg=ACCENT_COLOR, foreground=TEXT_COLOR,
+                              font=(None, FONT_SIZE))
         cent_value.place(x=220, y=0, height=30, width=50)
         self.label_handler.add_label(self.cent, 'cents')
 
     def setup_genre_label(self, frame):
         # --- GENRE LABEL --- #
         self.genre = tk.StringVar()
-        genre_label = tk.Label(frame, text=str('Genre:'), bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, FONT_SIZE))
+        genre_label = tk.Label(frame, text=str('Genre:'), bg=ACCENT_COLOR, foreground=TEXT_COLOR,
+                               font=(None, FONT_SIZE))
         genre_label.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT)
-        genre_value = tk.Label(frame, textvariable=self.genre, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, FONT_SIZE))
+        genre_value = tk.Label(frame, textvariable=self.genre, bg=ACCENT_COLOR, foreground=TEXT_COLOR,
+                               font=(None, FONT_SIZE))
         genre_value.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT)
         self.label_handler.add_label(self.genre, 'genre')
 
@@ -495,16 +525,19 @@ class Debugger(tk.Tk):
         self.bpm = tk.StringVar()
         bpm_label = tk.Label(frame, text=str('BPM:'), bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, FONT_SIZE))
         bpm_label.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT)
-        bpm_value = tk.Label(frame, textvariable=self.bpm, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, FONT_SIZE))
+        bpm_value = tk.Label(frame, textvariable=self.bpm, bg=ACCENT_COLOR, foreground=TEXT_COLOR,
+                             font=(None, FONT_SIZE))
         bpm_value.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT)
         self.label_handler.add_label(self.bpm, 'bpm')
 
     def setup_beats_label(self, frame):
         # --- Beats LABEL --- #
         self.beats = tk.StringVar()
-        beats_label = tk.Label(frame, text=str('Beats:'), bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, FONT_SIZE))
+        beats_label = tk.Label(frame, text=str('Beats:'), bg=ACCENT_COLOR, foreground=TEXT_COLOR,
+                               font=(None, FONT_SIZE))
         beats_label.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT)
-        beats_value = tk.Label(frame, textvariable=self.beats, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, FONT_SIZE))
+        beats_value = tk.Label(frame, textvariable=self.beats, bg=ACCENT_COLOR, foreground=TEXT_COLOR,
+                               font=(None, FONT_SIZE))
         beats_value.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT)
         self.listener.add_handler('beat', BeatHandler(self.beats))
 
@@ -512,16 +545,19 @@ class Debugger(tk.Tk):
         # --- BANDS LABEL --- #
         self.bands = {}
         chosen_bands = self.listener.get_item('bands')
-        bands_frame = tk.LabelFrame(frame, borderwidth=1, text="Analysed Bands", bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, HEADER_SIZE), highlightbackground=TRIM_COLOR, highlightthickness=4)
+        bands_frame = tk.LabelFrame(frame, borderwidth=1, text="Analysed Bands", bg=ACCENT_COLOR, foreground=TEXT_COLOR,
+                                    font=(None, HEADER_SIZE), highlightbackground=TRIM_COLOR, highlightthickness=4)
         bands_frame.pack(padx=10, pady=10)
 
         for key, _ in chosen_bands.items():
             self.bands[key] = tk.IntVar()
             band_frame = tk.Frame(bands_frame, borderwidth=1, bg=ACCENT_COLOR)
             band_frame.pack()
-            key_label = tk.Label(band_frame, text='{}: '.format(key), foreground=TEXT_COLOR, bg=ACCENT_COLOR, font=(None, FONT_SIZE))
+            key_label = tk.Label(band_frame, text='{}: '.format(key), foreground=TEXT_COLOR, bg=ACCENT_COLOR,
+                                 font=(None, FONT_SIZE))
             key_label.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT)
-            value_label = tk.Label(band_frame, textvariable=self.bands[key], foreground=TEXT_COLOR, bg=ACCENT_COLOR, font=(None, FONT_SIZE))
+            value_label = tk.Label(band_frame, textvariable=self.bands[key], foreground=TEXT_COLOR, bg=ACCENT_COLOR,
+                                   font=(None, FONT_SIZE))
             value_label.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT)
             self.label_handler.add_label(self.bands[key], key)
 
@@ -545,15 +581,24 @@ class Debugger(tk.Tk):
         # --- CONTROL FRAME --- #
         control_background = tk.Frame(self, borderwidth=1, bg='#49516F')
         control_background.pack(side=tk.TOP, pady=(0,10), ipady=INNERPADDING, fill='x')
+
+        self.setup_logo(control_background)
+
         control_frame = tk.Frame(control_background, bg='#49516F', pady=5)
         control_frame.pack(side=tk.TOP)
+        #logo_frame = tk.Frame(control_frame)
+        #logo_frame.pack(side = tk.LEFT, pady=5)
+
 
         self.setup_media_controls(control_frame)
         self.setup_source_controls(control_frame)
 
+
     def setup_value_frame(self, frame):
         # --- VALUE FRAME --- #
-        value_frame = tk.LabelFrame(frame, borderwidth=1, width=500, height=500, text="Analysed Values", bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, HEADER_SIZE), highlightbackground=TRIM_COLOR, highlightthickness=4)
+        value_frame = tk.LabelFrame(frame, borderwidth=1, width=500, height=500, text="Analysed Values",
+                                    bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, HEADER_SIZE),
+                                    highlightbackground=TRIM_COLOR, highlightthickness=4)
         value_frame.pack(side=tk.TOP, padx=XPADDING, pady=XPADDING, fill='x')
 
         self.setup_pitch_frame(value_frame)
