@@ -1,5 +1,7 @@
 """ HIERARCHY MODULE
 
+    Contains methods for managing the hierarchy of our library.
+
 """
 import logging
 from rtmaii.coordinator import Coordinator
@@ -13,25 +15,31 @@ class Hierarchy(object):
     """
     def __init__(self, config, custom_tasks):
         self.config = config
+        self.custom_tasks = custom_tasks
+        self.reset_hierarchy()
+
+    def reset_hierarchy(self):
+        """ Reset hierarchy back to library defaults based on config settings. """
         self.root = {
             'peer_list': [],
             'channels': []
         }
-        self.custom_tasks = custom_tasks
-        self.channels = 1 if config.get_config('merge_channels') else config.get_config('channels')
-        self.reset_hierarchy()
+        self.root['thread'] = node_factory('RootCoordinator', {'config': self.config, 'peer_list': self.root['peer_list']})
+        self.channels = 1 if self.config.get_config('merge_channels') else self.config.get_config('channels')
+        for channel in range(self.channels):
+            self.root['channels'].append({'root': { 'peer_list': [] }})
+            self.root['peer_list'].append(self.root['channels'][channel]['root']['peer_list'])
 
-    def reset_hierarchy(self):
-        """ Reset hierarchy back to library default tasks based on config settings. """
+        self.default_hierarchy()
+        for task in self.custom_tasks:
+            self.add_node(task['class'], task['parent'], **task['kwargs'])
+        self.clean_hierarchy()
+
+    def default_hierarchy(self):
+        """ Create hierarchy tree based on default tasks provided with the library. """
         pitch_algorithm = self.config.get_config('pitch_algorithm')
         sampling_rate = self.config.get_config('sampling_rate')
         tasks = self.config.get_config('tasks') # The tasks that have been enabled.
-
-        for channel in range(self.channels):
-            self.root['channels'].append({'root_peers': []})
-            self.root['peer_list'].append(self.root['channels'][channel]['root_peers'])
-
-        self.root['thread'] = node_factory('RootCoordinator', {'config': self.config, 'peer_list': self.root['peer_list']})
 
         ## COORDINATORS ##
         self.add_node('FrequencyCoordinator', **{'config': self.config, 'peer_list': []})
@@ -40,29 +48,25 @@ class Hierarchy(object):
         self.add_node('FFTSCoordinator', **{'config': self.config, 'peer_list': []})
         self.add_node('SpectrogramCoordinator', 'FFTSCoordinator',  **{'config': self.config, 'peer_list': [], 'sampling_rate': sampling_rate})
 
+        ## WORKERS ##
         if tasks['beat']:
             self.add_node('BPMWorker', 'BPMCoordinator', **{'sampling_rate' : sampling_rate})
         if tasks['bands']:
-            self.add_node('BandsWorker', 'SpectrumCoordinator', **{'bands_of_interest' : self.config.get_config('bands'), 'sampling_rate' : sampling_rate})
+            self.add_node('BandsWorker', 'SpectrumCoordinator', **{'config': self.config})
         if tasks['pitch']:
             if pitch_algorithm == 'hps':
-                self.add_node('HPSWorker', 'SpectrumCoordinator', **{'sampling_rate' : sampling_rate})
+                self.add_node('HPSWorker', 'SpectrumCoordinator', **{'config': self.config})
             elif pitch_algorithm == 'zero-crossings':
-                self.add_node('ZeroCrossingWorker', 'FrequencyCoordinator', **{'sampling_rate' : sampling_rate})
+                self.add_node('ZeroCrossingWorker', 'FrequencyCoordinator', **{'config': self.config})
             elif pitch_algorithm == 'fft':
-                self.add_node('FFTWorker', 'SpectrumCoordinator', **{'sampling_rate' : sampling_rate})
+                self.add_node('FFTWorker', 'SpectrumCoordinator', **{'config': self.config})
             else:
-                self.add_node('AutoCorrelationWorker', 'FrequencyCoordinator', **{'sampling_rate' : sampling_rate})
+                self.add_node('AutoCorrelationWorker', 'FrequencyCoordinator', **{'config': self.config})
         if tasks['genre']:
             exporter_list = []
             self.add_node('GenrePredictorWorker', 'SpectrogramCoordinator', **{'sampling_rate' : sampling_rate, 'exporter': exporter_list})
             if tasks['export_spectrograms']:
-                    exporter_list.append(Exporter())
-
-        for task in self.custom_tasks:
-            self.add_node(task['class'], task['parent'], **task['kwargs'])
-
-        self.clean_hierarchy()
+                exporter_list.append(Exporter())
 
     def clean_hierarchy(self):
         """ Removes any unused nodes from the hierarchy, saving processing time. """
@@ -71,23 +75,30 @@ class Hierarchy(object):
             node_removed = self.remove_empty_coordinators()
 
     def remove_empty_coordinators(self):
-        """ If there are no peers in a coordinator's peer list remove them. """
-        for node_name, node in self.root['channels'][0].items(): # Only need to remove from one side as function will clear both.
+        """ If there are no peers in a coordinator's peer list remove them.
+            NOTE: this is a destructive method!
+            i.e. coordinators will be removed if they have an empty peer_list.
+            This may be changed, however, a user could easily re-add the coordinator they need.
+        """
+        for node_name, node in self.root['channels'][0].items():
+            # Only need to remove from one channel as remove_node function will clear both.
             if 'peer_list' in node:
                 if len(node['peer_list']) <= 0:
                     self.remove_node(node_name)
                     return True
-        return False
+        return False # No nodes were removed this iteration.
 
     def update_nodes(self):
         """ Propagate updated config settings to nodes of Hierarchy. """
-        self.root['thread'].update_attributes()
+        self.root['thread'].reset_attributes()
         LOGGER.debug('Updating hierarchy nodes, with latest config.')
-        for channel in range(self.channels):
-            for peer in channel.items():
-                peer['thread'].update_attributes()
+        for channel in self.root['channels']:
+            for _, peer in channel.items():
+                if 'thread' in peer:
+                    peer['thread'].reset_attributes()
 
     def add_custom_node(self, node_name, parent=None, **kwargs):
+        """ API Based method, stores custom tasks in list, so they can be readded if the hierarchy is reset. """
         self.custom_tasks.append({'class': node_name, 'parent': parent, 'kwargs': kwargs})
         self.add_node(node_name, parent=None, **kwargs)
 
@@ -108,7 +119,7 @@ class Hierarchy(object):
                     print('Could not find specified parent node {} in hierarchy.'.format(parent))
                     raise
             else:
-                channel_hierarchy['root_peers'].append(channel_hierarchy[node_name]['thread'])
+                channel_hierarchy['root']['peer_list'].append(channel_hierarchy[node_name]['thread'])
 
     def remove_node(self, node_name):
         """ Remove a node from the hierarchy tasks. """
