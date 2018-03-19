@@ -28,6 +28,10 @@ class Worker(threading.Thread):
     def run(self):
         raise NotImplementedError("Run should be implemented")
 
+    def reset_attributes(self):
+        """ Inherited method, used for resetting any attributes on configuration changes. """
+        pass
+
 class GenrePredictorWorker(Worker):
     """ Worker responsible for creating spectograms ... .
 
@@ -81,13 +85,21 @@ class BandsWorker(Worker):
     """ Worker responsible for analysing interesting frequency bands.
 
         **Args**:
-            - `bands_of_interest`: dictionary of frequency bands to analyse.
+            - `config` (Config): Configuration options to use.
             - `channel_id`: id of channel being analysed.
+
+        **Attributes**:
+            - `bands_of_interest`: dictionary of frequency bands to analyse.
+            - `sampling_rate`: sampling_rate of source being analysed.
     """
-    def __init__(self, bands_of_interest: dict, sampling_rate: int, channel_id: int):
+    def __init__(self, config: dict, channel_id: int):
         Worker.__init__(self, channel_id)
-        self.bands_of_interest = bands_of_interest
-        self.sampling_rate = sampling_rate
+        self.config = config
+        self.reset_attributes()
+
+    def reset_attributes(self):
+        self.bands_of_interest = self.config.get_config('bands')
+        self.sampling_rate = self.config.get_config('sampling_rate')
 
     def run(self):
         while True:
@@ -112,12 +124,19 @@ class ZeroCrossingWorker(Worker, Key):
     """ Worker responsible for analysing the fundamental pitch using the zero-crossings method.
 
         **Args**:
-            - `sampling_rate`: sampling_rate of source being analysed.
+            - `config` (Config): Configuration options to use.
             - `channel_id`: id of channel being analysed.
+
+        **Attributes**:
+            - `sampling_rate`: sampling_rate of source being analysed.
     """
-    def __init__(self, sampling_rate: int, channel_id: int):
+    def __init__(self, config: dict, channel_id: int):
         Worker.__init__(self, channel_id)
-        self.sampling_rate = sampling_rate
+        self.config = config
+        self.reset_attributes()
+
+    def reset_attributes(self):
+        self.sampling_rate = self.config.get_config('sampling_rate')
 
     def run(self):
         while True:
@@ -130,12 +149,19 @@ class AutoCorrelationWorker(Worker, Key):
     """ Worker responsible for analysing the fundamental pitch using the auto-corellation method.
 
         **Args**:
-            - `sampling_rate`: sampling_rate of source being analysed.
+            - `config` (Config): Configuration options to use.
             - `channel_id`: id of channel being analysed.
+
+        **Attributes**:
+            - `sampling_rate`: sampling_rate of source being analysed.
     """
-    def __init__(self, sampling_rate: int, channel_id: int):
+    def __init__(self, config: dict, channel_id: int):
         Worker.__init__(self, channel_id)
-        self.sampling_rate = sampling_rate
+        self.config = config
+        self.reset_attributes()
+
+    def reset_attributes(self):
+        self.sampling_rate = self.config.get_config('sampling_rate')
 
     def run(self):
         while True:
@@ -149,12 +175,19 @@ class HPSWorker(Worker, Key):
     """ Worker responsible for analysing the fundamental pitch using the harmonic-product-spectrum method.
 
         **Args**:
-            - `sampling_rate`: sampling_rate of source being analysed.
+            - `config` (Config): Configuration options to use.
             - `channel_id`: id of channel being analysed.
+
+        **Attributes**:
+            - `sampling_rate`: sampling_rate of source being analysed.
     """
-    def __init__(self, sampling_rate: int, channel_id: int):
+    def __init__(self, config: dict, channel_id: int):
         Worker.__init__(self, channel_id)
-        self.sampling_rate = sampling_rate
+        self.config = config
+        self.reset_attributes()
+
+    def reset_attributes(self):
+        self.sampling_rate = self.config.get_config('sampling_rate')
 
     def run(self):
         while True:
@@ -167,12 +200,19 @@ class FFTWorker(Worker, Key):
     """ Worker responsible for analysing the fundamental pitch using the FFT method.
 
         **Args**:
-            - `sampling_rate`: sampling_rate of source being analysed.
+            - `config` (Config): Configuration options to use.
             - `channel_id`: id of channel being analysed.
+
+        **Attributes**:
+            - `sampling_rate`: sampling_rate of source being analysed.
     """
-    def __init__(self, sampling_rate: int, channel_id: int):
+    def __init__(self, config: dict, channel_id: int):
         Worker.__init__(self, channel_id)
-        self.sampling_rate = sampling_rate
+        self.config = config
+        self.reset_attributes()
+
+    def reset_attributes(self):
+        self.sampling_rate = self.config.get_config('sampling_rate')
 
     def run(self):
         while True:
