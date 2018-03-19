@@ -78,7 +78,7 @@ class Config(object):
                 - See the base config class for possible config settings.
         """
         for key, value in kwargs.items():
-            if hasattr(self.settings, key):
+            if key in self.settings:
                 self.settings[key] = value
             else:
                 raise KeyError("{} is not a valid configuration setting".format(key))
