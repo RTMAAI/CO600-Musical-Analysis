@@ -118,10 +118,10 @@ class FrequencyCoordinator(Coordinator):
             signal.extend(self.queue.get_all())
 
         while True:
-            data = self.queue.get_all()
-            signal = signal[len(data):]
-            signal.extend(data)
+            signal = signal[-frequency_resolution:]
             self.message_peers(signal)
+            data = self.queue.get_all()
+            signal.extend(data)
 
 class SpectrumCoordinator(Coordinator):
     """ Spectrum coordinator responsible for creating spectrum data and transmitting to dependants.
