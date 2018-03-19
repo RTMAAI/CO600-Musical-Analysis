@@ -71,7 +71,7 @@ class RootCoordinator(Coordinator):
         Coordinator.__init__(self, config, peer_list)
 
     def reset_attributes(self):
-        """ Reset attributes of a hierarchy object using latest config values. """
+        """ Reset object attributes, to latest config values. """
         self.merge_channels = self.config.get_config('merge_channels')
         self.channels = self.config.get_config('channels')
         self.frame_size = self.config.get_config('frames_per_sample') * self.channels
@@ -114,6 +114,7 @@ class FrequencyCoordinator(Coordinator):
         self.channel_id = channel_id
 
     def reset_attributes(self):
+        """ Reset object attributes, to latest config values. """
         self.frequency_resolution = self.config.get_config('frequency_resolution')
         self.signal = []
 
@@ -139,11 +140,13 @@ class SpectrumCoordinator(Coordinator):
             - `Peers` created are dependent on configured tasks and algorithms.
     """
     def __init__(self, config: object, peer_list: list, channel_id: int):
-        Coordinator.__init__(self, config, peer_list, 1)
-        frequency_resolution = config.get_config('frequency_resolution')
-
-        self.sampling_rate = config.get_config('sampling_rate')
         self.channel_id = channel_id
+        Coordinator.__init__(self, config, peer_list, 1)
+
+    def reset_attributes(self):
+        """ Reset object attributes, to latest config values. """
+        frequency_resolution = self.config.get_config('frequency_resolution')
+        self.sampling_rate = self.config.get_config('sampling_rate')
         self.window = spectral.new_window(frequency_resolution, 'hanning')
         self.filter = spectral.butter_bandpass(60, 18000, self.sampling_rate, 5)
 
