@@ -7,29 +7,25 @@ import time
 import statistics
 import json
 from rtmaii import hierarchy, configuration
-from numpy import arange, int16, frombuffer
+from numpy import arange, int16, frombuffer, ceil
 from pydispatch import dispatcher
 
 class Tracker(object):
     """ Tracks signal responses from library, storing response times over numerous runs.
 
+        Args:
+            - signals: Signals to be tracked.
+
         Attributes:
             - reset [dict]: dictionary containing initial state of tracker, each key value is set to None.
             - tracker [dict]: copy of reset, When threads respond with results, these are set to the time taken for the response.
-            - time_taken [dict]: Stores repsonse times over numerous runs for statisitical analysis.
+            - time_taken [dict]: Stores response times over numerous runs for statisitical analysis.
     """
-    def __init__(self):
-        dispatcher.connect(self.set_switch, sender=0)
-        self.reset = {
-            'pitch': None,
-            'note': None,
-            'bands': None,
-            'spectrum': None,
-            'signal': None,
-            'bpm': None
-        }
+    def __init__(self, signals: list):
+        dispatcher.connect(self.set_switch, sender=0) # Catch any signal.
+        self.reset = {key: None for key in signals}
         self.tracker = self.reset.copy()
-        self.time_taken = {key: [] for key, _ in self.reset.items()}
+        self.time_taken = {key: [] for key in signals}
 
     def store_times(self, start_time):
         """ Store response times from current run. """
@@ -42,7 +38,8 @@ class Tracker(object):
 
     def set_switch(self, data, **kwargs):
         """ Set switch on tracker to signify that signal has been recieved. """
-        self.tracker[kwargs['signal']] = time.time()
+        if kwargs['signal'] in self.tracker:
+            self.tracker[kwargs['signal']] = time.time()
 
     def print_times(self):
         """ Loop through tracker times printing average response time of threads. """
@@ -51,6 +48,11 @@ class Tracker(object):
             print('\tMEDIAN ', statistics.median(times))
             print('\tMEAN ', statistics.mean(times))
             print('\tSTDEV ', statistics.stdev(times))
+
+    def add_signal(self, signal):
+        """ Adds signal for tracker to monitor. """
+        self.reset[signal] = None
+        self.time_taken[signal] = []
 
     def wait_for_signals(self):
         """ Wait for all values in the tracker to be filled with a return time. """
@@ -123,9 +125,8 @@ def main():
           .format(ARGS.samplingrate // ARGS.framespersample))
 
     stub_wave = arange(ARGS.framespersample * ARGS.channelcount, dtype=int16).tobytes()
-    stub_count = ARGS.frequencyresolution// ARGS.framespersample
+    stub_count = 127 # Amount needed to start genre predictions.
 
-    tracker = Tracker()
     config = configuration.Config(
         **{'bands': ARGS.bands,
            'frames_per_sample': ARGS.framespersample,
@@ -140,12 +141,30 @@ def main():
         })
     root = hierarchy.Hierarchy(config, [])
 
+    signals = []
+    signals.append('signal')
+    tasks = config.get_config('tasks')
+    if tasks['pitch']:
+        signals.append('spectrum')
+        signals.append('pitch')
+        signals.append('note')
+    if tasks['bands']:
+        signals.append('bands')
+    if tasks['beat']:
+        signals.append('bpm')
+    tracker = Tracker(signals)
+
     # Prepare workers, hitting thresholds for frequency coordinator and spectrogram.
+    print("Preparing workers...")
     for _ in range(stub_count):
         # As some tasks have a threshold before running, we need to feed them a couple of stubs.
         root.put(frombuffer(stub_wave, dtype=int16))
     tracker.wait_for_signals()
 
+    # if tasks['genre']: # Genre only runs once every 128 frames.
+    #     tracker.add_signal('genre') GENRE DISABLED AS ITS A BIT OF A PAIN TO BENCHMARK
+
+    print("Running tests...")
     # Run the analysis N times.
     for _ in range(ARGS.noruns):
         tracker.reset_tracker()

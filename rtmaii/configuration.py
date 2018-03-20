@@ -79,7 +79,10 @@ class Config(object):
         """
         for key, value in kwargs.items():
             if key in self.settings:
-                self.settings[key] = value
+                if key == 'tasks':
+                    self.settings[key].update(value)
+                else:
+                    self.settings[key] = value
             else:
                 raise KeyError("{} is not a valid configuration setting".format(key))
 
