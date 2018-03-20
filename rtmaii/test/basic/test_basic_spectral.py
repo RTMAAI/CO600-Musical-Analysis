@@ -1,24 +1,18 @@
-'''
-    Test file
-    Sine Wave, Sawtooth and Square
-'''
-import logging
+""" SPECTRAL MODULE TESTS
+
+    - Any tests against the spectral analysis module methods will be contained here.
+"""
 import unittest
 from numpy import sin, pi, arange
-from rtmaii.analysis import pitch
 from rtmaii.analysis import spectral
-from numpy import fft
-import logging
-
 
 class SpectralTestSuite(unittest.TestCase):
-    '''
-        Test Suite for the spectral module.
-    '''
+    """ Test Suite for the spectral module. """
 
     def setUp(self):
-        """ Perform setup"""
+        """ Perform setup of initial parameters. """
         def generate_sine(frequency, sampling_rate, time_step):
+            """ Generates a basic sine wave for testing. """
             return sin(2 * pi * frequency * time_step / sampling_rate)
 
         self.sampling_rate = 50
@@ -32,7 +26,7 @@ class SpectralTestSuite(unittest.TestCase):
         self.window = spectral.new_window(self.sampling_rate, 'blackmanharris')
         self.bp_filter = spectral.butter_bandpass(1, 24, self.sampling_rate, 10)
         self.spectrum = spectral.spectrum(self.low_frequency, self.window, self.bp_filter)
-        self.conv_signal= spectral.convolve_signal(self.low_frequency)
+        self.conv_signal = spectral.convolve_signal(self.low_frequency)
 
         self.filter_cut_off = 0.006 # Maximum amplitude expected of filtered frequencies.
 
@@ -54,15 +48,15 @@ class SpectralTestSuite(unittest.TestCase):
         """ Test that the bandpass filter removes low frequencies as expected. """
         bp_filter = spectral.butter_bandpass(10, 24, self.sampling_rate)
         spectrum = spectral.spectrum(self.low_frequency, self.window, bp_filter)
-        for i in range(len(spectrum)):
-            self.assertLessEqual(spectrum[i], self.filter_cut_off)
+        for power in spectrum:
+            self.assertLessEqual(power, self.filter_cut_off)
 
     def test_bandpass_filter_high(self):
         """ Test that the bandpass filter removes high frequencies as expected. """
         bp_filter = spectral.butter_bandpass(1, 10, self.sampling_rate)
         spectrum = spectral.spectrum(self.high_frequency, self.window, bp_filter)
-        for i in range(len(spectrum)):
-            self.assertLessEqual(spectrum[i], self.filter_cut_off)
+        for power in spectrum:
+            self.assertLessEqual(power, self.filter_cut_off)
 
     def test_bandpass_filter_complex(self):
         """ Test that the bandpass filter removes low and high frequencies as expected. """
@@ -75,7 +69,9 @@ class SpectralTestSuite(unittest.TestCase):
         self.assertGreaterEqual(spectrum[20], self.filter_cut_off)
 
     def test_conv_spectrum_length(self):
-        """ Test length of generated convolved spectrums. Two spectrums so should be == sampling rate. """
+        """ Test length of generated convolved spectrums.
+            Two spectrums so should be == sampling rate.
+        """
         self.assertEqual(len(self.conv_signal), self.sampling_rate)
 
     def test_conv_spectrum_value(self):

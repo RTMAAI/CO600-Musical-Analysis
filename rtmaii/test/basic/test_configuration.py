@@ -1,15 +1,12 @@
-'''
-    Test file
-    Sine Wave, Sawtooth and Square
-'''
+""" CONFIGURATION MODULE TESTS
+
+    - Any tests against the configuration module methods will be contained here.
+"""
 import unittest
-from numpy import arange, zeros
 from rtmaii.configuration import Config
 
 class TestSuite(unittest.TestCase):
-    '''
-        Test Suite for the configuration module.
-    '''
+    """ Test Suite for the configuration module. """
 
     def setUp(self):
         """ Perform setup of initial parameters. """
@@ -56,53 +53,55 @@ class TestSuite(unittest.TestCase):
         self.assertRaises(TypeError, self.config.set_config, **{'bands': {'test': 'thisIsWrong'}})
 
     def test_bands_length_error(self):
-        """ Test that task config throws error when range does not contain 2 items. """
+        """ Test that bands config throws error when range does not contain 2 items. """
         self.assertRaises(ValueError, self.config.set_config, **{'bands': {'test': [0]}})
 
     def test_bands_index_error(self):
-        """ Test that band is correctly set when a valid setting is used. """
+        """ Test that bands config throws error when range index isn't a number. """
         self.assertRaises(TypeError, self.config.set_config, **{'bands': {'test': [0, 'notanum']}})
 
     def test_pitch_config(self):
-        """ Test that band is correctly set when a valid setting is used. """
+        """ Test that pitch is correctly set when a valid setting is used. """
         arguments = {'pitch_algorithm': 'auto-correlation'}
         self.config.set_config(**arguments)
         self.assertEqual(self.config.get_config('pitch_algorithm'), arguments['pitch_algorithm'])
 
     def test_invalid_pitch(self):
-        """ Test that band is correctly set when a valid setting is used. """
+        """ Test that pitch config throws error when invalid algorithm is supplied. """
         self.assertRaises(ValueError, self.config.set_config, **{'pitch_algorithm': 'pirate'})
 
     def test_pitch_type_error(self):
-        """ Test that band is correctly set when a valid setting is used. """
+        """ Test that pitch config throws error when invalid type is supplied. """
         self.assertRaises(TypeError, self.config.set_config, **{'pitch_algorithm': 1337})
 
     def test_frames_valid(self):
-        """ Test that band is correctly set when a valid setting is used. """
+        """ Test that frames_per_sample is correctly set when a valid setting is used. """
         arguments = {'frames_per_sample': 512}
         self.config.set_config(**arguments)
-        self.assertEqual(self.config.get_config('frames_per_sample'), arguments['frames_per_sample'])
+        self.assertEqual(self.config.get_config('frames_per_sample'),
+                         arguments['frames_per_sample'])
 
     def test_frames_type_error(self):
-        """ Test that band is correctly set when a valid setting is used. """
+        """ Test that frames config throws error when invalid type is supplied. """
         self.assertRaises(TypeError, self.config.set_config, **{'frames_per_sample': None})
 
     def test_frequency_valid(self):
-        """ Test that band is correctly set when a valid setting is used. """
+        """ Test that frequency res is correctly set when a valid setting is used. """
         arguments = {'frequency_resolution': 512}
         self.config.set_config(**arguments)
-        self.assertEqual(self.config.get_config('frequency_resolution'), arguments['frequency_resolution'])
+        self.assertEqual(self.config.get_config('frequency_resolution'),
+                         arguments['frequency_resolution'])
 
     def test_frequency_type_error(self):
-        """ Test that band is correctly set when a valid setting is used. """
+        """ Test that frequency config throws error when invalid type is supplied. """
         self.assertRaises(TypeError, self.config.set_config, **{'frequency_resolution': None})
 
     def test_merge_channels_valid(self):
-        """ Test that band is correctly set when a valid setting is used. """
+        """ Test that merge_channels is correctly set when a valid setting is used. """
         arguments = {'merge_channels': False}
         self.config.set_config(**arguments)
         self.assertEqual(self.config.get_config('merge_channels'), arguments['merge_channels'])
 
     def test_merge_channels_type_error(self):
-        """ Test that band is correctly set when a valid setting is used. """
+        """ Test that merge_channels config throws error when invalid type is supplied. """
         self.assertRaises(TypeError, self.config.set_config, **{'merge_channels': None})
