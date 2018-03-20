@@ -165,7 +165,6 @@ class FFTSCoordinator(Coordinator):
         spectrum_list = []
         spectrogram_resolution = 10
         ffts = []
-        x = 0 
         spectrogram_resolution = 128
         
             
@@ -181,10 +180,7 @@ class FFTSCoordinator(Coordinator):
                     break
 
                 ffts.append(fft)
-                x = x + 1
-
-                if x > spectrogram_resolution:
-                    x = 0
+                if len(ffts) >= spectrogram_resolution:
 
                     ffts = ffts[-spectrogram_resolution:]            
                     self.message_peers(ffts)
