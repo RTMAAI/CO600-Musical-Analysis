@@ -77,12 +77,13 @@ class Config(object):
             **Note**:
                 - See the base config class for possible config settings.
         """
-        for key, value in kwargs.items():
+        for key, setting in kwargs.items():
             if key in self.settings:
                 if key == 'tasks':
-                    self.settings[key].update(value)
+                    self.__validate_tasks__(setting)
+                    self.settings[key].update(setting)
                 else:
-                    self.settings[key] = value
+                    self.settings[key] = setting
             else:
                 raise KeyError("{} is not a valid configuration setting".format(key))
 
@@ -108,3 +109,11 @@ class Config(object):
         self.settings['pyaudio_settings'] = source_config
         self.settings['sampling_rate'] = source_config['rate']
         self.settings['channels'] = source_config['channels']
+
+    def __validate_tasks__(self, dictionary):
+        for task, val in dictionary.items():
+            if not task in self.settings['tasks']:
+                raise KeyError("{} is not a valid task key".format(task))
+            value_type = type(val)
+            if not value_type == bool:
+                raise TypeError("Task {} given a value {} with type {} instead of a bool".format(task, val, value_type))
