@@ -109,11 +109,11 @@ CONFIG.set_source(
     {'channels': channel_count,
      'rate': sampling_rate
      })
-ROOT = hierarchy.new_hierarchy(CONFIG)
+ROOT = hierarchy.Hierarchy(CONFIG, [])
 dispatcher.connect(TR.set_switch, sender=0)
 for _ in range(stub_count):
     # As some tasks have a threshold before running, we need to feed them a couple of stubs.
-    ROOT.queue.put(frombuffer(stub_wave, dtype=int16))
+    ROOT.put(frombuffer(stub_wave, dtype=int16))
 TR.wait_for_signals()
 
 
@@ -130,7 +130,7 @@ def profile_hierarchy(number):
         TR.reset_tracker()
         start_time = time.time()
         # The root conversion time is taken into account.
-        ROOT.queue.put(frombuffer(stub_wave, dtype=int16))
+        ROOT.put(frombuffer(stub_wave, dtype=int16))
         TR.wait_for_signals()
         TR.store_times(start_time)
     TR.print_times()
