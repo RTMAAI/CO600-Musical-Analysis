@@ -17,17 +17,14 @@ class SpectralTestSuite(unittest.TestCase):
 
         self.sampling_rate = 50
         self.time_step = arange(self.sampling_rate)
-
         self.low_frequency = generate_sine(5, self.sampling_rate, self.time_step)
         self.med_frequency = generate_sine(10, self.sampling_rate, self.time_step)
         self.high_frequency = generate_sine(20, self.sampling_rate, self.time_step)
         self.complex_wave = self.low_frequency + self.med_frequency + self.high_frequency
-
         self.window = spectral.new_window(self.sampling_rate, 'blackmanharris')
         self.bp_filter = spectral.butter_bandpass(1, 24, self.sampling_rate, 10)
         self.spectrum = spectral.spectrum(self.low_frequency, self.window, self.bp_filter)
         self.conv_signal = spectral.convolve_signal(self.low_frequency)
-
         self.filter_cut_off = 0.006 # Maximum amplitude expected of filtered frequencies.
 
     def test_spectrum_length(self):

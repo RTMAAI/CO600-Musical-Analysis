@@ -7,7 +7,6 @@ from numpy import sin, pi, arange
 from rtmaii.analysis import pitch
 from rtmaii.analysis import spectral
 
-
 class TestSuite(unittest.TestCase):
     """ Test Suite for pitch module.
 
