@@ -3,7 +3,7 @@
 '''
 import wave
 import logging
-from rtmaii.hierarchy import new_hierarchy
+from rtmaii.hierarchy import Hierarchy
 from rtmaii.configuration import Config
 from numpy import int16, frombuffer
 from pydispatch import dispatcher
@@ -45,20 +45,20 @@ class Rtmaii(object):
                     pass #Keep main thread running.
             ```
     """
-    def __init__(self, callbacks: list, track: str = None, config: dict = {}, mode: str = 'ERROR'):
+    def __init__(self, callbacks: list, track: str = None, config: dict = {}, custom_tasks: list = [], mode: str = 'DEBUG'):
 
         self.config = Config(**config)
         self.audio = pyaudio.PyAudio()
         self.set_source(track)
         self.set_callbacks(callbacks)
-        self.root = new_hierarchy(self.config)
+        self.hierarchy = Hierarchy(self.config, custom_tasks)
         SH.setLevel(mode)
         LOGGER.debug('RTMAAI Initiliazed')
 
     def __stream_callback__(self, in_data, frame_count, time_info, status):
         """ Convert raw stream data into signal bin and put data on the coordinator's queue. """
         data = self.waveform.readframes(frame_count) if hasattr(self, 'waveform') else in_data
-        self.root.queue.put(frombuffer(data, int16))
+        self.hierarchy.put(frombuffer(data, int16))
         return (data, pyaudio.paContinue)
 
     def is_active(self):
@@ -97,6 +97,11 @@ class Rtmaii(object):
     def set_config(self, **kwargs: dict):
         """ Change configuration options, i.e. what bands should be look at. """
         self.config.set_config(**kwargs)
+        if hasattr(self, 'hierarchy'):
+            if 'merge_channels' in kwargs:
+                self.hierarchy.reset_hierarchy()
+            else:
+                self.hierarchy.update_nodes()
 
     def set_source(self, source: object = None, **kwargs: dict):
         """ Change the analyzed source. By default this sets the stream to use your default input device with it's default configuration.
@@ -156,8 +161,12 @@ class Rtmaii(object):
 
         pyaudio_kwargs['frames_per_buffer'] = self.config.get_config('frames_per_sample')
         self.config.set_source(pyaudio_kwargs)
+
         if hasattr(self, 'root'):
-            self.root.update_attributes()
+            if self.config.get_config('merge_channels'):
+                self.hierarchy.update_nodes()
+            else:
+                self.hierarchy.reset_hierarchy()
 
     def get_input_devices(self):
         """ Lists the names and IDs of the input devices on your system. """
@@ -175,3 +184,31 @@ class Rtmaii(object):
         """
         for callback in callbacks:
             dispatcher.connect(callback['function'], callback['signal'], sender=dispatcher.Any)
+
+    def remove_callbacks(self, callbacks: list):
+        """ TODO: Implement this. """
+        pass
+
+    def add_node(self, node_name: str, parent: str = None, **kwargs: dict):
+        """ Add a new node to the hierarchy on each channel tree.
+
+            When adding a custom node, you will need to make sure they inherit from,
+            either the base Worker or Coordinator in rtmaii.worker||rtmaii.coordinator.
+
+            **Args**:
+                - `node_name`: class_name of object to add to hierarchy.
+                - `parent`: Parent node's class_name to attach to.
+                - `kwargs`: The arguments needed to initialise the node.
+        """
+        self.hierarchy.add_node(node_name, parent, **kwargs)
+
+    def remove_node(self, node_name: str):
+        """ Remove a node from the hierarchy.
+
+            If you are analysing multiple channels independently,
+            the node will be removed from every channels hierarchy.
+
+            **Args**:
+                - `node_name`: class_name of object to add to hierarchy.
+        """
+        self.hierarchy.remove_node(node_name)

@@ -39,6 +39,7 @@ class Coordinator(threading.Thread):
         self.queue = WorkQueue(queue_length)
         self.peer_list = peer_list
         self.config = config
+        self.reset_attributes()
         self.start()
 
     def run(self):
@@ -54,6 +55,10 @@ class Coordinator(threading.Thread):
         for peer in self.peer_list:
             peer.queue.put(data)
 
+    def reset_attributes(self):
+        """ Inherited method, used for resetting any attributes on configuration changes. """
+        pass
+
 class RootCoordinator(Coordinator):
     """ First-line coordinator responsible for sending signal data to other threads with unique channel data.
 
@@ -64,10 +69,9 @@ class RootCoordinator(Coordinator):
     def __init__(self, config: object, peer_list: list):
         LOGGER.info('Coordinator Initialized.')
         Coordinator.__init__(self, config, peer_list)
-        self.update_attributes()
 
-    def update_attributes(self):
-        """ Update attributes of a hierarchy object using latest config values. """
+    def reset_attributes(self):
+        """ Reset object attributes, to latest config values. """
         self.merge_channels = self.config.get_config('merge_channels')
         self.channels = self.config.get_config('channels')
         self.frame_size = self.config.get_config('frames_per_sample') * self.channels
@@ -109,19 +113,19 @@ class FrequencyCoordinator(Coordinator):
         Coordinator.__init__(self, config, peer_list)
         self.channel_id = channel_id
 
+    def reset_attributes(self):
+        """ Reset object attributes, to latest config values. """
+        self.frequency_resolution = self.config.get_config('frequency_resolution')
+        self.signal = []
+
     def run(self):
         """ Extend signal data to configured resolution before transmitting to peers. """
-        frequency_resolution = self.config.get_config('frequency_resolution')
-        signal = []
-
-        while len(signal) < frequency_resolution:
-            signal.extend(self.queue.get_all())
-
         while True:
             data = self.queue.get_all()
-            signal = signal[len(data):]
-            signal.extend(data)
-            self.message_peers(signal)
+            self.signal.extend(data)
+            self.signal = self.signal[-self.frequency_resolution:]
+            if len(self.signal) >= self.frequency_resolution:
+                self.message_peers(self.signal)
 
 class SpectrumCoordinator(Coordinator):
     """ Spectrum coordinator responsible for creating spectrum data and transmitting to dependants.
@@ -135,11 +139,13 @@ class SpectrumCoordinator(Coordinator):
             - `Peers` created are dependent on configured tasks and algorithms.
     """
     def __init__(self, config: object, peer_list: list, channel_id: int):
-        Coordinator.__init__(self, config, peer_list, 1)
-        frequency_resolution = config.get_config('frequency_resolution')
-
-        self.sampling_rate = config.get_config('sampling_rate')
         self.channel_id = channel_id
+        Coordinator.__init__(self, config, peer_list, 1)
+
+    def reset_attributes(self):
+        """ Reset object attributes, to latest config values. """
+        frequency_resolution = self.config.get_config('frequency_resolution')
+        self.sampling_rate = self.config.get_config('sampling_rate')
         self.window = spectral.new_window(frequency_resolution, 'hanning')
         self.filter = spectral.butter_bandpass(60, 18000, self.sampling_rate, 5)
 
