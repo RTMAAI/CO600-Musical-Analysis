@@ -44,7 +44,7 @@ class Tracker(object):
     def print_times(self):
         """ Loop through tracker times printing average response time of threads. """
         for signal, times in self.time_taken.items():
-            print('{} Average Retrieval Benchmark '.format(signal))
+            print('{} average retrieval benchmark: '.format(signal))
             print('\tMEDIAN ', statistics.median(times))
             print('\tMEAN ', statistics.mean(times))
             print('\tSTDEV ', statistics.stdev(times))
@@ -161,8 +161,8 @@ def main():
         root.put(frombuffer(stub_wave, dtype=int16))
     tracker.wait_for_signals()
 
-    # if tasks['genre']: # Genre only runs once every 128 frames.
-    #     tracker.add_signal('genre') GENRE DISABLED AS ITS A BIT OF A PAIN TO BENCHMARK
+    if tasks['genre']: # Genre only runs once every 128 frames.
+        tracker.add_signal('genre')
 
     print("Running tests...")
     # Run the analysis N times.
