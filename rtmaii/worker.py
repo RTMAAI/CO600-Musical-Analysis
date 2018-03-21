@@ -20,11 +20,13 @@ class Worker(threading.Thread):
             - `queue_length`: length of queue structure. [Default = 1]
                 Workers are greedy and will only consider the latest item.
     """
-    def __init__(self, channel_id: int, queue_length: int = 1):
+    def __init__(self, config: dict, channel_id: int, queue_length: int = 1):
         threading.Thread.__init__(self, args=(), kwargs=None)
         self.queue = WorkQueue(queue_length)
+        self.config = config
         self.channel_id = channel_id
         self.setDaemon(True)
+        self.reset_attributes()
         self.start()
 
     def run(self):
@@ -41,9 +43,8 @@ class GenrePredictorWorker(Worker):
             - `sampling_rate`: sampling_rate of source being analysed.
             - `channel_id`: id of channel being analysed.
     """
-    def __init__(self, sampling_rate: int, channel_id: int,  exporter: object):
-        Worker.__init__(self, channel_id)
-        self.sampling_rate = sampling_rate
+    def __init__(self, config: dict, channel_id: int, exporter: object):
+        Worker.__init__(self, config, channel_id)
         self.exporter = exporter
         self.predict_fn = predictor.from_saved_model(os.path.join(os.path.dirname(__file__), 'model'))
         self.dict = {}
@@ -51,7 +52,7 @@ class GenrePredictorWorker(Worker):
         self.dict[2] = 'Hip-Hop'
         self.dict[0] = 'Rock'
         self.dict[3] = 'Electric'
-    
+
     def run(self):
         
         while True:
@@ -94,9 +95,7 @@ class BandsWorker(Worker):
             - `sampling_rate`: sampling_rate of source being analysed.
     """
     def __init__(self, config: dict, channel_id: int):
-        Worker.__init__(self, channel_id)
-        self.config = config
-        self.reset_attributes()
+        Worker.__init__(self, config, channel_id)
 
     def reset_attributes(self):
         self.bands_of_interest = self.config.get_config('bands')
@@ -134,9 +133,7 @@ class ZeroCrossingWorker(Worker, Key):
             - `sampling_rate`: sampling_rate of source being analysed.
     """
     def __init__(self, config: dict, channel_id: int):
-        Worker.__init__(self, channel_id)
-        self.config = config
-        self.reset_attributes()
+        Worker.__init__(self, config, channel_id)
 
     def reset_attributes(self):
         self.sampling_rate = self.config.get_config('sampling_rate')
@@ -159,9 +156,7 @@ class AutoCorrelationWorker(Worker, Key):
             - `sampling_rate`: sampling_rate of source being analysed.
     """
     def __init__(self, config: dict, channel_id: int):
-        Worker.__init__(self, channel_id)
-        self.config = config
-        self.reset_attributes()
+        Worker.__init__(self, config, channel_id)
 
     def reset_attributes(self):
         self.sampling_rate = self.config.get_config('sampling_rate')
@@ -186,9 +181,7 @@ class HPSWorker(Worker, Key):
             - `sampling_rate`: sampling_rate of source being analysed.
     """
     def __init__(self, config: dict, channel_id: int):
-        Worker.__init__(self, channel_id)
-        self.config = config
-        self.reset_attributes()
+        Worker.__init__(self, config, channel_id)
 
     def reset_attributes(self):
         self.sampling_rate = self.config.get_config('sampling_rate')
@@ -212,8 +205,6 @@ class FFTWorker(Worker, Key):
     """
     def __init__(self, config: dict, channel_id: int):
         Worker.__init__(self, channel_id)
-        self.config = config
-        self.reset_attributes()
 
     def reset_attributes(self):
         self.sampling_rate = self.config.get_config('sampling_rate')
@@ -245,8 +236,8 @@ class BPMWorker(Worker):
     """ Worker responsible for determining beats happening.
 
     """
-    def __init__(self, sampling_rate: int, channel_id: int):
-        Worker.__init__(self, channel_id)
+    def __init__(self, config: dict, channel_id: int):
+        Worker.__init__(self, config, channel_id)
 
     def run(self):
         while True:

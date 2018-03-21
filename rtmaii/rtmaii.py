@@ -45,10 +45,11 @@ class Rtmaii(object):
                     pass #Keep main thread running.
             ```
     """
-    def __init__(self, callbacks: list, track: str = None, config: dict = {}, custom_tasks: list = [], mode: str = 'DEBUG'):
+    def __init__(self, callbacks: list = None, track: str = None, config: dict = {}, custom_tasks: dict = None, mode: str = 'DEBUG'):
 
         self.config = Config(**config)
         self.audio = pyaudio.PyAudio()
+        self.stream = None
         self.set_source(track)
         self.set_callbacks(callbacks)
         self.hierarchy = Hierarchy(self.config, custom_tasks)
@@ -67,7 +68,7 @@ class Rtmaii(object):
             **Returns**
                 - bool: True is alive, False otherwise.
         """
-        return hasattr(self, 'stream') and self.stream.is_active()
+        return self.stream and self.stream.is_active()
 
     def start(self):
         """ Start audio stream. """
@@ -86,13 +87,15 @@ class Rtmaii(object):
 
     def pause(self):
         """ Pause the stream. Analogous to stop if analysing live music. """
-        self.stream.stop_stream()
+        if self.stream:
+            self.stream.stop_stream()
 
     def stop(self):
         """ Stop the stream & reset track's position (if set). """
         if hasattr(self, 'waveform'):
             self.waveform.setpos(0) # Reset wave file to initial position.
-        self.stream.stop_stream()
+        if self.stream:
+            self.stream.stop_stream()
 
     def set_config(self, **kwargs: dict):
         """ Change configuration options, i.e. what bands should be look at. """
@@ -162,7 +165,7 @@ class Rtmaii(object):
         pyaudio_kwargs['frames_per_buffer'] = self.config.get_config('frames_per_sample')
         self.config.set_source(pyaudio_kwargs)
 
-        if hasattr(self, 'root'):
+        if hasattr(self, 'hierarchy'):
             if self.config.get_config('merge_channels'):
                 self.hierarchy.update_nodes()
             else:

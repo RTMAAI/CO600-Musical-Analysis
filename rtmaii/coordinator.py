@@ -20,15 +20,17 @@ class Coordinator(threading.Thread):
         **Attributes**:
             - `queue` (Queue): Coordinators queue of data to be processed.
             - `peer_list` (list): List of peer threads to communicate processed data with.
-            - `config` (Config): Configuration options to use.
+            - `channel_id`: id of channel being analysed.
+            - `config` (Config): Configuration object of library to fetch analysis values from.
             - `queue_length` (Int): Maximum length of a coordinator's queue, helps to cull items.
 
     """
-    def __init__(self, config: object, peer_list: list, queue_length: int = None):
+    def __init__(self, config: object, channel_id: int = None, queue_length: int = None):
         threading.Thread.__init__(self, args=(), kwargs=None)
         self.setDaemon(True)
+        self.channel_id = channel_id
         self.queue = WorkQueue(queue_length)
-        self.peer_list = peer_list
+        self.peer_list = []
         self.config = config
         self.reset_attributes()
         self.start()
@@ -57,12 +59,11 @@ class RootCoordinator(Coordinator):
         channel hierarchy with their own channel data, otherwise the data is merged.
 
         **Attributes**:
-            - `channels` (List): list of channel threads to transmit signal to.
-            - `peer_list` (list): List of peer threads to communicate processed data with.
+            - `config` (Config): Configuration options to use in analysis.
     """
-    def __init__(self, config: object, peer_list: list):
+    def __init__(self, config: object):
         LOGGER.info('Coordinator Initialized.')
-        Coordinator.__init__(self, config, peer_list)
+        Coordinator.__init__(self, config)
 
     def reset_attributes(self):
         """ Reset object attributes, to latest config values. """
@@ -98,14 +99,13 @@ class FrequencyCoordinator(Coordinator):
         **Attributes**:
             - `channel_id` (int): The ID of the channel being analysed.
             - `peer_list` (list): List of peer threads to communicate processed data with.
-            - `config` (Config): Configuration options to use.
+            - `config` (Config): Configuration object of library to fetch analysis values from.
 
         **Notes**:
             - `Peers` created are dependent on configured tasks and algorithms.
     """
-    def __init__(self, config: object, peer_list: list, channel_id: int):
-        Coordinator.__init__(self, config, peer_list)
-        self.channel_id = channel_id
+    def __init__(self, config: object, channel_id: int):
+        Coordinator.__init__(self, config, channel_id)
         self.signal = []
 
     def reset_attributes(self):
@@ -133,9 +133,8 @@ class SpectrumCoordinator(Coordinator):
         **Notes**:
             - `Peers` created are dependent on configured tasks and algorithms.
     """
-    def __init__(self, config: object, peer_list: list, channel_id: int):
-        self.channel_id = channel_id
-        Coordinator.__init__(self, config, peer_list, 1)
+    def __init__(self, config: object, channel_id: int):
+        Coordinator.__init__(self, config, channel_id, 1)
 
     def reset_attributes(self):
         """ Reset object attributes, to latest config values. """
@@ -152,8 +151,8 @@ class SpectrumCoordinator(Coordinator):
             dispatcher.send(signal='spectrum', sender=self.channel_id, data=frequency_spectrum)
 
 class FFTSCoordinator(Coordinator):
-    def __init__(self, config, peer_list: list, channel_id):
-        Coordinator.__init__(self, config, peer_list)
+    def __init__(self, config, channel_id):
+        Coordinator.__init__(self, config, channel_id)
         self.window = hanning(1024)
 
     def normalize(self, v):
@@ -201,11 +200,11 @@ class SpectrogramCoordinator(Coordinator):
             - `sampling_rate`: sampling_rate of source being analysed.
             - `channel_id`: id of channel being analysed.
     """
-    def __init__(self, config, peer_list: list, channel_id, sampling_rate):
-        Coordinator.__init__(self, channel_id, peer_list)
-        self.sampling_rate = sampling_rate
-        self.channel_id = channel_id
+    def __init__(self, config: dict, channel_id: int):
+        Coordinator.__init__(self, config, channel_id)
 
+    def reset_attributes(self):
+        self.sampling_rate = self.config.get_config('sampling_rate')
 
     def run(self):
         while True:
@@ -266,8 +265,8 @@ class BPMCoordinator(Coordinator):
 
 
     """
-    def __init__(self, config, peer_list: list, channel_id):
-        Coordinator.__init__(self, config, peer_list)
+    def __init__(self, config, channel_id):
+        Coordinator.__init__(self, config, channel_id)
         LOGGER.info('BPM Initialized.')
 
     def run(self):
