@@ -1,11 +1,13 @@
+""" WORKER MODULE
+  TODO: Fill in docstring.
+"""
 import threading
 import os
 import logging
 from rtmaii.workqueue import WorkQueue
 from rtmaii.analysis import frequency, pitch, key, spectral, bpm
 from pydispatch import dispatcher
-from numpy import arange, mean, int16, resize, column_stack, power, log10, absolute, reshape, array 
-from matplotlib import pyplot as plt
+from numpy import reshape, array
 from tensorflow.contrib import predictor
 
 LOGGER = logging.getLogger()
@@ -78,7 +80,6 @@ class GenrePredictorWorker(Worker):
             
             spectrogram = []
 
-
             dispatcher.send(signal='genre', sender=self.channel_id, data=prediction)
 
 class BandsWorker(Worker):
@@ -104,13 +105,15 @@ class BandsWorker(Worker):
     def run(self):
         while True:
             spectrum = self.queue.get()
-            frequency_bands = frequency.frequency_bands(spectrum, self.bands_of_interest, self.sampling_rate)
+            frequency_bands = frequency.frequency_bands(spectrum,
+                                                        self.bands_of_interest,
+                                                        self.sampling_rate)
             dispatcher.send(signal='bands', sender=self.channel_id, data=frequency_bands)
 
 class Key(object):
     """ Abstract class that has methods to analyse the key/note given a pitch. """
     @staticmethod
-    def analyse_key(freq: float, channel_id: int):
+    def analyse_note(freq: float, channel_id: int):
         """ Extract the note of a given frequency and other key tasks.
 
             **Args**
@@ -143,7 +146,7 @@ class ZeroCrossingWorker(Worker, Key):
             signal = self.queue.get()
             estimated_pitch = pitch.pitch_from_zero_crossings(signal, self.sampling_rate)
             dispatcher.send(signal='pitch', sender=self.channel_id, data=estimated_pitch)
-            self.analyse_key(estimated_pitch, self.channel_id)
+            self.analyse_note(estimated_pitch, self.channel_id)
 
 class AutoCorrelationWorker(Worker, Key):
     """ Worker responsible for analysing the fundamental pitch using the auto-corellation method.
@@ -167,12 +170,13 @@ class AutoCorrelationWorker(Worker, Key):
         while True:
             signal = self.queue.get()
             convolved_signal = spectral.convolve_signal(signal)
-            estimated_pitch = pitch.pitch_from_auto_correlation(convolved_signal, self.sampling_rate)
+            estimated_pitch = pitch.pitch_from_auto_correlation(convolved_signal,
+                                                                self.sampling_rate)
             dispatcher.send(signal='pitch', sender=self.channel_id, data=estimated_pitch)
-            self.analyse_key(estimated_pitch, self.channel_id)
+            self.analyse_note(estimated_pitch, self.channel_id)
 
 class HPSWorker(Worker, Key):
-    """ Worker responsible for analysing the fundamental pitch using the harmonic-product-spectrum method.
+    """ Worker responsible for analysing fundamental pitch using the harmonic-product-spectrum method.
 
         **Args**:
             - `config` (Config): Configuration options to use.
@@ -194,7 +198,7 @@ class HPSWorker(Worker, Key):
             spectrum = self.queue.get()
             estimated_pitch = pitch.pitch_from_hps(spectrum, self.sampling_rate, 7)
             dispatcher.send(signal='pitch', sender=self.channel_id, data=estimated_pitch)
-            self.analyse_key(estimated_pitch, self.channel_id)
+            self.analyse_note(estimated_pitch, self.channel_id)
 
 class FFTWorker(Worker, Key):
     """ Worker responsible for analysing the fundamental pitch using the FFT method.
@@ -219,7 +223,7 @@ class FFTWorker(Worker, Key):
             spectrum = self.queue.get()
             estimated_pitch = pitch.pitch_from_fft(spectrum, self.sampling_rate)
             dispatcher.send(signal='pitch', sender=self.channel_id, data=estimated_pitch)
-            self.analyse_key(estimated_pitch, self.channel_id)
+            self.analyse_note(estimated_pitch, self.channel_id)
 
 #class BeatsWorker(Worker):
 #    """ Worker responsible for determining beats happening.

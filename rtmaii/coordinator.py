@@ -1,4 +1,4 @@
-"""
+""" COORDINATOR MODULE
   TODO: Fill in docstring.
 """
 import threading
@@ -10,15 +10,6 @@ from pydispatch import dispatcher
 from numpy import mean, int16, pad, hanning, column_stack, absolute, power, log10, arange, sum
 from numpy.fft import fft as numpyFFT
 from numpy.linalg import norm
-
-def normalize(v):
-    Norm = norm(v)
-    #print(norm)
-    if Norm == 0: 
-       return v
-    return v / Norm
-
-
 
 LOGGER = logging.getLogger()
 class Coordinator(threading.Thread):
@@ -60,7 +51,10 @@ class Coordinator(threading.Thread):
         pass
 
 class RootCoordinator(Coordinator):
-    """ First-line coordinator responsible for sending signal data to other threads with unique channel data.
+    """ First-line coordinator responsible for managing and transmitting channel data.
+
+        If multi channel analysis is enabled, the root coordinator will message each,
+        channel hierarchy with their own channel data, otherwise the data is merged.
 
         **Attributes**:
             - `channels` (List): list of channel threads to transmit signal to.
@@ -112,6 +106,7 @@ class FrequencyCoordinator(Coordinator):
     def __init__(self, config: object, peer_list: list, channel_id: int):
         Coordinator.__init__(self, config, peer_list)
         self.channel_id = channel_id
+        self.signal = []
 
     def reset_attributes(self):
         """ Reset object attributes, to latest config values. """
@@ -161,6 +156,14 @@ class FFTSCoordinator(Coordinator):
         Coordinator.__init__(self, config, peer_list)
         self.window = hanning(1024)
 
+    def normalize(self, v):
+        """TODO: Move this to seperate module or just inline."""
+        Norm = norm(v)
+        #print(norm)
+        if Norm == 0:
+            return v
+        return v / Norm
+
     def run(self):
         spectrum_list = []
         spectrogram_resolution = 10
@@ -173,7 +176,7 @@ class FFTSCoordinator(Coordinator):
             if fft is not None:
                 fft = numpyFFT(fft * self.window)[:1024//2]
 
-                fft = normalize(fft)
+                fft = self.normalize(fft)
                 #print("bar")
                 if fft is None:
                     self.message_peers(None)
