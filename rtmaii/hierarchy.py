@@ -27,7 +27,7 @@ class Hierarchy(object):
         self.root['thread'] = node_factory('RootCoordinator', {'config': self.config, 'peer_list': self.root['peer_list']})
         self.channels = 1 if self.config.get_config('merge_channels') else self.config.get_config('channels')
         for channel in range(self.channels):
-            self.root['channels'].append({'root': { 'peer_list': [] }})
+            self.root['channels'].append({'root':{'peer_list': []}})
             self.root['peer_list'].append(self.root['channels'][channel]['root']['peer_list'])
 
         self.default_hierarchy()
@@ -46,7 +46,7 @@ class Hierarchy(object):
         self.add_node('SpectrumCoordinator', 'FrequencyCoordinator', **{'config': self.config, 'peer_list': []})
         self.add_node('BPMCoordinator', **{'config': self.config, 'peer_list': []})
         self.add_node('FFTSCoordinator', **{'config': self.config, 'peer_list': []})
-        self.add_node('SpectrogramCoordinator', 'FFTSCoordinator',  **{'config': self.config, 'peer_list': [], 'sampling_rate': sampling_rate})
+        self.add_node('SpectrogramCoordinator', 'FFTSCoordinator', **{'config': self.config, 'peer_list': [], 'sampling_rate': sampling_rate})
 
         ## WORKERS ##
         if tasks['beat']:

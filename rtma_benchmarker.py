@@ -7,7 +7,7 @@ import time
 import statistics
 import json
 from rtmaii import hierarchy, configuration
-from numpy import arange, int16, frombuffer, ceil
+from numpy import arange, int16, frombuffer
 from pydispatch import dispatcher
 
 class Tracker(object):
@@ -36,7 +36,7 @@ class Tracker(object):
         """ Reset tracker to default unfilled state """
         self.tracker = self.reset.copy()
 
-    def set_switch(self, data, **kwargs):
+    def set_switch(self, _, **kwargs):
         """ Set switch on tracker to signify that signal has been recieved. """
         if kwargs['signal'] in self.tracker:
             self.tracker[kwargs['signal']] = time.time()
@@ -91,7 +91,7 @@ PARSER.add_argument("-f", "--framespersample",
                     help="Frames per buffer sample, default is 1024",
                     type=int, default=1024)
 PARSER.add_argument("-r", "--frequencyresolution",
-                    help="Resolution of signal before performing frequency analysis. Default is 20480.",
+                    help="Resolution of signal before performing frequency analysis.",
                     type=int, default=20480)
 PARSER.add_argument("-t", "--tasks", help="Analysis Tasks to run.",
                     type=json.loads, default=TASKS)
