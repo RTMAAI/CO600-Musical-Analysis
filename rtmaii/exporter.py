@@ -23,8 +23,7 @@ class Exporter(threading.Thread):
         while True:
             spectrumData = self.queue.get()
             self.spectrumCollection.append(spectrumData)
-
-            with open(os.path.join(r'C:\Users\RalphRaulePC\Documents\GitHub\CO600-Musical-Analysis\CNN\save.p'), "wb")  as output_file:  
+            with open(os.path.join(os.path.dirname(__file__),'../CNN/save.p'), "wb")  as output_file:  
                 pickle.dump(self.spectrumCollection, output_file)
             
             #pickle.dump(spectrumCollection, open(os.path.join(os.path.dirname(__file__), 'CNN/save.p'), "wb" ))
