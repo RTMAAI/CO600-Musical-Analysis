@@ -25,7 +25,7 @@ class Coordinator(threading.Thread):
             - `queue_length` (Int): Maximum length of a coordinator's queue, helps to cull items.
 
     """
-    def __init__(self, config: object, channel_id: int = None, queue_length: int = None):
+    def __init__(self, config: object = None, channel_id: int = None, queue_length: int = None):
         threading.Thread.__init__(self, args=(), kwargs=None)
         self.setDaemon(True)
         self.channel_id = channel_id
@@ -52,6 +52,27 @@ class Coordinator(threading.Thread):
         """ Inherited method, used for resetting any attributes on configuration changes. """
         pass
 
+    def add_peer(self, thread_obj):
+        """ Add a thread to the peer_list
+
+            Args:
+                - thread_obj: thread to add.
+
+        """
+        self.peer_list.append(thread_obj)
+
+    def remove_peer(self, thread_id):
+        """ Remove a thread from the peer_list
+
+            Args:
+                - thread: thread id to remove.
+        """
+        self.peer_list.remove(thread_id)
+
+    def get_peer_list(self):
+        """ Get peer list of thread. """
+        return self.peer_list
+
 class RootCoordinator(Coordinator):
     """ First-line coordinator responsible for managing and transmitting channel data.
 
@@ -61,9 +82,9 @@ class RootCoordinator(Coordinator):
         **Attributes**:
             - `config` (Config): Configuration options to use in analysis.
     """
-    def __init__(self, config: object):
+    def __init__(self, **kwargs: dict):
         LOGGER.info('Coordinator Initialized.')
-        Coordinator.__init__(self, config)
+        Coordinator.__init__(self, kwargs['config'])
 
     def reset_attributes(self):
         """ Reset object attributes, to latest config values. """
@@ -104,8 +125,8 @@ class FrequencyCoordinator(Coordinator):
         **Notes**:
             - `Peers` created are dependent on configured tasks and algorithms.
     """
-    def __init__(self, config: object, channel_id: int):
-        Coordinator.__init__(self, config, channel_id)
+    def __init__(self, **kwargs: dict):
+        Coordinator.__init__(self, kwargs['config'], kwargs['channel_id'])
         self.signal = []
 
     def reset_attributes(self):
@@ -133,8 +154,8 @@ class SpectrumCoordinator(Coordinator):
         **Notes**:
             - `Peers` created are dependent on configured tasks and algorithms.
     """
-    def __init__(self, config: object, channel_id: int):
-        Coordinator.__init__(self, config, channel_id, 1)
+    def __init__(self, **kwargs: dict):
+        Coordinator.__init__(self, kwargs['config'], kwargs['channel_id'], 1)
 
     def reset_attributes(self):
         """ Reset object attributes, to latest config values. """
@@ -151,8 +172,8 @@ class SpectrumCoordinator(Coordinator):
             dispatcher.send(signal='spectrum', sender=self.channel_id, data=frequency_spectrum)
 
 class FFTSCoordinator(Coordinator):
-    def __init__(self, config, channel_id):
-        Coordinator.__init__(self, config, channel_id)
+    def __init__(self, **kwargs: dict):
+        Coordinator.__init__(self, kwargs['config'], kwargs['channel_id'])
         self.window = hanning(1024)
 
     def normalize(self, v):
@@ -200,8 +221,8 @@ class SpectrogramCoordinator(Coordinator):
             - `sampling_rate`: sampling_rate of source being analysed.
             - `channel_id`: id of channel being analysed.
     """
-    def __init__(self, config: dict, channel_id: int):
-        Coordinator.__init__(self, config, channel_id)
+    def __init__(self, **kwargs: dict):
+        Coordinator.__init__(self, kwargs['config'], kwargs['channel_id'])
 
     def reset_attributes(self):
         self.sampling_rate = self.config.get_config('sampling_rate')
@@ -265,8 +286,8 @@ class BPMCoordinator(Coordinator):
 
 
     """
-    def __init__(self, config, channel_id):
-        Coordinator.__init__(self, config, channel_id)
+    def __init__(self, **kwargs: dict):
+        Coordinator.__init__(self, kwargs['config'], kwargs['channel_id'])
         LOGGER.info('BPM Initialized.')
 
     def run(self):
