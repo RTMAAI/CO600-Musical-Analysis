@@ -53,6 +53,7 @@ class Hierarchy(object):
         self.default_hierarchy()
         for key, value in self.custom_nodes.items():
             self.add_node(value['class_name'], key, value['parent'], **value['kwargs'])
+        # Cleanup Hierarchy, removing any of our Coordinators that didn't have a child attached.
         self.clean_hierarchy()
 
     def default_hierarchy(self):
@@ -97,16 +98,20 @@ class Hierarchy(object):
 
             NOTE: this is a destructive method!
 
-            i.e. coordinators will be removed if they have an empty peer_list.
+            I.e. coordinators will be removed if they have an empty peer_list.
+
+            Custom added nodes are preserved, but our inbuilt nodes will be cleaned up.
             This may be changed, however, a user could easily re-add the coordinator they need.
         """
         for node_id, node in self.root['channels'][0].items():
-            # Only need to remove from one channel as remove_node function will clear both.
-            if 'thread' in node:
-                if hasattr(node['thread'], 'peer_list'):
-                    if len(node['thread'].get_peer_list()) <= 0:
-                        self.remove_node(node_id)
-                        return True
+            # Stop removal of nodes added by users in cleanup.
+            if not node_id in self.custom_nodes:
+                # Only need to remove from one channel as remove_node function will clear both.
+                if 'thread' in node:
+                    if hasattr(node['thread'], 'peer_list'):
+                        if len(node['thread'].get_peer_list()) <= 0:
+                            self.remove_node(node_id)
+                            return True
         return False # No nodes were removed this iteration.
 
     def update_nodes(self):
