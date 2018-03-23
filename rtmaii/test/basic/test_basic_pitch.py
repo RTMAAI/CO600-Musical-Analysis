@@ -1,6 +1,8 @@
 """ PITCH MODULE TESTS
 
-    - Any tests against the pitch analysis module methods will be contained here.
+    - Any basic tests against the pitch analysis module methods will be contained here.
+
+    By basic I mean just tests against a basic sine wave to make sure the components work.
 """
 import unittest
 from numpy import sin, pi, arange
@@ -33,7 +35,7 @@ class TestSuite(unittest.TestCase):
         self.assertEqual(pitch.pitch_from_zero_crossings(self.sin_wave, self.sampling_rate), 5)
 
     def test_basic_auto_correlation(self):
-        """ Test that the zero-crossings algorithm can detect the pitch for a basic sine wave. """
+        """ Test that the auto-correlation algorithm can detect the pitch for a basic sine wave. """
         self.assertAlmostEqual(pitch.pitch_from_auto_correlation(self.convolved_spectrum,
                                                                  self.sampling_rate),
                                self.frequency, 2)
@@ -44,6 +46,10 @@ class TestSuite(unittest.TestCase):
                                self.frequency, 2)
 
     def test_basic_hps(self):
-        """ Test that the zero-crossings algorithm can detect the pitch for a basic sine wave. """
+        """ Test that the harmonic product spectrum algorithm can detect the pitch. """
         self.assertAlmostEqual(pitch.pitch_from_hps(self.frequency_spectrum, self.sampling_rate, 8),
                                self.frequency, 2)
+
+    def test_interpolation(self):
+        """ Test that interpolation works on basic values. """
+        pass
