@@ -17,9 +17,9 @@ class Tracker(object):
             - signals: Signals to be tracked.
 
         Attributes:
-            - reset [dict]: dictionary containing initial state of tracker, each key value is set to None.
-            - tracker [dict]: copy of reset, When threads respond with results, these are set to the time taken for the response.
-            - time_taken [dict]: Stores response times over numerous runs for statisitical analysis.
+            reset (dict): contains initial state of tracker, each key value is set to None.
+            tracker (dict): When threads respond with results, values set to time taken to respond.
+            time_taken (dict): Stores response times over numerous runs for statisitical analysis.
     """
     def __init__(self, signals: list):
         dispatcher.connect(self.set_switch, sender=0) # Catch any signal.
@@ -36,7 +36,7 @@ class Tracker(object):
         """ Reset tracker to default unfilled state """
         self.tracker = self.reset.copy()
 
-    def set_switch(self, _, **kwargs):
+    def set_switch(self, **kwargs):
         """ Set switch on tracker to signify that signal has been recieved. """
         if kwargs['signal'] in self.tracker:
             self.tracker[kwargs['signal']] = time.time()
