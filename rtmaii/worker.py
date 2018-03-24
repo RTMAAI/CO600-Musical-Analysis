@@ -1,5 +1,10 @@
 """ WORKER MODULE
-  TODO: Fill in docstring.
+
+    - This module contains our inbuilt Workers and the base Worker.
+
+    All Workers inherit the Worker base class.
+
+    Users wanting to create their own custom Worker, should inherit from Worker.
 """
 import threading
 import os

@@ -1,6 +1,9 @@
-'''
-    Main script that is imported with the library.
-'''
+""" RTMA API MODULE
+
+    - This module contains any API based methods that users interact with.
+
+    When the library is installed, this is the module users should interact with.
+"""
 import wave
 import logging
 from rtmaii.hierarchy import Hierarchy
@@ -23,62 +26,77 @@ LOGGER.addHandler(SH)
 class Rtmaii(object):
     """ Interface for real-time musical analysis library.
 
-        **Args**
-            - `Callbacks`: List of dicts with a `callback` and the `signal` to will trigger it.
-            - `Track`: The path of a track to be played, defaults to microphone input.
-            - `Config`: Dict of settings to change.
-            - `Mode`: Logging mode, options = {'DEBUG','WARNING','CRITICAL','INFO','ERROR'}
+        Args:
+            - Callbacks: List of dicts with a callback and the signal to will trigger it.
+            - Track: The path of a track to be played, defaults to microphone input.
+            - Config: Dict of settings to change. (See our Readme for a list of options.)
+            - Custom_Nodes: List of custom nodes to add to Hierarchy. (See Readme for details.)
 
-        **Example**
+        Kwargs:
+            - Mode: Logging mode, options = {'DEBUG','WARNING','CRITICAL','INFO','ERROR'}
+
+        Example:
             ```python
                 track = r'.\\Tracks\\LetItGo.wav'
                 callbacks = [{'function': callback_function, 'signal':'frequency'}]
                 config = {
                     "bands": {
                         "bass": {min: 200, max: 2000}
+                    },
+                    "tasks": {
+                        "genre": False,
                     }
                 }
-                analyser = rtmaii.Rtmaii(callbacks, track, config)
+                custom_nodes = {
+                    'Node1': {'class_name': 'NewWorker', 'parent': 'SpectrumCoordinator',
+                              'args': {}, 'kwargs':{}}
+                }
+                analyser = rtmaii.Rtmaii(callbacks, track, config, custom_nodes)
                 analyser.start()
 
                 while analyser.is_active():
                     pass #Keep main thread running.
             ```
     """
-    def __init__(self, callbacks: list = None, track: str = None, config: dict = {}, custom_tasks: dict = None, mode: str = 'DEBUG'):
+    def __init__(self, callbacks: list = None, track: str = None,
+                 config: dict = None, custom_nodes: dict = None, **kwargs):
 
-        self.config = Config(**config)
+        self.config = Config()
         self.audio = pyaudio.PyAudio()
         self.stream = None
         self.set_source(track)
         self.set_callbacks(callbacks)
-        self.hierarchy = Hierarchy(self.config, custom_tasks)
+        if config:
+            self.config.set_config(**config)
+        self.hierarchy = Hierarchy(self.config, custom_nodes)
+        mode = 'DEBUG' if 'mode' not in kwargs else kwargs['mode']
         SH.setLevel(mode)
         LOGGER.debug('RTMAAI Initiliazed')
 
-    def __stream_callback__(self, in_data, frame_count, time_info, status):
+    def __stream_callback__(self, in_data, frame_count, _, __):
         """ Convert raw stream data into signal bin and put data on the coordinator's queue. """
         data = self.waveform.readframes(frame_count) if hasattr(self, 'waveform') else in_data
         self.hierarchy.put(frombuffer(data, int16))
         return (data, pyaudio.paContinue)
 
-    def is_active(self):
+    def is_active(self) -> bool:
         """ Check that coordinator thread is still running.
 
-            **Returns**
+            Returns
                 - bool: True is alive, False otherwise.
         """
         return self.stream and self.stream.is_active()
 
     def start(self):
-        """ Start audio stream. """
-
+        """ Start audio stream and analysis. """
         pyaudio_settings = self.config.get_config('pyaudio_settings')
         pyaudio_settings['stream_callback'] = self.__stream_callback__
 
         if hasattr(self, 'waveform'):
-            if self.waveform.tell() >= self.waveform.getnframes() - self.config.get_config('frames_per_sample'):
-                self.waveform.setpos(0) # Reset wave file to initial position.
+            min_start = self.waveform.getnframes() - self.config.get_config('frames_per_sample')
+            # Reset wav file to start, if next sample would retrieve less than the frame count.
+            if self.waveform.tell() >= min_start:
+                self.waveform.rewind() # Reset wave file to initial position.
 
         self.stream = self.audio.open(**pyaudio_settings)
         self.stream.start_stream()
@@ -98,7 +116,11 @@ class Rtmaii(object):
             self.stream.stop_stream()
 
     def set_config(self, **kwargs: dict):
-        """ Change configuration options, i.e. what bands should be look at. """
+        """ Change configuration options, i.e. what bands should be look at.
+
+            Note:
+                - Please see our Readme for a detailed list of configuration options.
+        """
         self.config.set_config(**kwargs)
         if hasattr(self, 'hierarchy'):
             if 'merge_channels' in kwargs:
@@ -107,31 +129,34 @@ class Rtmaii(object):
                 self.hierarchy.update_nodes()
 
     def set_source(self, source: object = None, **kwargs: dict):
-        """ Change the analyzed source. By default this sets the stream to use your default input device with it's default configuration.
+        """ Change the analyzed source. By default this sets the stream to use
+            your default input device with it's default configuration.
 
-            When specifying an input device in which you have changed the configuration such as a higher sampling rate, please supply these in the kwargs.
+            When specifying an input device in which you have changed the configuration
+            such as a higher sampling rate/channels, please supply these in the kwargs.
 
             ```python
                 set_source(**{'rate' : 96000, 'channels' : 3})
             ```
-            If this is not set to match your system's configuration there may be artefacts in the analysis.
+            If this is not set to match your system's configuration
+            artefacts may arise in the analysis.
 
-            **Args**:
-                - `source`: Int (Index of input device to use) || String (Path of audio file to analyse)
-                - `kwargs`: Additional configuration to be used in Pyaudio. (Please see our readme for more information.)
+            Args:
+                - source: Int (Index of input device) || String (Path of audio file)
+                - kwargs: Additional configuration to be used in Pyaudio.
+
+            Please see our readme for more information.
         """
         if isinstance(source, int) or source is None:
             if hasattr(self, 'waveform'):
                 delattr(self, 'waveform')
             # Extract relevant configuration to use in waveform.
-            if source is None:
-                device = self.audio.get_default_input_device_info()
-            else:
-                try:
-                    device = self.audio.get_device_info_by_index(source)
-                except Exception:
-                    print('Exception: Specified device index {} could not be set.'.format(source))
-                    raise
+            try:
+                device = (self.audio.get_device_info_by_index(source) if source
+                          else self.audio.get_default_input_device_info())
+            except Exception:
+                print('Exception: Input device could not be found.')
+                raise
 
             pyaudio_kwargs = {
                 'format': pyaudio.paInt16,
@@ -160,13 +185,15 @@ class Rtmaii(object):
             if key in pyaudio_kwargs:
                 pyaudio_kwargs[key] = value
             else:
-                raise KeyError('Key: {}, can not be set as it does not exist in the configuration.'.format(key))
+                raise KeyError('Key: {}, can not be set as it does not exist in the configuration.'
+                               .format(key))
 
         pyaudio_kwargs['frames_per_buffer'] = self.config.get_config('frames_per_sample')
         self.config.set_source(pyaudio_kwargs)
 
         if hasattr(self, 'hierarchy'):
             if self.config.get_config('merge_channels'):
+                # Only update nodes instead of reconstructing.
                 self.hierarchy.update_nodes()
             else:
                 self.hierarchy.reset_hierarchy()
@@ -180,17 +207,21 @@ class Rtmaii(object):
             if (audio_device.get('maxInputChannels')) > 0:
                 print("Input Device index {} - {}".format(i, audio_device.get('name')))
 
-    def set_callbacks(self, callbacks: list):
+    @staticmethod
+    def set_callbacks(callbacks: list):
         """ Attach supplied callbacks to signals on the dispatcher.
             Dispatcher is a loose form of the observer pattern.
             When the dispatcher is sent a signal, each observee will have their callback run.
         """
-        for callback in callbacks:
-            dispatcher.connect(callback['function'], callback['signal'], sender=dispatcher.Any)
+        if callbacks:
+            for callback in callbacks:
+                dispatcher.connect(callback['function'], callback['signal'], sender=dispatcher.Any)
 
-    def remove_callbacks(self, callbacks: list):
+    @staticmethod
+    def remove_callbacks(callbacks: list):
         """ TODO: Implement this. """
-        pass
+        for callback in callbacks:
+            dispatcher.disconnect(callback)
 
     def add_node(self, node_name: str, parent: str = None, **kwargs: dict):
         """ Add a new node to the hierarchy on each channel tree.
@@ -198,10 +229,10 @@ class Rtmaii(object):
             When adding a custom node, you will need to make sure they inherit from,
             either the base Worker or Coordinator in rtmaii.worker||rtmaii.coordinator.
 
-            **Args**:
-                - `node_name`: class_name of object to add to hierarchy.
-                - `parent`: Parent node's class_name to attach to.
-                - `kwargs`: The arguments needed to initialise the node.
+            Args:
+                - node_name: class_name of object to add to hierarchy.
+                - parent: Parent node's class_name to attach to.
+                - kwargs: The arguments needed to initialise the node.
         """
         self.hierarchy.add_node(node_name, parent, **kwargs)
 
@@ -211,7 +242,7 @@ class Rtmaii(object):
             If you are analysing multiple channels independently,
             the node will be removed from every channels hierarchy.
 
-            **Args**:
-                - `node_name`: class_name of object to add to hierarchy.
+            Args:
+                - node_name: class_name of object to add to hierarchy.
         """
         self.hierarchy.remove_node(node_name)

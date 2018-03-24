@@ -1,5 +1,10 @@
 """ COORDINATOR MODULE
-  TODO: Fill in docstring.
+
+    - This module contains our inbuilt Coordinators and the base Coordinator.
+
+    All Coordinators inherit the Coordinator base class.
+
+    Users wanting to create their own custom coordinator, should inherit from Coordinator.
 """
 import threading
 import logging
