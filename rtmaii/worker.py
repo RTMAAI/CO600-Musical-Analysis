@@ -5,6 +5,9 @@
     All Workers inherit the Worker base class.
 
     Users wanting to create their own custom Worker, should inherit from Worker.
+
+    For detailed information on Workers, please see our Readme on our Github.
+    https://github.com/RTMAAI/CO600-Musical-Analysis
 """
 import threading
 import os
