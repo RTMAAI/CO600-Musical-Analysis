@@ -1,93 +1,298 @@
+""" HIERARCHY MODULE
+
+    Contains methods for managing the hierarchy of our library.
+
+    NOTE: The new API was added rather late, so isn't fully implemented.
+    There are plenty of cases where this could fail to do what a user wants.
+    However, the hierarchy should always stay in a valid state.
+
+    KNOWN LIMITATIONS OF CURRENT IMPLEMENTATION.
+    - A node HAS to added to each channel hierarchy for each channel that is being analysed.
+    - The root node is fixed, and can't be removed.
+    - Debugging the structure isn't easy atm, as the structure is dumped out as a string.
+
+    For detailed information on configuring the Hierachy, please see our Readme on our Github.
+    https://github.com/RTMAAI/CO600-Musical-Analysis
+"""
+import logging
 from rtmaii.coordinator import Coordinator
 from rtmaii.worker import Worker
+from rtmaii.exporter import Exporter
+LOGGER = logging.getLogger()
+class Hierarchy(object):
+    """ Builds a hierarchy for the musical analysis tasks.
 
-# TODO: Clean up structure, classify
-# TODO: Allow for restructuring of existing hierarchy.
-# NOTE: I don't particulary like the way a worker/coordinator has their type added to their class name i.e. BPMCoordinator, these might change to just BPM etc.
-
-def new_hierarchy(config: object):
-    """ Create a new hierarchy of communication for the libraries analysis.
-
-        **Args**:
-            - Config: a complex object containing configured settings. (Please refer to the configuration module for more information.)
+        Attributes:
+            config (Config): Configuration object of library to pass to nodes.
+            custom_nodes (list):
+            root (dict): multi-level dictionary storing hierarchy configuration.
     """
-    # Root node is always constructed.
-    # Still requires a lot checks.
-    tasks = config.get_config('tasks') # The tasks that have been enabled.
-    root_peers = []
-    channels = config.get_config('channels')
-    sampling_rate = config.get_config('sampling_rate')
-    # Need to create root node, if merge_channels not enabled do a loop. Creating a hierarchy for each channel.
+    def __init__(self, config: object, custom_nodes: list):
+        self.config = config
+        """ Custom node config, when the hierarchy is recreated,
+            we will re-add any nodes in the custom_nodes dictionary.
+        """
+        self.custom_nodes = {}
+        if custom_nodes:
+            for key, value in custom_nodes.items():
+                # Prepare custom node data.
+                self.custom_nodes[key] = {
+                    'class_name': value['class_name'],
+                    'parent': value['parent'] if 'parent' in value else 'root',
+                    'init_args': value['init_args'] if 'init_args' in value else (),
+                    'kwargs': value['kwargs'] if 'kwargs' in value else {},
+                }
+                __validate_node__(self.custom_nodes[key])
+        self.reset_hierarchy()
 
-    # Create multiple first contact peer trees.
-    channel_count = 1 if config.get_config('merge_channels') else channels
-    for channel_id in range(channel_count):
-        channel_peers = [] # The root coordinator will sometimes need to communicate analysis of multiple channels.
-        freq_list = []
-        spectrum_list = []
-        spectrogram_list = []
-        prediction_list = []
-        bpm_list = []
+    def reset_hierarchy(self):
+        """ Reset hierarchy back to library defaults based on config settings.
+            This is quite expensive, as we need to rebuild the entire hierarchy.
 
-        #--- LEAF NODES (WORKERS) - Any endpoints must be created first in order be attached to their peer at creation. --#
+            This method is mainly reserved for changes with amount of channels
+            being analysed and initial creation of the hierarchy.
+        """
+        LOGGER.debug('Creating new hierarchy.')
+        self.root = {
+            'channels': []
+        }
+        self.root['thread'] = node_factory('RootCoordinator', **{'config': self.config})
+        self.root['peer_list'] = self.root['thread'].peer_list
+        self.channels = (
+            1 if self.config.get_config('merge_channels') else self.config.get_config('channels')
+        )
+
+        for channel in range(self.channels):
+            self.root['channels'].append({'root':{'peer_list': []}})
+            self.root['peer_list'].append(self.root['channels'][channel]['root']['peer_list'])
+
+        self.default_hierarchy()
+        for key, value in self.custom_nodes.items():
+            self.add_node(value['class_name'], key, value['parent'],
+                          *value['init_args'], **value['kwargs'])
+        # Cleanup Hierarchy, removing any of our Coordinators that didn't have a child attached.
+        self.clean_hierarchy()
+        LOGGER.debug('Created hierarchy with config: %s', self.root)
+
+    def default_hierarchy(self):
+        """ Create hierarchy tree based on task config provided with the library. """
+        LOGGER.debug('Adding inbuilt nodes based on tasks configured.')
+        pitch_algorithm = self.config.get_config('pitch_algorithm')
+        tasks = self.config.get_config('tasks') # The tasks that have been enabled.
+
+        ## COORDINATORS ##
+        self.add_node('FrequencyCoordinator')
+        self.add_node('SpectrumCoordinator', parent_id='FrequencyCoordinator')
+        self.add_node('BPMCoordinator')
+        self.add_node('FFTSCoordinator')
+        self.add_node('SpectrogramCoordinator', parent_id='FFTSCoordinator')
+
+        ## WORKERS ##
         if tasks['beat']:
-            bpm_list.append(new_worker('BPM', {'sampling_rate' : sampling_rate, 'channel_id': channel_id}))
-
-        if tasks['pitch']:
-            algorithm = config.get_config('pitch_algorithm')
-            if algorithm == 'hps':
-                spectrum_list.append(new_worker('HPS', {'sampling_rate' : sampling_rate, 'channel_id': channel_id}))
-            elif algorithm == 'zero-crossings':
-                freq_list.append(new_worker('ZeroCrossing', {'sampling_rate' : sampling_rate, 'channel_id': channel_id}))
-            elif algorithm == 'fft':
-                spectrum_list.append(new_worker('FFT', {'sampling_rate' : sampling_rate, 'channel_id': channel_id}))
-            else:
-                freq_list.append(new_worker('AutoCorrelation', {'sampling_rate' : sampling_rate, 'channel_id': channel_id}))
-
-        if tasks['genre']:
-            prediction_list.append(new_worker('GenrePredictor', {'sampling_rate' : sampling_rate, 'channel_id': channel_id}))
-
+            self.add_node('BPMWorker', parent_id='BPMCoordinator')
         if tasks['bands']:
-            bands_of_interest = config.get_config('bands')
-            spectrum_list.append(new_worker('Bands', {'bands_of_interest' : bands_of_interest, 'sampling_rate' : sampling_rate, 'channel_id': channel_id}))
+            self.add_node('BandsWorker', parent_id='SpectrumCoordinator')
+        if tasks['pitch']:
+            if pitch_algorithm == 'hps':
+                self.add_node('HPSWorker', parent_id='SpectrumCoordinator')
+            elif pitch_algorithm == 'zero-crossings':
+                self.add_node('ZeroCrossingWorker', parent_id='FrequencyCoordinator')
+            elif pitch_algorithm == 'fft':
+                self.add_node('FFTWorker', parent_id='SpectrumCoordinator')
+            else:
+                self.add_node('AutoCorrelationWorker', parent_id='FrequencyCoordinator')
+        if tasks['genre']:
+            if tasks['export_spectrograms']:
+                args = (Exporter(),)
+            self.add_node('GenrePredictorWorker', None, 'SpectrogramCoordinator', *args)
 
+    def clean_hierarchy(self):
+        """ Removes any coordinators without peers from the hierarchy, saving processing time. """
+        LOGGER.debug('Removing inbuilt coordinators without any peers.')
+        node_removed = True
+        while node_removed:
+            node_removed = self.remove_empty_coordinators()
 
-        #--- Root Nodes (Coordinators) - Created last in order so that peers can be injected. ---#
-        # This simply avoids creation of u
-        if len(prediction_list) > 0:
-            channel_peers.append(new_coordinator('FFTS', {'config': config, 'peer_list': spectrogram_list, 'channel_id': channel_id}))
-            spectrogram_list.append(new_coordinator('Spectrogram', {'config': config, 'peer_list': prediction_list, 'channel_id': channel_id, 'sampling_rate': sampling_rate}))
+    def remove_empty_coordinators(self):
+        """ If there are no peers in a coordinator's peer list remove them.
 
-        if len(spectrum_list) > 0:
-            freq_list.append(new_coordinator('Spectrum', {'config': config, 'peer_list': spectrum_list, 'channel_id': channel_id}))
+            NOTE: this is a destructive method!
 
-        if len(freq_list) > 0:
-            channel_peers.append(new_coordinator('Frequency', {'config': config, 'peer_list': freq_list, 'channel_id': channel_id}))
+            I.e. coordinators will be removed if they have an empty peer_list.
 
-        if len(channel_peers) > 0:
-            root_peers.append(channel_peers)
+            Custom added nodes are preserved, but our inbuilt nodes will be cleaned up.
+            This may be changed, however, a user could easily re-add the coordinator they need.
+        """
+        for node_id, node in self.root['channels'][0].items():
+            # Stop removal of nodes added by users in cleanup.
+            if not node_id in self.custom_nodes:
+                # Only need to remove from one channel as remove_node function will clear both.
+                if 'thread' in node:
+                    if hasattr(node['thread'], 'peer_list'):
+                        if len(node['thread'].get_peer_list()) <= 0:
+                            self.remove_node(node_id)
+                            return True
+        LOGGER.debug('Finished removing inbuilt coordinators without any peers.')
+        return False # No nodes were removed this iteration.
 
-        if len(bpm_list) > 0:
-            channel_peers.append(new_coordinator('BPM', {'config':config, 'peer_list': bpm_list, 'channel_id': channel_id}))
+    def update_nodes(self):
+        """ Propagate updated config settings to nodes of Hierarchy. """
+        self.root['thread'].reset_attributes()
+        LOGGER.debug('Updating hierarchy nodes.')
+        for channel in self.root['channels']:
+            for _, peer in channel.items():
+                if 'thread' in peer:
+                    peer['thread'].reset_attributes()
 
-    if len(root_peers) > 0:
-        return new_coordinator('Root', {'config': config, 'peer_list': root_peers})
+    def add_custom_node(self, class_name: str, node_id: str = None,
+                        parent_id: str = 'root', *init_args: list, **kwargs: dict):
+        """ API Based method, stores custom nodes in list,
+            so they can be readded if the hierarchy is reset.
+
+            A user could disable all our tasks in the config,
+            and create their own unique hierarchy using the API.
+
+            Args:
+                - class_name: class_name to instantiate as a string.
+                - node_id: unique id to give the node in hierarchy.
+                - parent_id: id of parent node to attach to.
+                - *args: positional arguments to pass to node instantiation.
+                - **kwargs: kwargs to pass to node instatiation
+        """
+        uid = node_id if node_id else class_name
+        if uid in self.custom_nodes or uid in self.root['channels'][0]:
+            raise AttributeError('Node id {} already exists in hierarchy, please use a unique ID.'
+                                 .format(uid))
+
+        self.custom_nodes[uid] = {'class_name': class_name,
+                                  'parent': parent_id,
+                                  'init_args': init_args,
+                                  'kwargs': kwargs}
+        __validate_node__(self.custom_nodes[uid])
+        self.add_node(class_name, node_id, parent_id, *init_args, **kwargs)
+
+    def add_node(self, class_name: str, node_id: str = None,
+                 parent_id: str = 'root', *args: list, **kwargs: dict):
+        """ Add a new node to the hierarchy on each channel tree.
+
+            Args:
+                - class_name: class_name to instantiate as a string.
+                - node_id: unique id to give the node in hierarchy.
+                - parent_id: id of parent node to attach to.
+                - *args: positional arguments to pass to node instantiation.
+                - **kwargs: kwargs to pass to node instatiation
+        """
+        uid = node_id if node_id else class_name
+        # Add to each channel hierarchy.
+        for channel in range(self.channels):
+            kwargs['channel_id'] = channel
+            kwargs['config'] = self.config
+            node_thread = node_factory(class_name, *args, **kwargs)
+            channel_hierarchy = self.root['channels'][channel]
+            channel_hierarchy[uid] = {
+                'thread': node_thread
+            }
+            if parent_id != 'root':
+                if parent_id in channel_hierarchy:
+                    try:
+                        channel_hierarchy[parent_id]['thread'].add_peer(
+                            channel_hierarchy[uid]['thread'])
+                        channel_hierarchy[uid]['parent'] = parent_id
+                    except AttributeError:
+                        print('Parent node {} does not have a peer_list.'.format(parent_id))
+                        raise
+                else:
+                    raise KeyError('Could not find specified parent node {} in hierarchy.'
+                                   .format(parent_id))
+            else:
+                channel_hierarchy[parent_id]['peer_list'].append(channel_hierarchy[uid]['thread'])
+                channel_hierarchy[uid]['parent'] = 'root'
+        LOGGER.debug('Added node %s to hierarchy with node parent %s.', uid, parent_id)
+
+    def remove_node(self, node_id: str):
+        """ Remove a node from the hierarchy tasks.
+
+            Args:
+                - node_id: unique id of the node to remove.
+        """
+        if not node_id in self.root['channels'][0]:
+            raise KeyError('Node with id {} could not be found in hierarchy. '.format(node_id))
+
+        if node_id == 'root':
+            raise ValueError('The root node cannot be removed from the hierarchy!')
+
+        if node_id in self.custom_nodes:
+            del self.custom_nodes[node_id]
+
+        # Remove node from each channel.
+        for channel in range(self.channels):
+            if node_id in self.root['channels'][channel]:
+                node = self.root['channels'][channel][node_id]
+
+                # Remove any children from node, if deleting a node with children.
+                if hasattr(node['thread'], 'peer_list'):
+                    peers = node['thread'].get_peer_list()
+                    for peer in peers:
+                        LOGGER.debug('Removing child node %s of %s from channel hierarchy %d',
+                                     peer, node_id, channel)
+                        self.remove_node(peer.__class__.__name__)
+
+                parent = node['parent']
+                if parent == 'root':
+                    self.root['channels'][channel]['root']['peer_list'].remove(node['thread'])
+                else:
+                    self.root['channels'][channel][parent]['thread'].remove_peer(node['thread'])
+
+                del self.root['channels'][channel][node_id]
+
+                LOGGER.debug('Removed node %s from channel hierarchy %d', node_id, channel)
+            else:
+                LOGGER.error('Node %s does not exist in channel hierarchy %d', node_id, channel)
+
+    def put(self, data: object):
+        """ Push data to root node of hierarchy.
+
+            Args:
+                - data: data to push to root thread's queue.
+        """
+        self.root['thread'].queue.put(data)
+
+def __validate_node__(node: dict):
+    """ Validate that a given nodes parameters are valid.
+
+        Expected signature:
+            {'class_name': 'NewWorker', 'parent': 'SpectrumCoordinator',
+            'args': (), 'kwargs':{}}
+
+        Args:
+            - node: node signature to validate.
+    """
+    if not isinstance(node['class_name'], str):
+        raise TypeError('Class name given {} is not type str.'
+                        .format(node['class_name']))
+    if not isinstance(node['parent'], str):
+        raise TypeError('Parent given {} is not of type str.'
+                        .format(node['parent']))
+    if not isinstance(node['init_args'], (list, tuple)):
+        raise TypeError('Init_args {} is not of type list or tuple.'
+                        .format(node['init_args']))
+    if not isinstance(node['kwargs'], dict):
+        raise TypeError('Kwargs {} is not of type dict.'
+                        .format(node['kwargs']))
+
+def node_factory(node_class: str, *args: list, **kwargs: dict):
+    """ Create a new node of the given type.
+        The node must inherit from either a worker or coordinator base class.
+
+        Args:
+            - node_class: class of node to instantiate.
+            - *args: positional arguments to pass to node instantiation.
+            - **kwargs: kwargs to pass to node instatiation
+    """
+    coordinators = {subclass.__name__ : subclass for subclass in Coordinator.__subclasses__()}
+    workers = {subclass.__name__ : subclass for subclass in Worker.__subclasses__()}
+    nodes = {**coordinators, **workers}
+    if node_class in nodes:
+        return nodes[node_class](*args, **kwargs)
     else:
-        raise ValueError("No tasks have been configured to run. Please enable at least one analysis task in your configuration.")
-
-COORDINATORS = {subclass.__name__ : subclass for subclass in Coordinator.__subclasses__()}
-WORKERS = {subclass.__name__ : subclass for subclass in Worker.__subclasses__()}
-
-def new(subs, type, kwargs):
-    if type in subs:
-        return subs[type](**kwargs)
-    else:
-        raise ValueError("Class not found.")
-
-def new_worker(type, kwargs):
-    type = '{}Worker'.format(type)
-    return new(WORKERS, type, kwargs)
-
-def new_coordinator(type, kwargs):
-    type = '{}Coordinator'.format(type)
-    return new(COORDINATORS, type, kwargs)
+        raise ValueError("{} does not inherit from Worker or Coordinator.".format(node_class))

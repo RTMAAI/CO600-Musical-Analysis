@@ -1,23 +1,24 @@
-'''
-    Test file
-    Sine Wave, Sawtooth and Square
-'''
+""" BANDS MODULE TESTS
+
+    - Any tests against the bands analysis module methods will be contained here.
+"""
 import unittest
 from numpy import arange, zeros
 from rtmaii.analysis import frequency
 
 class TestSuite(unittest.TestCase):
-    '''
-        Test Suite for the bands module.
-    '''
+    """ Test Suite for the bands module. """
 
     def setUp(self):
         """ Perform setup of initial parameters. """
         self.band_sum = 10000
-        self.interested_bands = {'low': [0 , 10], 'med': [10, 70], 'high': [70, 100]}
+        self.interested_bands = {'low': [0, 10],
+                                 'med': [10, 70],
+                                 'high': [70, 100]}
         self.spectrum = arange(0, 100, 1) # Create 100 values increasing by 1 at each step.
         self.spectrum_len = len(self.spectrum)
-        self.bands = {'0.1': 10, '0.2': 20, '0.3': 30, '1': 100} # key value where key == expected value after normalization.
+        # key value where key == expected value after normalization.
+        self.bands = {'0.1': 10, '0.2': 20, '0.3': 30, '1': 100}
         self.bands_sum = 100 # Sum to compare normalized values against.
 
     def test_noise_removal(self):
@@ -55,5 +56,19 @@ class TestSuite(unittest.TestCase):
     def test_frequency_bands_to_bins(self):
         """ Tests that the frequency bins points are correctly found. """
         spectrum = arange(0, 102, 1)
-        bands = frequency.frequency_bands_to_bins(spectrum, {'full_range': [0, 100]}, len(spectrum) * 2)
+        bands = frequency.frequency_bands_to_bins(spectrum,
+                                                  {'full_range': [0, 100]},
+                                                  len(spectrum) * 2)
         self.assertEqual({'full_range': [0, 100]}, bands)
+
+    def test_frequency_bands_closest(self):
+        """ Tests that the bin method finds the closest index values,
+            when the spectrum hasn't got a high enough resolution.
+        """
+        spectrum = arange(0, 102, 1)
+        bands = frequency.frequency_bands_to_bins(spectrum,
+                                                  {'full_range': [0, 100]},
+                                                  len(spectrum)* 4)
+        # Len(spectrum) * 4 means the spectrum captures 1/2 of the frequency bins.
+        # As the nyquist frequency dictates, that the spectrum captures half the sampling_rate.
+        self.assertEqual({'full_range': [0, 50]}, bands)

@@ -1,24 +1,24 @@
-""" VISUALIZER IMPLEMENTATION
+""" VISUALIZER/DEBUGGER IMPLEMENTATION
 
-    TODO: bpm debugging
+    - This script contains an implementation of our library, to visualize metrics analysed.
 
 """
 import threading
 import time
 from functools import partial
+import tkinter as tk
+
 from scipy.signal import resample
 from scipy.fftpack import fftfreq
 from rtmaii import rtmaii # Replace with just import rtmaii in actual implementation.
 from rtmaii.workqueue import WorkQueue
 from numpy import arange, zeros, append, concatenate
 import matplotlib
-matplotlib.use("TkAgg") # Fastest plotter backend.
-import tkinter as tk
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
+matplotlib.use("TkAgg") # Fastest plotter backend.
 
-SAMPLING_RATE = 44100 # Default sampling rate 44.1 khz
-DOWNSAMPLE_RATE = 4 # Denominator to downsample length of signals by (Should be set according to system specs.)
+# ---- UI/STYLE CONSTANTS ---- #
 FRAME_DELAY = 50 # How long between each frame update (ms)
 XPADDING = 10
 INNERPADDING = 5
@@ -28,10 +28,15 @@ TEXT_COLOR = '#fff'
 TRIM_COLOR = '#33cc99'
 HEADER_SIZE = 20
 FONT_SIZE = 15
-Y_PADDING = 0.3 # Amount to pad the maximum Y value of a graph by. (Percentage i.e. 0.1 = 10% padding.)
+FRAME_DELAY = 50 # How long between each frame update (ms)
+
+# ---- GRAPH/ANALYSIS CONSTANTS ---- #
+SAMPLING_RATE = 44100 # Default sampling rate 44.1 khz
+DOWNSAMPLE_RATE = 4 # Denominator to downsample graph by (Should be set according to system specs.)
+GY_PADDING = 0.3 # Amount to pad the maximum Y value of a graph by. (% i.e. 0.1 = 10% padding.)
 STATE_COUNT = 50 # Amount of states to store that can be moved through.
 SPECTRO_DELAY = 2 # Seconds to wait between each spectrogram plot.
-SIGNAL_COUNT = 10
+SIGNAL_COUNT = 10 # Amount of samples of a signal to store (FPS of signal graph animation)
 
 class Listener(threading.Thread):
     """ Starts analysis and holds a state of analysed results.
@@ -77,9 +82,9 @@ class Listener(threading.Thread):
             'spectrum': self.graph_callback
         }
 
-        self.handlers = {}
+        self.handlers = {} # Stores list of threads to send retrieved data to.
         self.max_index = STATE_COUNT - 1 # Max index to restrict state changes to.
-        self.current_index = 0
+        self.state_head = 0 # Pointer to current state of analysis being displayed.
 
         callbacks = []
         for key, _ in self.state.items():
@@ -90,7 +95,8 @@ class Listener(threading.Thread):
                                       track=r'./test_data/bpmDemo.wav',
                                      )
 
-        self.state['spectrum'].append(arange(self.analyser.config.get_config('frequency_resolution') // 2))
+        self.state['spectrum'].append(arange(self.analyser.config.get_config('frequency_resolution')
+                                             // 2))
         self.state['signal'].append(arange(self.analyser.config.get_config('frames_per_sample')))
 
         for key, _ in self.state.items(): # Fill previous 50 states with default values.
@@ -101,12 +107,17 @@ class Listener(threading.Thread):
         self.start()
 
     def start_analysis(self):
-        """ Start analysis. """
-        self.current_index = 0
+        """ Start analysis. And reset state pointer. """
+        self.state_head = 0
         self.analyser.start()
 
     def add_handler(self, name: str, handler: object):
-        """ """
+        """ Add a thread handler, to handle processing retrieved data.
+
+            Args:
+                - name: id to give thread
+                - handler: handler thread.
+        """
         self.handlers[name] = handler
 
     def pause_analysis(self):
@@ -120,25 +131,34 @@ class Listener(threading.Thread):
     def change_analysis(self, amount: int):
         """ Go to a particular state in the analysis.
 
-            **Args**:
-                - `amount` : amount to change current state by (Neg or Pos)
+            Args:
+                - amount : amount to change current state by (Neg or Pos)
         """
-        new_value = self.current_index + amount
-        self.current_index = 0 if new_value < 0 else self.max_index if new_value > self.max_index else new_value
+        new_value = self.state_head + amount
+        # Enforce value to range of max and min size of state store.
+        self.state_head = (0 if new_value < 0 else
+                           self.max_index if new_value > self.max_index else new_value)
+
+        # When changing analysis, this adds old data to each handlers threads.
         for key, fun in self.callbacks.items():
+            # Usually the data is added by a callback, this fabricates the callback with old data.
             if key == 'signal':
-                signals = self.state[key][self.current_index + SIGNAL_COUNT: self.current_index: -1]
+                signals = self.state[key][self.state_head + SIGNAL_COUNT: self.state_head: -1]
                 fun(key, concatenate(signals))
             else:
-                fun(key, self.state[key][self.current_index])
+                fun(key, self.state[key][self.state_head])
 
 
-    def set_source(self, track: str):
-        """ Change the analysed source. """
-        self.analyser.set_source(track)
+    def set_source(self, source: str):
+        """ Change the analysed source. Basic wrapper.
+
+            Args
+                - source: source of input, either file or None.
+        """
+        self.analyser.set_source(source)
 
     def is_active(self):
-        """ Check that analyser is still running. """
+        """ Check that analyser is still running. Basic wrapper. """
         return self.analyser.is_active()
 
     def run(self):
@@ -149,29 +169,59 @@ class Listener(threading.Thread):
             condition.wait() # Non-blocking sleep.
             condition.release()
 
-    def put_handler(self, handler, data):
-        """ """
+    def put_handler(self, handler: object, data: object):
+        """ Add data to a given handler's queue.
+
+            Args:
+                - handler: id of signal raised.
+                - data: data retrieved.
+        """
         self.handlers[handler].queue.put(data)
 
-    def graph_callback(self, signal, data):
+    def graph_callback(self, signal: str, data: object):
+        """ Put graph data on it's own handler thread.
+
+            Args:
+                - signal: id of signal raised.
+                - data: data retrieved.
+        """
         self.put_handler(signal, data)
 
-    def label_callback(self, signal, data):
+    def label_callback(self, signal: str, data: object):
+        """ Put general metric data onto the label handler thread.
+
+            Args:
+                - signal: id of signal raised.
+                - data: data retrieved.
+        """
         self.put_handler('label', [signal, data])
 
-    def beat_callback(self, signal, data):
+    def beat_callback(self, _, data: object):
+        """ Put general beat data onto the beat handler thread.
+
+            Args:
+                - data: data retrieved.
+        """
         self.put_handler('beat', data)
 
-    def callback(self, data, **kwargs):
-        """ Set data for signal event. """
+    def callback(self, data: object, **kwargs: dict):
+        """ Add data to listeners state store, and send to thread handler.
+
+            Args:
+                - data: data retrieved.
+        """
         signal = kwargs['signal']
         self.state[signal].insert(0, data)
         self.state[signal] = self.state[signal][:STATE_COUNT]
         self.callbacks[signal](signal, data)
 
-    def get_item(self, item):
-        """ Get the latest value. """
-        return self.state[item][self.current_index]
+    def get_item(self, item: str):
+        """ Get the latest value of an item from the listener store.
+
+            Args:
+                - item: key of metric to retrieve.
+        """
+        return self.state[item][self.state_head]
 
 
 class SpectrogramCompression(threading.Thread):
@@ -193,6 +243,9 @@ class SpectrogramCompression(threading.Thread):
             self.compressed_data = [x_resample, y_resample, color_resample]
 
     def get_spectro_data(self):
+        """ As we can't update the data through a matplotlib method remotely,
+            The UI grabs the latest data from this thread, every two seconds.
+        """
         return self.compressed_data
 
 class SignalPlotter(threading.Thread):
@@ -213,8 +266,10 @@ class SignalPlotter(threading.Thread):
             new_data = self.queue.get()
             signal = append(signal, new_data)
             signal = signal[len(new_data):]
-            signal_max = max(abs(signal)) * (1 + Y_PADDING) # Pad Y maximum/minimum so line doesn't hit top of graph.
-            y_max = signal_max if signal_max > min_power else min_power # If mainly noise in signal use min_power as graph max/min.
+            # Pad Y maximum/minimum so line doesn't hit top of graph.
+            signal_max = max(abs(signal)) * (1 + GY_PADDING)
+            # If mainly noise in signal use min_power as graph max/min.
+            y_max = signal_max if signal_max > min_power else min_power
             self.plot.set_ylim([-y_max, y_max])
             self.line.set_ydata(resample(signal, 1024 // DOWNSAMPLE_RATE))
 
@@ -233,11 +288,16 @@ class SpectrumPlotter(threading.Thread):
         while True:
             spectrum = self.queue.get()
             downsampled_spectrum = resample(spectrum, len(spectrum) // DOWNSAMPLE_RATE)
-            self.plot.set_ylim([0, max(downsampled_spectrum) * (1 + Y_PADDING)])
+            self.plot.set_ylim([0, max(downsampled_spectrum) * (1 + GY_PADDING)])
             self.line.set_ydata(downsampled_spectrum)
 
 class LabelHandler(threading.Thread):
-    """ Label handler responsible for updating labels, """
+    """ Thread responsible for updating labels.
+
+        Each time new data is added to the LabelHandler's queue,
+        the LabelHandler will check which label the data belongs to,
+        and update the appropriate UI variable to display the latest value.
+    """
     def __init__(self):
         self.labels = {}
         self.queue = WorkQueue(5)
@@ -265,6 +325,13 @@ class LabelHandler(threading.Thread):
                 self.labels[data[0]].set(data[1])
 
 class BeatHandler(threading.Thread):
+    """ Thread responsible for updating the beat label.
+
+        Each time new data is added to the BeatHandlers's queue,
+        the BeatHandler will check whether a beat has occured.
+        If a beat has occured the beat label will be updated to display this,
+        then after 0.1 seconds the beat label wil return to it's default value.
+    """
     def __init__(self, beat):
         self.queue = WorkQueue(1)
         self.beat = beat
@@ -291,293 +358,441 @@ class Debugger(tk.Tk):
         self.config(bg=BACKGROUND_COLOR)
         self.listener = Listener()
         self.label_handler = LabelHandler()
+        self.uic = {}
         self.listener.add_handler('label', self.label_handler)
         self.setup()
         self.update()
 
     def changetrack(self):
-        self.is_live = False
-        self.track = tk.filedialog.askopenfilename(initialdir = "/", title = "Select track", filetypes = (("wave files","*.wav"),("all files","*.*")))
-        if self.track :
-            self.listener.set_source(self.track)
+        """ Opens file dialog to select a wav file for analysis. """
+        self.uic['is_live'] = False
+        track = tk.filedialog.askopenfilename(initialdir="/", title="Select track",
+                                              filetypes=(("wave files", "*.wav"),
+                                                         ("all files", "*.*"))
+                                             )
+        if track:
+            self.listener.set_source(track)
 
     def liveinput(self):
-        self.is_live = True
+        """ Disables live input button, and sets analyser to use live input. """
+        self.uic['is_live'] = True
         self.listener.set_source(None)
 
     def update(self):
-        """ Update UI every FRAME_DELAY milliseconds """
+        """ Update UI every FRAME_DELAY milliseconds
+
+            This loops forever, until the UI is closed.
+        """
         self.update_graphs()
         self.update_controls()
         self.after(FRAME_DELAY, self.update)
 
     def update_controls(self):
-        # --- UPDATE CONTROLS --- #
+        """ Updates any control buttons on each update loop. """
         if self.listener.is_active():
-            self.play.config(state='disabled')
-            self.pause.config(state='normal')
-            self.stop.config(state='normal')
+            self.uic['play'].config(state='disabled')
+            self.uic['pause'].config(state='normal')
+            self.uic['stop'].config(state='normal')
         else:
-            self.play.config(state='normal')
-            self.pause.config(state='disabled')
-            self.stop.config(state='disabled')
+            self.uic['play'].config(state='normal')
+            self.uic['pause'].config(state='disabled')
+            self.uic['stop'].config(state='disabled')
 
-        if self.is_live:
-            self.live.config(state='disabled')
+        if self.uic['is_live']:
+            self.uic['live'].config(state='disabled')
         else:
-            self.live.config(state='normal')
+            self.uic['live'].config(state='normal')
 
     def update_graphs(self):
-        # --- UPDATE GRAPHS --- #
+        """ Performs methods to update graphs on each update loop. """
         curr_time = time.time()
-        if self.spectro_time - curr_time <= 0: # Plot spectrogram every now and again.
-            self.spectrogram_plot.clear()
-            self.spectrogram_plot.set_title('Spectrogram')
-            self.spectrogram_plot.set_xlabel('Time')
-            self.spectrogram_plot.set_ylabel('Frequency (Hz)')
-            data = self.spectro_thread.get_spectro_data()
+        if self.uic['spectro_time'] - curr_time <= 0: # Plot spectrogram every now and again.
+            self.uic['spectrogram_plot'].clear()
+            self.uic['spectrogram_plot'].set_title('Spectrogram')
+            self.uic['spectrogram_plot'].set_xlabel('Time')
+            self.uic['spectrogram_plot'].set_ylabel('Frequency (Hz)')
+            data = self.uic['spectro_thread'].get_spectro_data()
 
-            self.spectrogram_plot.pcolormesh(data[0], data[1], data[2])
-            self.spectrogram_plot.set_xlim(0, 1.5)
-            self.spectrogram_plot.set_ylim(0, 20000)
-            self.spectrogram_canvas.draw()
-            self.spectro_time = time.time() + SPECTRO_DELAY # After SPECTRO_DELAY replot.
+            self.uic['spectrogram_plot'].pcolormesh(data[0], data[1], data[2])
+            self.uic['spectrogram_plot'].set_xlim(0, 1.5)
+            self.uic['spectrogram_plot'].set_ylim(0, 20000)
+            self.uic['spectrogram_canvas'].draw()
+            self.uic['spectro_time'] = time.time() + SPECTRO_DELAY # After SPECTRO_DELAY replot.
 
         # --- FAST PLOTTING METHODS --- #
-        self.signal_canvas.restore_region(self.clear_background) # Clear background.
-        self.signal_plot.draw_artist(self.signal_line) # Draw new data.
-        self.signal_canvas.blit(self.signal_plot.bbox) # Display new data in plot.
-        self.spectrum_canvas.restore_region(self.clear_background)
-        self.spectrum_plot.draw_artist(self.spectrum_line)
-        self.spectrum_canvas.blit(self.spectrum_plot.bbox)
+        self.uic['signal_canvas'].restore_region(self.uic['clear_bg']) # Clear background.
+        self.uic['signal_plot'].draw_artist(self.uic['signal_line']) # Draw new data.
+        self.uic['signal_canvas'].blit(self.uic['signal_plot'].bbox) # Display new data in plot.
+        self.uic['spectrum_canvas'].restore_region(self.uic['clear_bg']) # Clear background.
+        self.uic['spectrum_plot'].draw_artist(self.uic['spectrum_line']) # Draw new data.
+        self.uic['spectrum_canvas'].blit(self.uic['spectrum_plot'].bbox) # Display new data in plot.
 
     def setup(self):
         """Create UI elements and assign configurable elements. """
         chunk_size = self.listener.analyser.config.get_config('frames_per_sample')
         frequency_length = self.listener.analyser.config.get_config('frequency_resolution')
         frequencies = fftfreq(frequency_length, 1 / SAMPLING_RATE)[::DOWNSAMPLE_RATE]
-        self.frequencies = frequencies[:len(frequencies)//2]
+        self.uic['frequencies'] = frequencies[:len(frequencies)//2]
 
         # --- INIT SETUP --- #
-        self.timeframe = arange(0, chunk_size, DOWNSAMPLE_RATE) # Where DOWNSAMPLE_RATE = steps taken.
+        self.uic['timeframe'] = arange(0, chunk_size, DOWNSAMPLE_RATE)
         self.title("RTMAAI VISUALIZER")
-        self.setup_control_panel()
-        self.setup_left_frame()
-        self.setup_right_frame()
+        self.__setup_control_panel__()
+        self.__setup_left_frame__()
+        self.__setup_right_frame__()
 
-        self.is_live = False
-        self.spectro_time = time.time() # Initial ticker for spectorgram plotting.
-        self.beat_cooldown = time.time()
+        self.uic['is_live'] = False
+        self.uic['spectro_time'] = time.time() # Initial ticker for spectorgram plotting.
 
-    def setup_signal_graph(self, frame):
-        # --- SIGNAL GRAPH SETUP --- #
+    def __setup_signal_graph__(self, frame: object):
+        """ Adds a graph component to hold the signal graph.
+
+            Args:
+                - frame: component to add graph to.
+        """
         signal_frame = Figure(figsize=(7, 4), dpi=100)
-        self.signal_plot = signal_frame.add_subplot(111)
-        self.signal_canvas = FigureCanvasTkAgg(signal_frame, frame)
-        self.signal_canvas.show()
-        self.clear_background = self.signal_canvas.copy_from_bbox(self.signal_plot.bbox)
-        self.signal_line, = self.signal_plot.plot(self.timeframe, self.timeframe)
-        self.signal_plot.set_title('Signal')
-        self.signal_plot.set_xlabel('Time (Arbitary)')
-        self.signal_plot.set_ylabel('Amplitude')
-        self.signal_plot.get_xaxis().set_ticks([])
-        self.signal_plot.get_yaxis().set_ticks([])
-        self.signal_canvas.get_tk_widget().pack(pady=INNERPADDING, padx=INNERPADDING)
-        self.listener.add_handler('signal', SignalPlotter(self.signal_plot, self.signal_line))
+        self.uic['signal_plot'] = signal_frame.add_subplot(111)
+        self.uic['signal_canvas'] = FigureCanvasTkAgg(signal_frame, frame)
+        self.uic['signal_canvas'].show()
+        self.uic['clear_bg'] = (self.uic['signal_canvas']
+                                .copy_from_bbox(self.uic['signal_plot'].bbox))
+        self.uic['signal_line'], = self.uic['signal_plot'].plot(self.uic['timeframe'],
+                                                                self.uic['timeframe'])
+        self.uic['signal_plot'].set_title('Signal')
+        self.uic['signal_plot'].set_xlabel('Time (Arbitary)')
+        self.uic['signal_plot'].set_ylabel('Amplitude')
+        self.uic['signal_plot'].get_xaxis().set_ticks([])
+        self.uic['signal_plot'].get_yaxis().set_ticks([])
+        self.uic['signal_canvas'].get_tk_widget().pack(pady=INNERPADDING, padx=INNERPADDING)
+        self.listener.add_handler('signal',
+                                  SignalPlotter(self.uic['signal_plot'], self.uic['signal_line']))
 
-    def setup_spectrum_graph(self, frame):
-        # --- SPECTRUM GRAPH SETUP --- #
+    def __setup_spectrum_graph__(self, frame: object):
+        """ Adds a graph component to hold the spectrum graph.
+
+            Args:
+                - frame: component to add graph to.
+        """
         spectrum_frame = Figure(figsize=(7, 4), dpi=100)
-        self.spectrum_plot = spectrum_frame.add_subplot(111)
-        self.spectrum_canvas = FigureCanvasTkAgg(spectrum_frame, frame)
-        self.spectrum_canvas.show()
-        self.spectrum_line, = self.spectrum_plot.plot(self.frequencies, self.frequencies)
-        self.spectrum_plot.set_title('Spectrum')
-        self.spectrum_plot.set_xlabel('Frequency (Hz)')
-        self.spectrum_plot.set_ylabel('Power')
-        self.spectrum_plot.get_yaxis().set_ticks([])
-        self.spectrum_canvas.get_tk_widget().pack(pady=(0, INNERPADDING), padx=INNERPADDING)
-        self.listener.add_handler('spectrum', SpectrumPlotter(self.spectrum_plot, self.spectrum_line))
+        self.uic['spectrum_plot'] = spectrum_frame.add_subplot(111)
+        self.uic['spectrum_canvas'] = FigureCanvasTkAgg(spectrum_frame, frame)
+        self.uic['spectrum_canvas'].show()
+        self.uic['spectrum_line'], = self.uic['spectrum_plot'].plot(self.uic['frequencies'],
+                                                                    self.uic['frequencies'])
+        self.uic['spectrum_plot'].set_title('Spectrum')
+        self.uic['spectrum_plot'].set_xlabel('Frequency (Hz)')
+        self.uic['spectrum_plot'].set_ylabel('Power')
+        self.uic['spectrum_plot'].get_yaxis().set_ticks([])
+        self.uic['spectrum_canvas'].get_tk_widget().pack(pady=(0, INNERPADDING), padx=INNERPADDING)
+        self.listener.add_handler('spectrum',
+                                  SpectrumPlotter(self.uic['spectrum_plot'],
+                                                  self.uic['spectrum_line'])
+                                 )
 
-    def setup_spectrogram_graph(self, frame):
-        # --- SPECTROGRAM GRAPH --- #
+    def __setup_spectrogram_graph__(self, frame: object):
+        """ Adds a graph component to hold the spectrogram graph.
+
+            Args:
+                - frame: component to add graph to.
+        """
         spectrogram_border = tk.Frame(frame, bg=TRIM_COLOR)
         spectrogram_border.pack(side=tk.BOTTOM, padx=XPADDING, pady=XPADDING)
         spectrogram_frame = Figure(figsize=(7, 4), dpi=100)
-        self.spectrogram_plot = spectrogram_frame.add_subplot(111)
-        self.spectrogram_canvas = FigureCanvasTkAgg(spectrogram_frame, spectrogram_border)
-        self.spectrogram_canvas.show()
-        self.spectrogram_canvas.get_tk_widget().pack(padx=INNERPADDING, pady=INNERPADDING, side=tk.BOTTOM)
-        self.spectro_thread = SpectrogramCompression()
-        self.listener.add_handler('spectogramData', self.spectro_thread)
+        self.uic['spectrogram_plot'] = spectrogram_frame.add_subplot(111)
+        self.uic['spectrogram_canvas'] = FigureCanvasTkAgg(spectrogram_frame, spectrogram_border)
+        self.uic['spectrogram_canvas'].show()
+        self.uic['spectrogram_canvas'].get_tk_widget().pack(padx=INNERPADDING, pady=INNERPADDING,
+                                                            side=tk.BOTTOM)
+        self.uic['spectro_thread'] = SpectrogramCompression()
+        self.listener.add_handler('spectogramData', self.uic['spectro_thread'])
 
-    def setup_media_controls(self, frame):
-        # --- MEDIA CONTROLS --- #
-        self.fast_rewind = tk.Button(frame, text="Fast Rewind", command=partial(self.listener.change_analysis, 10), bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, HEADER_SIZE))
-        self.fast_rewind.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT, ipadx=INNERPADDING, ipady=INNERPADDING)
-        self.fast_rewind_icon = tk.PhotoImage(file="./assets/FastRewind.png", master=self)
-        self.fast_rewind.config(image=self.fast_rewind_icon)
+    def __setup_logo__(self, frame: object):
+        """ Adds the rtma logo to the UI.
 
-        self.rewind = tk.Button(frame, text="Rewind", command=partial(self.listener.change_analysis, 1), bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, HEADER_SIZE))
-        self.rewind.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT, ipadx=INNERPADDING, ipady=INNERPADDING)
-        self.rewind_icon = tk.PhotoImage(file="./assets/Rewind.png", master=self)
-        self.rewind.config(image=self.rewind_icon)
+            Args:
+                - frame: component to add logo to.
+        """
+        self.uic['logo'] = tk.PhotoImage(file="./assets/Logo.png", master=self)
+        imglabel = tk.Label(frame, image=self.uic['logo'], bg=ACCENT_COLOR,
+                            foreground=TEXT_COLOR, font=(None, HEADER_SIZE))
+        imglabel.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT,
+                      ipadx=INNERPADDING, ipady=INNERPADDING)
 
-        self.play = tk.Button(frame, text="Play", command=self.listener.start_analysis, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, HEADER_SIZE))
-        self.play.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT, ipadx=INNERPADDING, ipady=INNERPADDING)
-        self.play_icon = tk.PhotoImage(file="./assets/Play.png", master=self)
-        self.play.config(image=self.play_icon)
+    def __setup_media_controls__(self, frame: object):
+        """ Adds the playback and analysis controls to the UI.
 
-        self.pause = tk.Button(frame, text="Pause", command=self.listener.pause_analysis, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, HEADER_SIZE))
-        self.pause.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT, ipadx=INNERPADDING, ipady=INNERPADDING)
-        self.pause_icon = tk.PhotoImage(file="./assets/Pause.png", master=self)
-        self.pause.config(image=self.pause_icon)
+            Args:
+                - frame: component to add buttons to.
+        """
+        # --- FASTREWIND --- #
+        fast_rewind = tk.Button(frame, text="Fast Rewind",
+                                command=partial(self.listener.change_analysis, 10),
+                                bg=ACCENT_COLOR, foreground=TEXT_COLOR,
+                                font=(None, HEADER_SIZE))
+        fast_rewind.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT,
+                         ipadx=INNERPADDING, ipady=INNERPADDING)
+        self.uic['fast_rewind_icon'] = tk.PhotoImage(file="./assets/FastRewind.png", master=self)
+        fast_rewind.config(image=self.uic['fast_rewind_icon'])
 
-        self.stop = tk.Button(frame, text="Stop", command=self.listener.stop_analysis, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, HEADER_SIZE))
-        self.stop.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT, ipadx=INNERPADDING, ipady=INNERPADDING)
-        self.stop_icon = tk.PhotoImage(file="./assets/Stop.png", master=self)
-        self.stop.config(image=self.stop_icon)
+        # --- REWIND --- #
+        rewind = tk.Button(frame, text="Rewind",
+                           command=partial(self.listener.change_analysis, 1),
+                           bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, HEADER_SIZE))
+        rewind.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT,
+                    ipadx=INNERPADDING, ipady=INNERPADDING)
+        self.uic['rewind_icon'] = tk.PhotoImage(file="./assets/Rewind.png", master=self)
+        rewind.config(image=self.uic['rewind_icon'])
 
-        self.forward = tk.Button(frame, text="Forward", command=partial(self.listener.change_analysis, -1), bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, HEADER_SIZE))
-        self.forward.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT, ipadx=INNERPADDING, ipady=INNERPADDING)
-        self.forward_icon = tk.PhotoImage(file="./assets/Forward.png", master=self)
-        self.forward.config(image=self.forward_icon)
+        # --- PLAY --- #
+        self.uic['play'] = tk.Button(frame, text="Play", command=self.listener.start_analysis,
+                                     bg=ACCENT_COLOR, foreground=TEXT_COLOR,
+                                     font=(None, HEADER_SIZE))
+        self.uic['play'].pack(padx=XPADDING, fill=tk.X, side=tk.LEFT,
+                              ipadx=INNERPADDING, ipady=INNERPADDING)
+        self.uic['play_icon'] = tk.PhotoImage(file="./assets/Play.png", master=self)
+        self.uic['play'].config(image=self.uic['play_icon'])
 
-        self.fast_forward = tk.Button(frame, text="Fast Forward", command=partial(self.listener.change_analysis, -10), bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, HEADER_SIZE))
-        self.fast_forward.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT, ipadx=INNERPADDING, ipady=INNERPADDING)
-        self.fast_forward_icon = tk.PhotoImage(file="./assets/FastForward.png", master=self)
-        self.fast_forward.config(image=self.fast_forward_icon)
+        # --- PAUSE --- #
+        self.uic['pause'] = tk.Button(frame, text="Pause", command=self.listener.pause_analysis,
+                                      bg=ACCENT_COLOR, foreground=TEXT_COLOR,
+                                      font=(None, HEADER_SIZE))
+        self.uic['pause'].pack(padx=XPADDING, fill=tk.X, side=tk.LEFT, ipadx=INNERPADDING,
+                               ipady=INNERPADDING)
+        self.uic['pause_icon'] = tk.PhotoImage(file="./assets/Pause.png", master=self)
+        self.uic['pause'].config(image=self.uic['pause_icon'])
 
-    def setup_source_controls(self, frame):
-        # --- SOURCE CONTROLS --- #
-        self.browse = tk.Button(frame, text="Browse", command=self.changetrack, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, HEADER_SIZE))
-        self.browse.pack(padx=(100, XPADDING), fill=tk.X, side=tk.LEFT, ipadx=INNERPADDING, ipady=INNERPADDING)
-        self.browse_icon = tk.PhotoImage(file="./assets/Browse.png", master=self)
-        self.browse.config(image=self.browse_icon)
+        # --- STOP --- #
+        self.uic['stop'] = tk.Button(frame, text="Stop", command=self.listener.stop_analysis,
+                                     bg=ACCENT_COLOR, foreground=TEXT_COLOR,
+                                     font=(None, HEADER_SIZE))
+        self.uic['stop'].pack(padx=XPADDING, fill=tk.X, side=tk.LEFT, ipadx=INNERPADDING,
+                              ipady=INNERPADDING)
+        self.uic['stop_icon'] = tk.PhotoImage(file="./assets/Stop.png", master=self)
+        self.uic['stop'].config(image=self.uic['stop_icon'])
 
-        self.live = tk.Button(frame, text="Live", command=self.liveinput, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, HEADER_SIZE))
-        self.live.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT, ipadx=INNERPADDING, ipady=INNERPADDING)
-        self.live_icon = tk.PhotoImage(file="./assets/Live.png", master=self)
-        self.live.config(image=self.live_icon)
+        # --- FORWARD --- #
+        forward = tk.Button(frame, text="Forward",
+                            command=partial(self.listener.change_analysis, -1),
+                            bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, HEADER_SIZE))
+        forward.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT,
+                     ipadx=INNERPADDING, ipady=INNERPADDING)
+        self.uic['forward_icon'] = tk.PhotoImage(file="./assets/Forward.png", master=self)
+        forward.config(image=self.uic['forward_icon'])
 
-    def setup_pitch_label(self, frame):
-        # --- PITCH LABEL --- #
-        self.pitch = tk.StringVar()
-        pitch_label = tk.Label(frame, text=str('Pitch:'), bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, FONT_SIZE))
+        # --- FASTFORWARD --- #
+        fast_forward = tk.Button(frame, text="Fast Forward",
+                                 command=partial(self.listener.change_analysis, -10),
+                                 bg=ACCENT_COLOR, foreground=TEXT_COLOR,
+                                 font=(None, HEADER_SIZE))
+        fast_forward.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT,
+                          ipadx=INNERPADDING, ipady=INNERPADDING)
+        self.uic['fast_forward_icon'] = tk.PhotoImage(file="./assets/FastForward.png", master=self)
+        fast_forward.config(image=self.uic['fast_forward_icon'])
+
+    def __setup_source_controls__(self, frame: object):
+        """ Adds the source control buttons to the UI.
+            I.e. the browse and live input buttons.
+
+            Args:
+                - frame: component to add buttons to.
+        """
+        browse = tk.Button(frame, text="Browse", command=self.changetrack,
+                           bg=ACCENT_COLOR, foreground=TEXT_COLOR,
+                           font=(None, HEADER_SIZE))
+        browse.pack(padx=(100, XPADDING), fill=tk.X, side=tk.LEFT,
+                    ipadx=INNERPADDING, ipady=INNERPADDING)
+        self.uic['browse_icon'] = tk.PhotoImage(file="./assets/Browse.png", master=self)
+        browse.config(image=self.uic['browse_icon'])
+
+        self.uic['live'] = tk.Button(frame, text="Live", command=self.liveinput,
+                                     bg=ACCENT_COLOR, foreground=TEXT_COLOR,
+                                     font=(None, HEADER_SIZE))
+        self.uic['live'].pack(padx=XPADDING, fill=tk.X, side=tk.LEFT,
+                              ipadx=INNERPADDING, ipady=INNERPADDING)
+        self.uic['live_icon'] = tk.PhotoImage(file="./assets/Live.png", master=self)
+        self.uic['live'].config(image=self.uic['live_icon'])
+
+    def __setup_pitch_label__(self, frame: object):
+        """ Adds the pitch label components to the UI.
+
+            Args:
+                - frame: component to add labels to.
+        """
+        self.uic['pitch'] = tk.StringVar()
+        pitch_label = tk.Label(frame, text=str('Pitch:'), bg=ACCENT_COLOR, foreground=TEXT_COLOR,
+                               font=(None, FONT_SIZE))
         pitch_label.place(x=450, y=0, height=30, width=50)
-        pitch_value = tk.Label(frame, textvariable=self.pitch, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, FONT_SIZE))
+        pitch_value = tk.Label(frame, textvariable=self.uic['pitch'], bg=ACCENT_COLOR,
+                               foreground=TEXT_COLOR, font=(None, FONT_SIZE))
         pitch_value.place(x=500, y=0, height=30, width=100)
-        self.label_handler.add_label(self.pitch, 'pitch')
+        self.label_handler.add_label(self.uic['pitch'], 'pitch')
 
-    def setup_note_label(self, frame):
-        # --- NOTE LABEL --- #
-        self.note = tk.StringVar()
-        note_label = tk.Label(frame, text=str('Root Note:'), bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, FONT_SIZE))
+    def __setup_note_label__(self, frame: object):
+        """ Adds the note label components to the UI.
+
+            Args:
+                - frame: component to add labels to.
+        """
+        self.uic['note'] = tk.StringVar()
+        note_label = tk.Label(frame, text=str('Root Note:'), bg=ACCENT_COLOR, foreground=TEXT_COLOR,
+                              font=(None, FONT_SIZE))
         note_label.place(x=40, y=0, height=30, width=110)
-        note_value = tk.Label(frame, textvariable=self.note, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, FONT_SIZE))
+        note_value = tk.Label(frame, textvariable=self.uic['note'], bg=ACCENT_COLOR,
+                              foreground=TEXT_COLOR, font=(None, FONT_SIZE))
         note_value.place(x=140, y=0, height=30, width=80)
-        self.label_handler.add_label(self.note, 'note')
+        self.label_handler.add_label(self.uic['note'], 'note')
 
-        self.cent = tk.StringVar()
-        cent_value = tk.Label(frame, textvariable=self.cent, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, FONT_SIZE))
+        self.uic['cent'] = tk.StringVar()
+        cent_value = tk.Label(frame, textvariable=self.uic['cent'], bg=ACCENT_COLOR,
+                              foreground=TEXT_COLOR, font=(None, FONT_SIZE))
         cent_value.place(x=220, y=0, height=30, width=50)
-        self.label_handler.add_label(self.cent, 'cents')
+        self.label_handler.add_label(self.uic['cent'], 'cents')
 
-    def setup_genre_label(self, frame):
-        # --- GENRE LABEL --- #
-        self.genre = tk.StringVar()
-        genre_label = tk.Label(frame, text=str('Genre:'), bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, FONT_SIZE))
+    def __setup_genre_label__(self, frame: object):
+        """ Adds the genre label components to the UI.
+
+            Args:
+                - frame: component to add labels to.
+        """
+        self.uic['genre'] = tk.StringVar()
+        genre_label = tk.Label(frame, text=str('Genre:'), bg=ACCENT_COLOR, foreground=TEXT_COLOR,
+                               font=(None, FONT_SIZE))
         genre_label.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT)
-        genre_value = tk.Label(frame, textvariable=self.genre, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, FONT_SIZE))
+        genre_value = tk.Label(frame, textvariable=self.uic['genre'], bg=ACCENT_COLOR,
+                               foreground=TEXT_COLOR, font=(None, FONT_SIZE))
         genre_value.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT)
-        self.label_handler.add_label(self.genre, 'genre')
+        self.label_handler.add_label(self.uic['genre'], 'genre')
 
-    def setup_bpm_label(self, frame):
-        # --- BPM LABEL --- #
-        self.bpm = tk.StringVar()
-        bpm_label = tk.Label(frame, text=str('BPM:'), bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, FONT_SIZE))
+    def __setup_bpm_label__(self, frame: object):
+        """ Adds the BPM label components to the UI.
+
+            Args:
+                - frame: component to add labels to.
+        """
+        self.uic['bpm'] = tk.StringVar()
+        bpm_label = tk.Label(frame, text=str('BPM:'), bg=ACCENT_COLOR,
+                             foreground=TEXT_COLOR, font=(None, FONT_SIZE))
         bpm_label.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT)
-        bpm_value = tk.Label(frame, textvariable=self.bpm, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, FONT_SIZE))
+        bpm_value = tk.Label(frame, textvariable=self.uic['bpm'], bg=ACCENT_COLOR,
+                             foreground=TEXT_COLOR, font=(None, FONT_SIZE))
         bpm_value.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT)
-        self.label_handler.add_label(self.bpm, 'bpm')
+        self.label_handler.add_label(self.uic['bpm'], 'bpm')
 
-    def setup_beats_label(self, frame):
-        # --- Beats LABEL --- #
-        self.beats = tk.StringVar()
-        beats_label = tk.Label(frame, text=str('Beats:'), bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, FONT_SIZE))
+    def __setup_beats_label__(self, frame: object):
+        """ Adds the Beats label components to the UI.
+
+            Args:
+                - frame: component to add labels to.
+        """
+        self.uic['beats'] = tk.StringVar()
+        beats_label = tk.Label(frame, text=str('Beats:'), bg=ACCENT_COLOR, foreground=TEXT_COLOR,
+                               font=(None, FONT_SIZE))
         beats_label.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT)
-        beats_value = tk.Label(frame, textvariable=self.beats, bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, FONT_SIZE))
+        beats_value = tk.Label(frame, textvariable=self.uic['beats'], bg=ACCENT_COLOR,
+                               foreground=TEXT_COLOR, font=(None, FONT_SIZE))
         beats_value.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT)
-        self.listener.add_handler('beat', BeatHandler(self.beats))
+        self.listener.add_handler('beat', BeatHandler(self.uic['beats']))
 
-    def setup_bands_label(self, frame):
-        # --- BANDS LABEL --- #
-        self.bands = {}
+    def __setup_bands_label__(self, frame: object):
+        """ Adds the Bands label components to the UI.
+
+            Args:
+                - frame: component to add labels to.
+        """
+        self.uic['bands'] = {}
         chosen_bands = self.listener.get_item('bands')
-        bands_frame = tk.LabelFrame(frame, borderwidth=1, text="Analysed Bands", bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, HEADER_SIZE), highlightbackground=TRIM_COLOR, highlightthickness=4)
+        bands_frame = tk.LabelFrame(frame, borderwidth=1, text="Analysed Bands", bg=ACCENT_COLOR,
+                                    foreground=TEXT_COLOR, font=(None, HEADER_SIZE),
+                                    highlightbackground=TRIM_COLOR, highlightthickness=4)
         bands_frame.pack(padx=10, pady=10)
 
         for key, _ in chosen_bands.items():
-            self.bands[key] = tk.IntVar()
+            self.uic['bands'][key] = tk.IntVar()
             band_frame = tk.Frame(bands_frame, borderwidth=1, bg=ACCENT_COLOR)
             band_frame.pack()
-            key_label = tk.Label(band_frame, text='{}: '.format(key), foreground=TEXT_COLOR, bg=ACCENT_COLOR, font=(None, FONT_SIZE))
+            key_label = tk.Label(band_frame, text='{}: '.format(key), foreground=TEXT_COLOR,
+                                 bg=ACCENT_COLOR, font=(None, FONT_SIZE))
             key_label.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT)
-            value_label = tk.Label(band_frame, textvariable=self.bands[key], foreground=TEXT_COLOR, bg=ACCENT_COLOR, font=(None, FONT_SIZE))
+            value_label = tk.Label(band_frame, textvariable=self.uic['bands'][key],
+                                   foreground=TEXT_COLOR,
+                                   bg=ACCENT_COLOR, font=(None, FONT_SIZE))
             value_label.pack(padx=XPADDING, fill=tk.X, side=tk.LEFT)
-            self.label_handler.add_label(self.bands[key], key)
+            self.label_handler.add_label(self.uic['bands'][key], key)
 
-    def setup_pitch_frame(self, frame):
-        # --- PITCH FRAME --- #
+    def __setup_pitch_frame__(self, frame: object):
+        """ Adds a frame to the UI for pitch related labels.
+
+            Args:
+                - frame: master UI component to add frame to.
+        """
         pitch_frame = tk.Frame(frame, borderwidth=1, bg=ACCENT_COLOR, height=32)
         pitch_frame.pack(padx=10, fill=tk.X)
         pitch_frame.pack_propagate(0)
-        self.setup_note_label(pitch_frame)
-        self.setup_pitch_label(pitch_frame)
+        self.__setup_note_label__(pitch_frame)
+        self.__setup_pitch_label__(pitch_frame)
 
-    def setup_genrebeat_frame(self, frame):
-        # --- GENRE & BEAT FRAME --- #
+    def __setup_genrebeat_frame__(self, frame: object):
+        """ Adds a frame to the UI for genre and beat related labels.
+
+            Args:
+                - frame: master UI component to add frame to.
+        """
         gb_frame = tk.Frame(frame, borderwidth=1, bg=ACCENT_COLOR)
         gb_frame.pack(padx=10)
-        self.setup_genre_label(gb_frame)
-        self.setup_beats_label(gb_frame)
-        self.setup_bpm_label(gb_frame)
+        self.__setup_genre_label__(gb_frame)
+        self.__setup_beats_label__(gb_frame)
+        self.__setup_bpm_label__(gb_frame)
 
-    def setup_control_panel(self):
-        # --- CONTROL FRAME --- #
+    def __setup_control_panel__(self):
+        """ Adds a frame to the UI to create the control panel section. """
         control_background = tk.Frame(self, borderwidth=1, bg='#49516F')
-        control_background.pack(side=tk.TOP, pady=(0,10), ipady=INNERPADDING, fill='x')
+        control_background.pack(side=tk.TOP, pady=(0, 10), ipady=INNERPADDING, fill='x')
+
+        self.__setup_logo__(control_background)
+
         control_frame = tk.Frame(control_background, bg='#49516F', pady=5)
         control_frame.pack(side=tk.TOP)
 
-        self.setup_media_controls(control_frame)
-        self.setup_source_controls(control_frame)
+        self.__setup_media_controls__(control_frame)
+        self.__setup_source_controls__(control_frame)
 
-    def setup_value_frame(self, frame):
-        # --- VALUE FRAME --- #
-        value_frame = tk.LabelFrame(frame, borderwidth=1, width=500, height=500, text="Analysed Values", bg=ACCENT_COLOR, foreground=TEXT_COLOR, font=(None, HEADER_SIZE), highlightbackground=TRIM_COLOR, highlightthickness=4)
+    def __setup_value_frame__(self, frame: object):
+        """ Adds a frame to the UI to encaspulate all the metric labels.
+
+            Args:
+                - frame: master UI component to add frame to.
+        """
+        value_frame = tk.LabelFrame(frame, borderwidth=1, width=500, height=500,
+                                    text="Analysed Values", bg=ACCENT_COLOR,
+                                    foreground=TEXT_COLOR, font=(None, HEADER_SIZE),
+                                    highlightbackground=TRIM_COLOR, highlightthickness=4)
         value_frame.pack(side=tk.TOP, padx=XPADDING, pady=XPADDING, fill='x')
 
-        self.setup_pitch_frame(value_frame)
-        self.setup_genrebeat_frame(value_frame)
-        self.setup_bands_label(value_frame)
+        self.__setup_pitch_frame__(value_frame)
+        self.__setup_genrebeat_frame__(value_frame)
+        self.__setup_bands_label__(value_frame)
 
-    def setup_left_frame(self):
-        # --- LEFT FRAME---- #
+    def __setup_left_frame__(self):
+        """ Creates a UI frame that is left-aligned.
+            Holds the signal and spectrum graphs.
+        """
         left_frame = tk.Frame(self, borderwidth=1, width=500, height=500, bg=TRIM_COLOR)
         left_frame.pack(side=tk.LEFT, padx=(XPADDING, 0))
-        self.setup_signal_graph(left_frame)
-        self.setup_spectrum_graph(left_frame)
+        self.__setup_signal_graph__(left_frame)
+        self.__setup_spectrum_graph__(left_frame)
 
-    def setup_right_frame(self):
-        # --- RIGHT FRAME --- #
+    def __setup_right_frame__(self):
+        """ Creates a UI frame that is right-aligned.
+            Holds the metric lables and spectrogram graph.
+        """
         right_frame = tk.Frame(self, borderwidth=1, width=500, height=500, bg=BACKGROUND_COLOR)
         right_frame.pack(side=tk.RIGHT)
 
-        self.setup_spectrogram_graph(right_frame)
-        self.setup_value_frame(right_frame)
+        self.__setup_spectrogram_graph__(right_frame)
+        self.__setup_value_frame__(right_frame)
 
 def main():
+    """ Start debugger and run main loop. """
     debugger = Debugger()
     debugger.mainloop()
 

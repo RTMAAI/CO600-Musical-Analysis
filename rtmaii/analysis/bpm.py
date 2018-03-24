@@ -77,9 +77,8 @@ def bpmsimple(beatlist, hbeatarray):
 
         avg = total/length
         return 60/avg
-        return 38
     else:
-        return 39
+        return 0
 
 def cleanbeatarray(beatlist):
     """
