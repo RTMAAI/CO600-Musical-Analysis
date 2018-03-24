@@ -54,9 +54,9 @@ class TestSuite(unittest.TestCase):
     def test_set_callbacks_error(self):
         """ Throw error on invalid input to set_callbacks function. """
         mock = 'ishouldntbeastring'
-        self.assertRaises(TypeError, self.analyser.set_callbacks(mock))
+        self.assertRaises(TypeError, self.analyser.set_callbacks, mock)
 
     def test_remove_callbacks_error(self):
         """ Throw error on invalid input to remove_callbacks function. """
         mock = 'ishouldntbeastring'
-        self.assertRaises(TypeError, self.analyser.remove_callbacks(mock))
+        self.assertRaises(TypeError, self.analyser.remove_callbacks, mock)
