@@ -51,7 +51,7 @@ class TestSuite(unittest.TestCase):
         }
         self.config = Config(**{'tasks': tasks})
         self.config.set_source(
-            {'channels': 1,
+            {'channels': 3,
              'rate': 44100
             })
         self.hierarchy = Hierarchy(self.config, [])
@@ -71,20 +71,14 @@ class TestSuite(unittest.TestCase):
     def test_add_custom_node_thread(self):
         """ Test that adding a custom node to the library works.
             - Must be added to hierarchy dictionary of single channel.
+            - Must be added to custom tasks list
             - Thread must be added to root peer_list
         """
         self.hierarchy.add_custom_node(CustomCoordinator.__name__)
+        self.assertIn(CustomCoordinator.__name__, self.hierarchy.custom_nodes)
         self.assertIn(CustomCoordinator.__name__, self.hierarchy.root['channels'][0])
         thread = self.hierarchy.root['channels'][0][CustomCoordinator.__name__]['thread']
         self.assertIn(thread, self.hierarchy.root['channels'][0]['root']['peer_list'])
-        self.hierarchy.remove_node(CustomCoordinator.__name__) # Cleanup.
-
-    def test_add_custom_node_list(self):
-        """ Test that adding a custom node to the library works.
-            - Must be added to custom tasks list.
-        """
-        self.hierarchy.add_custom_node(CustomCoordinator.__name__)
-        self.assertIn(CustomCoordinator.__name__, self.hierarchy.custom_nodes)
         self.hierarchy.remove_node(CustomCoordinator.__name__) # Cleanup.
 
     def test_add_custom_node_parent(self):
@@ -93,14 +87,14 @@ class TestSuite(unittest.TestCase):
         thread = self.hierarchy.root['channels'][0][CustomCoordinator.__name__]['thread']
         parent = self.hierarchy.root['channels'][0]['BPMCoordinator']['thread']
         self.assertIn(thread, parent.get_peer_list())
-        self.hierarchy.remove_node(CustomCoordinator.__name__)
+        self.hierarchy.remove_node(CustomCoordinator.__name__) # Cleanup.
 
     def test_unique_node(self):
         """ Test that adding and removing by a unique ID to a node correctly assigns/removes it."""
         uid = 'electricboogalo'
         self.hierarchy.add_custom_node(CustomCoordinator.__name__, uid, parent_id='BPMCoordinator')
         self.assertIn(uid, self.hierarchy.custom_nodes)
-        self.hierarchy.remove_node(uid)
+        self.hierarchy.remove_node(uid) # Cleanup.
         self.assertNotIn(uid, self.hierarchy.custom_nodes)
 
     def test_unique_node_error(self):
@@ -179,3 +173,23 @@ class TestSuite(unittest.TestCase):
         self.hierarchy.add_node('FrequencyCoordinator')
         self.hierarchy.clean_hierarchy()
         self.assertNotIn('FrequencyCoordinator', self.hierarchy.root['channels'][0])
+
+    def test_empty_peer_custom_removal(self):
+        """ Test that Custom Coordinators with no peers aren't removed on cleanup. """
+        self.hierarchy.add_custom_node('FrequencyCoordinator')
+        self.hierarchy.clean_hierarchy()
+        self.assertIn('FrequencyCoordinator', self.hierarchy.root['channels'][0])
+
+    def test_channel_creation(self):
+        """ Test that one channel hierarchy was created. """
+        self.assertEqual(len(self.hierarchy.root['channels']), 1)
+        channel_peer_list = self.hierarchy.root['channels'][0]['root']['peer_list']
+        self.assertListEqual(self.hierarchy.root['peer_list'][0], channel_peer_list)
+
+    def test_multichannel_creation(self):
+        """ Test that multiple hierarchies are created. """
+        self.config.set_config(**{'merge_channels': False})
+        self.hierarchy.reset_hierarchy()
+        self.assertEqual(len(self.hierarchy.root['channels']), 3)
+        self.config.set_config(**{'merge_channels': True})
+        self.hierarchy.reset_hierarchy()
