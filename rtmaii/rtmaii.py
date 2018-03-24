@@ -3,6 +3,10 @@
     - This module contains any API based methods that users interact with.
 
     When the library is installed, this is the module users should interact with.
+
+    For detailed information on the methods and configuring the library,
+    please see our Readme on our Github.
+    https://github.com/RTMAAI/CO600-Musical-Analysis
 """
 import wave
 import logging

@@ -2,12 +2,18 @@
 
     This module contains the Workqueue datastructure.
     This is used by Workers and Coordinators to handle their processing queue.
+
+    This module makes use of the Condition threading object and Deque structure,
+    to provide thread-safe inter-thread communication.
 """
 from collections import deque
 from threading import Condition
 
 class WorkQueue(object):
     """ Used by workers and coordinators to manage their internal work queue.
+
+        Args:
+            - queue_length: Maximum length queue can reach, before popping old items.
 
         Attributes:
             - condition: Queue Lock, allowing threads to wait until they are notified.

@@ -5,6 +5,9 @@
     All Coordinators inherit the Coordinator base class.
 
     Users wanting to create their own custom coordinator, should inherit from Coordinator.
+
+    For detailed information on Coordinators, please see our Readme on our Github.
+    https://github.com/RTMAAI/CO600-Musical-Analysis
 """
 import threading
 import logging

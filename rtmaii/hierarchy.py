@@ -9,6 +9,9 @@
     KNOWN LIMITATIONS OF CURRENT IMPLEMENTATION.
     - A node HAS to added to each channel hierarchy for each channel that is being analysed.
     - The root node is fixed, and can't be removed.
+
+    For detailed information on configuring the Hierachy, please see our Readme on our Github.
+    https://github.com/RTMAAI/CO600-Musical-Analysis
 """
 import logging
 from rtmaii.coordinator import Coordinator
