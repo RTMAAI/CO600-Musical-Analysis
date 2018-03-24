@@ -21,6 +21,11 @@ class TestSuite(unittest.TestCase):
         self.assertEqual(self.config.get_config('sampling_rate'), 20000)
         self.assertEqual(self.config.get_config('channels'), 1)
 
+    def test_source_config_error(self):
+        """ Test that setting up the library with an invalid source config key fails. """
+        self.assertRaises(KeyError, self.config.set_source,
+                          {'rate': 20000, 'channels': 1}, **{'notakey': 20000})
+
     def test_task_config(self):
         """ Test that task is correctly set when a valid setting is used. """
         self.config.set_config(**{'tasks': {'pitch': False}})
