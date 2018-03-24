@@ -2,11 +2,16 @@
 [![Build Status](https://travis-ci.org/RTMAAI/CO600-Musical-Analysis.svg?branch=master)](https://travis-ci.org/RTMAAI/CO600-Musical-Analysis)
 [![BCH compliance](https://bettercodehub.com/edge/badge/andrewmumblebee/CO600-Musical-Analysis?branch=master)](https://bettercodehub.com/)
 
-# CO600-Musical-Analysis
+![Logo](./assets/RTMALOGO.png "RTMA")
+# Description
+
+
 
 Github for the CO600 project on real-time musical analysis.
 
 RTMA stands for Realtime Musical Analysis
+
+![Hierarchy](./assets/hierarchy.png "Hierarchy")
 
 # Authors
 
@@ -67,7 +72,7 @@ This gives a basic overview of how you would interact with our API and get start
 
 ## Visualizer/Debugger
 
-INSERT IMAGE OF VISUALIZER
+![Visualizer UI](./assets/visualizer.png "Visualizer UI")
 
 Bundled with our repository, is a script called *debugger.py*
 
@@ -78,6 +83,8 @@ We recommend that you run this first, to get a feel for what the library can ana
 This script is implemented on top of our library, so you could easily create an application in a similar vain.
 
 If this script fails to run, please open an issue with any errors you encountered and we'll do our best to fix it asap!
+
+
 
 # Usage
 
@@ -342,13 +349,13 @@ To test the average response time of our tasks, run the code below in your clone
 
 This will run a number of benchmarks on our nodes against your system.
 
-INSERT PICTURE OF RESULTS
+![Benchmarking Results](./assets/benchmarker_output.png "Benchmarking Results")
 
-The results shows the average time in seconds, it takes for an audio signal to reach each node and invoke a callback.
+The results show the average time in seconds, it takes for an audio signal to reach each node and invoke a callback.
 
 If the response times are not adequate, then you can try to find a set of configuration options that match the performance you need.
 
-INSERT PICTURE OF COMMANDS
+![Benchmarker Help](./assets/benchmarker_help.png "Benchmarker Help")
 
 Running ```python .\rtma-benchmarker.py -h``` will return all the parameters that can be fed into the script for benchmarking.
 
