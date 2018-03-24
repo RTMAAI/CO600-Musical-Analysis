@@ -53,7 +53,7 @@ class Rtmaii(object):
                 }
                 custom_nodes = {
                     'Node1': {'class_name': 'NewWorker', 'parent': 'SpectrumCoordinator',
-                              'args': {}, 'kwargs':{}}
+                              'args': (), 'kwargs':{}}
                 }
                 analyser = rtmaii.Rtmaii(callbacks, track, config, custom_nodes)
                 analyser.start()
@@ -62,7 +62,7 @@ class Rtmaii(object):
                     pass #Keep main thread running.
             ```
     """
-    def __init__(self, callbacks: list = None, track: str = None,
+    def __init__(self, callbacks: list = (), track: str = None,
                  config: dict = None, custom_nodes: dict = None, **kwargs):
 
         self.config = Config()
@@ -72,8 +72,9 @@ class Rtmaii(object):
         self.set_callbacks(callbacks)
         if config:
             self.config.set_config(**config)
+
         self.hierarchy = Hierarchy(self.config, custom_nodes)
-        mode = 'DEBUG' if 'mode' not in kwargs else kwargs['mode']
+        mode = 'ERROR' if 'mode' not in kwargs else kwargs['mode']
         SH.setLevel(mode)
         LOGGER.debug('RTMAAI Initiliazed')
 
@@ -89,7 +90,7 @@ class Rtmaii(object):
             Returns
                 - bool: True is alive, False otherwise.
         """
-        return self.stream and self.stream.is_active()
+        return bool(self.stream and self.stream.is_active())
 
     def start(self):
         """ Start audio stream and analysis. """
@@ -111,6 +112,8 @@ class Rtmaii(object):
         """ Pause the stream. Analogous to stop if analysing live music. """
         if self.stream:
             self.stream.stop_stream()
+        else:
+            LOGGER.warning('Stream is not active, pausing has no effect.')
 
     def stop(self):
         """ Stop the stream & reset track's position (if set). """
@@ -118,6 +121,8 @@ class Rtmaii(object):
             self.waveform.setpos(0) # Reset wave file to initial position.
         if self.stream:
             self.stream.stop_stream()
+        else:
+            LOGGER.warning('Stream is not active, stopping has no effect.')
 
     def set_config(self, **kwargs: dict):
         """ Change configuration options, i.e. what bands should be look at.
@@ -151,6 +156,10 @@ class Rtmaii(object):
 
             Please see our readme for more information.
         """
+        if not isinstance(source, (type(None), int, str)):
+            raise TypeError('Provided source {}, should be a str, int or None type. '
+                            .format(source))
+
         if isinstance(source, int) or source is None:
             if hasattr(self, 'waveform'):
                 delattr(self, 'waveform')
@@ -185,15 +194,8 @@ class Rtmaii(object):
                 'channels': self.waveform.getnchannels()
             }
 
-        for key, value in kwargs.items(): # Add reconfigured settings.
-            if key in pyaudio_kwargs:
-                pyaudio_kwargs[key] = value
-            else:
-                raise KeyError('Key: {}, can not be set as it does not exist in the configuration.'
-                               .format(key))
-
-        pyaudio_kwargs['frames_per_buffer'] = self.config.get_config('frames_per_sample')
-        self.config.set_source(pyaudio_kwargs)
+        self.config.set_source(pyaudio_kwargs, **kwargs)
+        LOGGER.debug('Audio source has been successfully configured.')
 
         if hasattr(self, 'hierarchy'):
             if self.config.get_config('merge_channels'):
@@ -216,37 +218,85 @@ class Rtmaii(object):
         """ Attach supplied callbacks to signals on the dispatcher.
             Dispatcher is a loose form of the observer pattern.
             When the dispatcher is sent a signal, each observee will have their callback run.
+
+            Example:
+            ```python
+                set_callbacks([{'function': callback_method, 'signal':'frequency'}])
+            ```
         """
-        if callbacks:
+        if isinstance(callbacks, (tuple, list)):
             for callback in callbacks:
+                __validate_callback__(callback)
                 dispatcher.connect(callback['function'], callback['signal'], sender=dispatcher.Any)
+        else:
+            raise TypeError('Provided callbacks {}, should be in the form of a list. '
+                            .format(callbacks))
+
 
     @staticmethod
     def remove_callbacks(callbacks: list):
-        """ TODO: Implement this. """
-        for callback in callbacks:
-            dispatcher.disconnect(callback)
+        """ Remove supplied callbacks from the dispatcher.
 
-    def add_node(self, node_name: str, parent: str = None, **kwargs: dict):
+            Example:
+            ```python
+                remove_callbacks([{'function': callback_method, 'signal':'frequency'}])
+            ```
+        """
+        if isinstance(callbacks, (tuple, list)):
+            for callback in callbacks:
+                __validate_callback__(callback)
+                dispatcher.disconnect(callback['function'], callback['signal'],
+                                      sender=dispatcher.Any)
+        else:
+            raise TypeError('Provided callbacks {}, should be in the form of a list/tuple. '
+                            .format(callbacks))
+
+    def add_node(self, class_name: str, node_id: str = None, parent: str = 'root',
+                 init_args: list = (), **kwargs: dict):
         """ Add a new node to the hierarchy on each channel tree.
 
             When adding a custom node, you will need to make sure they inherit from,
             either the base Worker or Coordinator in rtmaii.worker||rtmaii.coordinator.
 
             Args:
-                - node_name: class_name of object to add to hierarchy.
+                - class_name: class_name of object to add to hierarchy.
+                - node_id: unique id to give node in hierarchy, if not set, class_name is used.
                 - parent: Parent node's class_name to attach to.
-                - kwargs: The arguments needed to initialise the node.
+                - init_args: Tuple of arguments needed to initialise the node.
+                - **kwargs: Any extra arguments to pass to the node initialisation.
         """
-        self.hierarchy.add_node(node_name, parent, **kwargs)
+        self.hierarchy.add_custom_node(class_name, node_id, parent, *init_args, **kwargs)
 
-    def remove_node(self, node_name: str):
+    def remove_node(self, node_id: str):
         """ Remove a node from the hierarchy.
 
             If you are analysing multiple channels independently,
             the node will be removed from every channels hierarchy.
 
             Args:
-                - node_name: class_name of object to add to hierarchy.
+                - node_id: id of object to add to hierarchy.
+
+            To remove inbuilt nodes, use the class name of the node.
+            I.e. 'SpectrumCoordinator'
         """
-        self.hierarchy.remove_node(node_name)
+        self.hierarchy.remove_node(node_id)
+
+def __validate_callback__(callback: dict):
+    """ Validate that a given callbacks parameters.
+
+        Expected signature:
+            {'function': callback_method, 'signal':'frequency'}
+
+        Args:
+            - callback: callback signature to validate.
+    """
+    if 'function' in callback and 'signal' in callback:
+        if not callable(callback['function']):
+            raise TypeError('Provided function {} is not callable.'
+                            .format(callback['function']))
+        if not isinstance(callback['signal'], str):
+            raise TypeError('Provided signal {} is not of type str'
+                            .format(callback['signal']))
+    else:
+        raise ValueError('Callback {}, missing required attribute signal or function.'
+                         .format(callback))

@@ -102,7 +102,7 @@ class Config(object):
             return self.settings[key]
         return None
 
-    def set_source(self: object, source_config: dict):
+    def set_source(self: object, source_config: dict, **kwargs):
         """
             Change the processing related settings based on the audio source set.
 
@@ -112,6 +112,14 @@ class Config(object):
             Args:
                 - source_config: the source configuration settings.
         """
+        for key, value in kwargs.items(): # Add reconfigured settings.
+            if key in source_config:
+                source_config[key] = value
+            else:
+                raise KeyError('Key: {}, can not be set as it does not exist in the configuration.'
+                               .format(key))
+
+        source_config['frames_per_buffer'] = self.get_config('frames_per_sample')
         self.settings['pyaudio_settings'] = source_config
         self.settings['sampling_rate'] = source_config['rate']
         self.settings['channels'] = source_config['channels']
