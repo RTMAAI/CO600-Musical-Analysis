@@ -95,7 +95,7 @@ class Hierarchy(object):
         if tasks['pitch']:
             if pitch_algorithm == 'hps':
                 self.add_node('HPSWorker', parent_id='SpectrumCoordinator')
-            elif pitch_algorithm == 'zero-crossings':
+            elif pitch_algorithm == 'zc':
                 self.add_node('ZeroCrossingWorker', parent_id='FrequencyCoordinator')
             elif pitch_algorithm == 'fft':
                 self.add_node('FFTWorker', parent_id='SpectrumCoordinator')
