@@ -271,6 +271,8 @@ We also calculate an estimate of the BPM based on the time difference between ea
 **Task**: ['Beat']
 **Signals Produced**: ['Beat', 'BPM']
 
+**Signal Returns** 'Beat' -> bool , 'BPM' -> int
+
 ## Pitch & Note
 
 We analyse the fundamental frequency (Pitch) of each sample, generating an event containing the result in Hertz.
@@ -279,8 +281,12 @@ Further to this, we also perform some small mathmetical equations to find the cl
 
 The cents off from the root note is also returned in our analysis.
 
+There are a variety of Pitch detection methods that can be used, please see our **Config** section for more details.
+
 **Task**: ['Pitch']
 **Signals Produced**: ['Pitch', 'Note']
+
+**Signal Returns** 'pitch' -> int , 'note' -> {'note': str, 'cents_off' int}
 
 ## Genre
 
@@ -292,8 +298,14 @@ Using these images the CNN is able to find patterns that are common in specific 
 
 The network currently can classify between, electronic, rock, hip-hop and folk music.
 
-**Task**: ['Pitch']
-**Signals Produced**: ['Pitch', 'Note']
+If you would like to retreive the spectrogram data and perform your own analysis, please attach a function to the 'SpectrogramData' signal.
+
+If you would like to export an image of the spectrogram created, and train your own CNN enable the 'Exporter' task.
+
+**Tasks**: ['Genre', 'Exporter']
+**Signals Produced**: ['Genre', 'SpectrogramData']
+
+**Signal Returns** 'Genre' -> str , 'SpectrogramData' -> 3d list
 
 ## Frequency band presence
 
@@ -301,10 +313,12 @@ During analysis we perform a fourier transform on the input signal to convert th
 
 From here we can analyse the presence of a given frequency range.
 
-Further to this, we also perform some small mathmetical equations to find the closest root note on a piano to the fundamental frequency.
+For example, you can analyse how much of the signal is bass frequencies, making a screen rumble based on the proportion.
 
-**Task**: ['Pitch']
-**Signals Produced**: ['Pitch', 'Note']
+**Task**: ['Bands']
+**Signals Produced**: ['Bands']
+
+**Signal Returns** 'Bands' -> dict
 
 # Config
 
@@ -329,9 +343,33 @@ There are a variety of configuration options for the library that can help to tu
     "beat": True,
     "bands": True
 },
-"frequency_resolution": 20480,
+"frequency_resolution": 16384,
 "pitch_algorithm": "auto-correlation",
 "frames_per_sample": 1024
+```
+
+## Setting Config Options
+
+To set config values either pass them in when you initialise the library.
+
+```python
+conf = {
+'frequency_resolution': 8192,
+'tasks': {'pitch': False}
+}
+analyser = rtmaii.Rtmaii(config=conf)
+```
+
+Or set them using the analysis object's set_config() method.
+
+```python
+conf = {
+'bands': {
+    'band1': [200, 600],
+    'band2': [400, 800]
+    }
+}
+analyser.set_config(**conf)
 ```
 
 ## Merge channels
@@ -439,22 +477,215 @@ The value retrieved is a normalized value between 0-1 and shows the overall powe
 
 Use this setting to analyse frequency ranges you are interested in learning more about.
 
-## Frames per buffer
+## Frames per sample
+
+```python
+"frames_per_sample": 1024 # Default
+```
+
+Each time we retrieve data from the audio signal, we wait for a specific amount of data points.
+
+The default is 1024 frames of audio, so on average if the sampling rate of the source was 44.1Khz, we'd sample the signal ~43 times a second.
+
+This setting should be fine on most systems, however, there is a chance that your system might produce a static noise when playing back an audio file.
+
+This is usually because the frames_per_sample setting is too low, meaning it's taking too long for the audio source to extract the data before the next sample is ready.
+
+Increasing this setting can help to alleviate this issue, on the other hand reducing this setting to a value such as 512 can help improve the beat detection.
+
+As each sample will be fed into our hierarchy at a much faster rate, making sure the delay before a beat in a signal and the event being raised is minimal.
 
 ## Frequency Resolution
 
+```python
+"frequency_resolution": 16384 # Default, we recommend keeping this to a power of 2 as we use an FFT.
+```
+
+The frequency resolution setting can help to improve the accuracy of our pitch detection and bands analysis.
+
+This setting means that our pitch and bands methods will wait until enough signal data has been retrieved before doing any analysis.
+
+With an extended version of the signal over time, we can perform more accurate measurements.
+
+Setting this to too high of a value, might slow down the response time, so there is a clear trade-off between accuracy and performance.
+
 ## Task Config
+
+```python
+"tasks": { # Default
+    "pitch": True,
+    "genre": True,
+    "beat": True,
+    "bands": True,
+    "exporter": True
+}
+```
+
+Any of our tasks can be disabled, so that you can only focus on metrics you require, which in turn will greatly improve response times.
+
+```python
+conf = { # Focus only on the beat and BPM.
+'tasks': {'pitch': False, 'genre': False, 'exporter': False, 'bands' : False}
+}
+analyser = rtmaii.Rtmaii(config=conf)
+```
+
+Note: **If you are adding your own custom nodes, please note that our Coordinators may be removed if they have no peers**
 
 # API
 
+There are a variety of methods available on our analysis object, any that aren't covered above are covered in the following sections.
+
+```python
+callbacks = [{'function': custom_node_callback, 'signal':'custom'}]
+analyser = rtmaii.Rtmaii(source=r'./test_data/spectogramTest.wav', mode='DEBUG')
+
+analyser.set_callbacks(callbacks)
+
+analyser.start()
+
+while analyser.is_active():
+    pass
+
+analyser.remove_callbacks(callbacks)
+
+analyser.set_callbacks([{'function': new_callback, 'signal':'pitch'}])
+
+analyser.start()
+
+end_time = time.time() + 5 # run for 5 seconds
+while time.time() < end_time:
+    pass
+analyser.stop()
+
+```
+
 ## Callbacks
+
+Our system makes use of Pydispatcher, to provide a callback system, where once an event is raised any interested parties will be called.
 
 ### Adding receivers
 
+To add a receiver, first define a method that will be called when the signal is retrieved. This can be on a class object if desired.
+
+```python
+
+def pitch_callback(_, **kwargs):
+    """ Basic signal callback, retrieving pitch data from analysis.
+        Kwargs will be passed information about the signal.
+        kwargs['signal'] = name of signal that called this function.
+    """
+    print(kwargs)
+    print("Frequency event happened")
+
+
+callbacks = [{'function': pitch_callback, 'signal':'pitch'}] # Must be provided as a list with this signature.
+analyser = rtmaii.Rtmaii(source=r'./test_data/spectogramTest.wav', callbacks=callbacks)
+# or attach the callbacks after the object is initialised.
+analyser.set_callbacks(callbacks)
+```
+
 ### Removing receivers
+
+If you no longer want the method to be called when the signal is raised, just repass the same list to our remove_callbacks() method.
+
+```python
+analyser.remove_callbacks(callbacks)
+```
+
+## Analysis Controls
+
+### Start
+
+This starts the analysis, grabbing samples from Pyaudio and feeding them into our Hierarchy for analysis.
+
+```python
+analyser.start()
+```
+
+### Pause
+
+If you are analysing an audio file, this will pause the analysis, and restart the analysis from where you left off, if you start again.
+
+```python
+analyser.pause()
+analyser.start() # Picks up where you left off.
+```
+
+This has the same effect as stop for live audio.
+
+### Stop
+
+If you are analysing an audio file, this will stop the analysis, and return the analysis to the beginning of the audio file.
+
+```python
+analyser.stop()
+```
+
+### Is_Active
+
+This returns a bool, stating whether the analysis is still running or not.
+
+This can be utilized in a while loop, when analysing an audio file, to stop the analysis as soon as the Pyaudio reaches the end of the audio stream.
+
+```python
+while analyser.is_active():
+    pass
+```
+
+## Logging
+
+By default we hide most logging messages, unless they have been raised by critical errors.
+
+We use the Python [logging](https://docs.python.org/3/library/logging.html) module to implement our verbose logging stream.
+
+![Logging messages](./assets/log.png "Logging messages")
+
+These messages are also stored within a rtma-log.log file, so all messages can be analysed after analysis.
+
+If you experience any issues with our library, we recommend that you send over a copy of this file in your issue.
+
+If you want to see more detailed logging, then please input a [logging level](https://docs.python.org/3/library/logging.html#levels) of your choice into our object initialisation.
+
+```python
+analyser = rtmaii.Rtmaii(mode='DEBUG')
+```
 
 # Custom Hierarchy
 
+Our hierarchy can be manipulated to your will. If you don't like any of the tasks we offer, then you can create your own Workers and Coordinators.
+
+```python
+def custom_node_callback():
+    """ Basic callback, data is passed in the first param.
+
+        The kwargs param holds extra information about the callback.
+    """
+    print("I'm a new worker running on the library.")
+
+foobar = 'foobar'
+
+custom_hierarchy = {
+    'Node1': {'class_name': 'NewWorker', 'parent': 'SpectrumCoordinator',
+                'kwargs':{'user_kwarg': 'helloworld'}},
+    'NewCoordinator': {'class_name': 'NewCoordinator',
+                        'init_args': (foobar,)}
+}
+
+analyser = rtmaii.Rtmaii([{'function': custom_node_callback, 'signal':'custom'}],
+                            source=r'./test_data/spectogramTest.wav',
+                            mode='DEBUG',
+                            custom_nodes=custom_hierarchy)
+
+# Nodes can be added after initialization.
+analyser.add_node('NewWorker', **{'generic_arg': 'arg'})
+# And promptly removed using their ID.
+analyser.remove_node('NewWorker')
+```
+
+For a detailed rundown of what our different node types are and how to make your own, please refer to our custom_node_example.py script in the repository.
+
+If you find that the development is too restrictive, please raise an issue and we'll look at improving this feature!
 
 # Benchmarking
 
@@ -505,3 +736,7 @@ To run the tests open the folder containing the library and run:
 * Nodes have to be added to each 'Channel Hierarchy', would be nice to add a beat detection to just a drum channel, etc.
 * Further documentation on development and making pull requests
 * As always try to optimize each node further, and reduce memory leakage.
+
+## Issues and feedback
+
+We welcome any feedback and issues against our repository, we are final year university students, so are always looking to improve!
