@@ -92,7 +92,7 @@ PARSER.add_argument("-f", "--framespersample",
                     type=int, default=1024)
 PARSER.add_argument("-r", "--frequencyresolution",
                     help="Resolution of signal before performing frequency analysis.",
-                    type=int, default=20480)
+                    type=int, default=16384)
 PARSER.add_argument("-t", "--tasks", help="Analysis Tasks to run.",
                     type=json.loads, default=TASKS)
 PARSER.add_argument("-p", "--pitchmethod",
