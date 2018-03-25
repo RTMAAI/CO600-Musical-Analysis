@@ -695,8 +695,8 @@ For this purpose we have developed a benchmarking script, that is included with 
 
 To test the average response time of our tasks, run the code below in your cloned folder.
 
-```python
-   python .\rtma-benchmarker.py
+```powershell
+   python ./rtma-benchmarker.py
 ```
 
 This will run a number of benchmarks on our nodes against your system.
@@ -713,8 +713,8 @@ Running ```python .\rtma-benchmarker.py -h``` will return all the parameters tha
 
 For example, if the pitch response was too slow, you could try use the zero-crossings method, by supplying the script with the -p param.
 
-```python
-   python .\rtma-benchmarker.py -p 'zc'
+```powershell
+   python ./rtma-benchmarker.py -p 'zc'
 ```
 
 Careful tuning of the system can allow the library to run at realtime on lower spec systems.
