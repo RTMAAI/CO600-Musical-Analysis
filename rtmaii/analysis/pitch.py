@@ -121,4 +121,4 @@ def interpolate_peak(spectrum: list, peak: int) -> float:
     peak_value = spectrum[peak]
     estimated_peak = (next_neighbour
                       - prev_neighbour) / (2 * peak_value - prev_neighbour - next_neighbour) + peak
-    return real(estimated_peak) # Only return real component.
+    return abs(estimated_peak) # Only return real component.
