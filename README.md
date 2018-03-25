@@ -3,21 +3,56 @@
 [![BCH compliance](https://bettercodehub.com/edge/badge/andrewmumblebee/CO600-Musical-Analysis?branch=master)](https://bettercodehub.com/)
 
 ![Logo](./assets/RTMALOGO.png "RTMA")
-# Description
-
-
-
-Github for the CO600 project on real-time musical analysis.
-
-RTMA stands for Realtime Musical Analysis
-
-![Hierarchy](./assets/hierarchy.png "Hierarchy")
 
 # Authors
 
 * Laurent Baeriswyl
 * Ralph Jacob Raule
 * Andrew Harris
+
+# Description
+
+RTMA is a Python library that allows you to monitor live music and create audio-responsive software!
+
+## Features
+
+* Detects and responds to beats in a signal.
+* Performs BPM analysis
+* Fundamental Pitch and Note analysis
+* Frequency band analysis
+* Genre classification
+
+...All in real time!
+
+Our library's tasks are built as a hierarchy of threaded workers, we sample audio data using a Python wrapper called Pyaudio which sits on top of Portaudio an audio IO library.
+
+This sampled audio data is sent down through our hierarchy to each our nodes in the hierarchy.
+
+![Hierarchy](./assets/hierarchy.png "Hierarchy")
+
+Some of the nodes in our hierarchy will raise event signals (Shown by the **!** in the image above.)
+
+Any function can be set up to receive these signals, meaning any time a signal is raised the function will be called.
+
+This is achieved through Pydispatcher, which is an implementation of the Observer pattern.
+
+By hooking up a function to an event, you can use to function to retrieve any metric we analyse and do any further processing.
+
+### Why Use This Library
+
+For example, imagine you were writing a video game which had a beautiful soundtrack, but you felt like the soundtrack doesn't match the gameplay.
+
+You could use our library to analyse the soundtrack, listening to the BPM, speeding up enemy movement based on the current average.
+
+Or you could check for each beat that occurs in a soundtrack, and cause enemies to move only when this happens.
+
+Maybe you want to find out the genre of a song, use our classification, and change environments based on it.
+
+Perhaps you are creating a runner game, you could create platforms on the fly based on the fundamental pitch of the song.
+
+Making steps higher as the pitch rises, and steps lower as it drops.
+
+The possibilities are endless and our library provides you the means to extend these possibilities!
 
 # Getting Started
 
@@ -84,8 +119,11 @@ This script is implemented on top of our library, so you could easily create an 
 
 If this script fails to run, please open an issue with any errors you encountered and we'll do our best to fix it asap!
 
+![Controls](./assets/controls.png "Controls")
 
+Our rewind controls don't control playback of an audio source (As you can't rewind live audio.).
 
+If you pause the analysis, you can rewind through the last 50 metrics that were analysed, seeing exactly when a beat occured for example.
 # Usage
 
 ## Prerequisites
@@ -95,6 +133,16 @@ This library requires a few pre-requisites in order to run as expected.
 * Python version 3+ must be installed.
 * All packages within requirements.txt must be installed. (This can be accomplished using the init script)
 * Portaudio must be installed on Linux/Mac OSes
+
+## System Requirements
+
+To run our analysis in realtime we have a few requirements, depending on how you configure your library the response of metrics may be slower or faster. We recommend you read through our documentation on Configuration and use our Benchmarking script to find a configuration with a delay you can handle i.e. < 0.5 ms.
+
+* RAM: 2 GB
+* CPU: 1.5 GHz+
+* To test whether your system can handle realtime analysis please see our **Benchmarking** section.
+
+### Overview
 
 To use the library you will first need to import the rtmaii module into the script you want to use it in.
 
@@ -108,7 +156,7 @@ All the functionality of rtmaii is contained within the Rtmaii class, there are 
 
 ```python
 analyser = rtmaii.Rtmaii([{'function': pitch_callback, 'signal': 'frequency'}],
-                            track = r'.\test_data\spectogramTest.wav',
+                            source = r'.\test_data\spectogramTest.wav',
                             config = {
                                 'bands': {'myband': [0, 2000]}
                             },
@@ -129,7 +177,7 @@ def pitch_callback(pitch):
     print(pitch)
 
 analyser = rtmaii.Rtmaii([{'function': pitch_callback, 'signal':'frequency'},
-                            track=r'.\test_data\spectogramTest.wav')
+                            source=r'.\test_data\spectogramTest.wav')
 ```
 
 For more information on the signals available and the data they return, please see the **Callbacks** section.
@@ -166,10 +214,43 @@ For detailed information on how to develop your own analysis task/hierarchy, ple
 
 Our library supports both live audio analysis and audio file analysis.
 
+The audio source can either be configured when initialising the library.
+
+```python
+# Using a wav file for audio analysis.
+analyser = rtmaii.Rtmaii(source=r'.\\Tracks\\LetItGo.wav')
+```
+
+```python
+# Using an audio input ID, if the source is not specified, the default input device on your system will be used.
+analyser = rtmaii.Rtmaii(source=1)
+```
+
+Or changed using our object's set_source() method, allowing you to reuse our analysis object over multiple tracks.
+
+```python
+analyser.set_source('.\\Tracks\\LetItGo.wav')
+```
+
+**Warning: If you have changed the default audio device settings, i.e. the amount of channels or sampling rate it users. You will need to provide these in the kwargs to avoid any artefacts in the analysis.**
+
+```python
+analyser.set_source(1, **{'rate': 96000, 'channels': 3})
+```
+
+If you are unsure of the ID of your audio devices, please run.
+
+```python
+analyser.get_input_devices()
+```
+
+This will print out the input devices on your system along with their IDs.
+
+![input_devices](./assets/input_devices.png "input_devices")
 
 # Tasks
 
-Our library offers a number of built in tasks, each analysing different aspects of a signal.
+We offer a number of built in tasks, each analysing different aspects of a signal.
 
 These tasks are all enabled by default, so to retrieve their results, make sure to attach a callback to one of their signals.
 
@@ -326,11 +407,13 @@ Estimate pitch by finding the peak bin value of the frequency spectrum.
 
 ## Task Config
 
-# Callbacks
+# API
 
-## Adding receivers
+## Callbacks
 
-## Removing receivers
+### Adding receivers
+
+### Removing receivers
 
 # Custom Hierarchy
 
