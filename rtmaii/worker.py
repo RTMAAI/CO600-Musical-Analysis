@@ -25,6 +25,8 @@ class Worker(threading.Thread):
         Attributes:
             - queue: queue of data to be processed by a worker.
             - channel_id: id of channel being analysed.
+
+        Args:
             - queue_length: length of queue structure. [Default = 1]
                 Workers are greedy and will only consider the latest item.
     """
@@ -79,9 +81,7 @@ class GenrePredictorWorker(Worker):
                 predictions = self.predict_fn({'x': testPhoto})
                 #print(predictions)
                 predictionClass = predictions['classes'][0]
-                print(predictionClass)
                 prediction = self.dict[predictionClass]
-                print(predictions['probabilities'])
                 export_data = [spectrodata,prediction]
                 self.exporter.queue.put(export_data)
             except:
@@ -221,7 +221,7 @@ class FFTWorker(Worker, Key):
         Attributes:
             - sampling_rate: sampling_rate of source being analysed.
     """
-    def __init__(self, kwargs: dict):
+    def __init__(self, **kwargs: dict):
         Worker.__init__(self, kwargs['config'], kwargs['channel_id'])
 
     def reset_attributes(self):
