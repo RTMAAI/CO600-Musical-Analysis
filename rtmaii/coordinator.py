@@ -30,6 +30,8 @@ class Coordinator(threading.Thread):
             - peer_list (list): List of peer threads to communicate processed data with.
             - channel_id (int): id of channel being analysed.
             - config (Config): Configuration object of library to fetch analysis values from.
+
+        Args:
             - queue_length (int): Maximum length of a coordinator's queue, helps to cull items.
     """
     def __init__(self, config: object = None, channel_id: int = None, queue_length: int = None):
@@ -131,7 +133,7 @@ class FrequencyCoordinator(Coordinator):
             - peer_list (list): List of peer threads to communicate processed data with. (Inherited)
             - config (obj): Configuration object to fetch analysis settings from. (Inherited)
             - extended_signal (list): Aggregated signal samples over time.
-            - frequency_resolution (int): Threshold of extended_signal length, before messaging.
+            - block_size (int): Threshold of extended_signal length, before messaging.
 
         Notes:
             - Peers created are dependent on configured tasks and algorithms.
@@ -142,7 +144,7 @@ class FrequencyCoordinator(Coordinator):
 
     def reset_attributes(self):
         """ Reset object attributes, to latest config values. """
-        self.frequency_resolution = self.config.get_config('frequency_resolution')
+        self.frequency_resolution = self.config.get_config('block_size')
         self.extended_signal = []
 
     def run(self):
@@ -173,7 +175,7 @@ class SpectrumCoordinator(Coordinator):
 
     def reset_attributes(self):
         """ Reset object attributes, to latest config values. """
-        frequency_resolution = self.config.get_config('frequency_resolution')
+        frequency_resolution = self.config.get_config('block_size')
         self.sampling_rate = self.config.get_config('sampling_rate')
         self.window = spectral.new_window(frequency_resolution, 'hanning')
         self.filter = spectral.butter_bandpass(60, 18000, self.sampling_rate, 5)

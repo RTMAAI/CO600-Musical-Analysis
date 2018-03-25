@@ -344,7 +344,7 @@ There are a variety of configuration options for the library that can help to tu
     "beat": True,
     "bands": True
 },
-"frequency_resolution": 16384,
+"block_size": 16384,
 "pitch_algorithm": "auto-correlation",
 "frames_per_sample": 1024
 ```
@@ -355,7 +355,7 @@ To set config values either pass them in when you initialise the library.
 
 ```python
 conf = {
-'frequency_resolution': 8192,
+'block_size': 8192,
 'tasks': {'pitch': False}
 }
 analyser = rtmaii.Rtmaii(config=conf)
@@ -502,17 +502,20 @@ Increasing this setting can help to alleviate this issue, on the other hand redu
 
 As each sample will be fed into our hierarchy at a much faster rate, making sure the delay before a beat in a signal and the event being raised is minimal.
 
-## Frequency Resolution
+## Block Size
 
 ```python
-"frequency_resolution": 16384 # Default, we recommend keeping this to a power of 2 as we use an FFT.
+"block_size": 16384 # Default, we recommend keeping this to a power of 2 as we use an FFT.
+# FFTs are an implementation of a DFT which is especially fast on signal lengths that are a power of 2.
 ```
 
-The frequency resolution setting can help to improve the accuracy of our pitch detection and bands analysis.
+The block_size setting can help to improve the accuracy of our pitch detection and bands analysis.
 
 This setting means that our pitch and bands methods will wait until enough signal data has been retrieved before doing any analysis.
 
 With an extended version of the signal over time, we can perform more accurate measurements.
+
+In turn the [frequency resolution](https://community.plm.automation.siemens.com/t5/Testing-Knowledge-Base/Digital-Signal-Processing-Sampling-Rates-Bandwidth-Spectral/ta-p/402991) is increased for spectral based tasks (interval between frequency data points)
 
 Setting this to too high of a value, might slow down the response time, so there is a clear trade-off between accuracy and performance.
 

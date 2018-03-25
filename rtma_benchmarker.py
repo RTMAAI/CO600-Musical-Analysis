@@ -90,8 +90,8 @@ PARSER.add_argument("-s", "--samplingrate",
 PARSER.add_argument("-f", "--framespersample",
                     help="Frames per buffer sample, default is 1024",
                     type=int, default=1024)
-PARSER.add_argument("-r", "--frequencyresolution",
-                    help="Resolution of signal before performing frequency analysis.",
+PARSER.add_argument("-r", "--blocksize",
+                    help="Size of signal before performing frequency based analysis.",
                     type=int, default=16384)
 PARSER.add_argument("-t", "--tasks", help="Analysis Tasks to run.",
                     type=json.loads, default=TASKS)
@@ -134,7 +134,8 @@ def main():
            'frames_per_sample': ARGS.framespersample,
            'pitch_algorithm': ARGS.pitchmethod,
            'merge_channels': ARGS.mergechannels,
-           'tasks': ARGS.tasks
+           'tasks': ARGS.tasks,
+           'block_size': ARGS.blocksize
           }
         )
     config.set_source(
@@ -147,10 +148,10 @@ def main():
     signals.append('signal')
     tasks = config.get_config('tasks')
     if tasks['pitch']:
-        signals.append('spectrum')
         signals.append('pitch')
         signals.append('note')
     if tasks['bands']:
+        signals.append('spectrum') # Used by both tasks.
         signals.append('bands')
     if tasks['beat']:
         signals.append('bpm')

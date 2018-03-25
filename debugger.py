@@ -95,7 +95,7 @@ class Listener(threading.Thread):
                                       source=r'./test_data/bpmDemo.wav',
                                      )
 
-        self.state['spectrum'].append(arange(self.analyser.config.get_config('frequency_resolution')
+        self.state['spectrum'].append(arange(self.analyser.config.get_config('block_size')
                                              // 2))
         self.state['signal'].append(arange(self.analyser.config.get_config('frames_per_sample')))
 
@@ -430,7 +430,7 @@ class Debugger(tk.Tk):
     def setup(self):
         """Create UI elements and assign configurable elements. """
         chunk_size = self.listener.analyser.config.get_config('frames_per_sample')
-        frequency_length = self.listener.analyser.config.get_config('frequency_resolution')
+        frequency_length = self.listener.analyser.config.get_config('block_size')
         frequencies = fftfreq(frequency_length, 1 / SAMPLING_RATE)[::DOWNSAMPLE_RATE]
         self.uic['frequencies'] = frequencies[:len(frequencies)//2]
 
