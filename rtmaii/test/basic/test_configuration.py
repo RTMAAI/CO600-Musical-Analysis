@@ -67,7 +67,7 @@ class TestSuite(unittest.TestCase):
 
     def test_pitch_config(self):
         """ Test that pitch is correctly set when a valid setting is used. """
-        arguments = {'pitch_algorithm': 'auto-correlation'}
+        arguments = {'pitch_algorithm': 'ac'}
         self.config.set_config(**arguments)
         self.assertEqual(self.config.get_config('pitch_algorithm'), arguments['pitch_algorithm'])
 
@@ -92,10 +92,20 @@ class TestSuite(unittest.TestCase):
 
     def test_frequency_valid(self):
         """ Test that frequency res is correctly set when a valid setting is used. """
-        arguments = {'block_size': 512}
+        arguments = {'block_size': 4096}
         self.config.set_config(**arguments)
         self.assertEqual(self.config.get_config('block_size'),
                          arguments['block_size'])
+
+    def test_block_invalid(self):
+        """ Test that block size can't be lower than the frames_per_sample. """
+        self.config.set_config(**{'frames_per_sample': 20000})
+        self.assertRaises(ValueError, self.config.set_config, **{'block_size': 4096})
+
+    def test_block_length_min(self):
+        """ Test that block size must be over 4096 frames. """
+        self.config.set_config(**{'frames_per_sample': 20000})
+        self.assertRaises(ValueError, self.config.set_config, **{'block_size': 512})
 
     def test_frequency_type_error(self):
         """ Test that frequency config throws error when invalid type is supplied. """

@@ -84,7 +84,7 @@ class Config(object):
                         self.__validate_bands__(setting)
                     elif key == 'block_size':
                         if setting < 4096:
-                            raise ValueError("Block size must be above 4096 frames. ")
+                            raise ValueError("Block size must be above 4096 frames.")
                         if setting < self.settings['frames_per_sample']:
                             raise ValueError("Block size can't be lower than frames per sample.")
                     else:
