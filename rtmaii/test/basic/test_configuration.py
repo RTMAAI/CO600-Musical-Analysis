@@ -92,14 +92,14 @@ class TestSuite(unittest.TestCase):
 
     def test_frequency_valid(self):
         """ Test that frequency res is correctly set when a valid setting is used. """
-        arguments = {'frequency_resolution': 512}
+        arguments = {'block_size': 512}
         self.config.set_config(**arguments)
-        self.assertEqual(self.config.get_config('frequency_resolution'),
-                         arguments['frequency_resolution'])
+        self.assertEqual(self.config.get_config('block_size'),
+                         arguments['block_size'])
 
     def test_frequency_type_error(self):
         """ Test that frequency config throws error when invalid type is supplied. """
-        self.assertRaises(TypeError, self.config.set_config, **{'frequency_resolution': None})
+        self.assertRaises(TypeError, self.config.set_config, **{'block_size': None})
 
     def test_merge_channels_valid(self):
         """ Test that merge_channels is correctly set when a valid setting is used. """
