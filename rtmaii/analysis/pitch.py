@@ -82,6 +82,16 @@ def pitch_from_hps(spectrum: list, sampling_rate: int, max_harmonics: int) -> fl
             - spectrum: the frequency bin to analyze.
             - sampling_rate: the sampling rate of the audio source.
             - max_framonics the sampling rate of the audio source.
+
+        Advantages:
+            This method is good at finding the true fundamental frequency
+            even if it has a weak power or is missing.
+            The technique amplifies the frequency that the harmonics are a multiple of.
+
+        Disadvantages:
+            Slower than using a naive FFT peak detection and requires a fourier transform,
+            which can be computationally expensive.
+
     """
     harmonic_spectrum = spectrum.copy()
 
