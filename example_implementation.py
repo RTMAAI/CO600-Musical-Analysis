@@ -1,7 +1,6 @@
 """ BASIC USER IMPLEMENTATION """
 from rtmaii import rtmaii # Replace with just import rtmaii in actual implementation.
 
-
 def main():
     """ """
     def pitch_callback(_, **kwargs):
@@ -18,9 +17,9 @@ def main():
 
     analyser = rtmaii.Rtmaii([{'function': pitch_callback, 'signal':'pitch'},
                               {'function': spectrogram_callback, 'signal':'spectrogram'}],
-                             track=r'C:\Users\RalphRaulePC\Music\OwnDataset\Music\rock_part1.wav',
+                             source=r'C:\Users\RalphRaulePC\Music\OwnDataset\Music\rock_part1.wav',
                              mode='DEBUG')
-    analyser.start()
+    analyser.start() # Runs the analysis.
 
     while analyser.is_active():
         # Runs forever whilst analyser is active, when a track is used will run until it's finished.
