@@ -104,9 +104,11 @@ PARSER.add_argument("-n", "--noruns",
 PARSER.add_argument("-c", "--channelcount",
                     help="Number of channels to mimic being analysed.",
                     type=int, default=1)
-PARSER.add_argument("-m", "--mergechannels",
-                    help="Whether channel data should be analysed as one channel.",
+PARSER.add_argument('-mc', "--mergechannels", dest='mergechannels',
+                    help="Merge channel data into one thread.",
                     type=bool, default=True)
+PARSER.add_argument("-m", "--multichannelanalysis", dest='mergechannels',
+                    help="Toggle multi channel analysis", action='store_false')
 ARGS = PARSER.parse_args()
 
 def main():
