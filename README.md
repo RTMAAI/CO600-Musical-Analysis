@@ -1,16 +1,16 @@
+# ![Logo](./assets/RTMALOGO.png "RTMA")
+
 [![Coverage Status](https://coveralls.io/repos/github/RTMAAI/CO600-Musical-Analysis/badge.svg?branch=master)](https://coveralls.io/github/RTMAAI/CO600-Musical-Analysis?branch=master)
 [![Build Status](https://travis-ci.org/RTMAAI/CO600-Musical-Analysis.svg?branch=master)](https://travis-ci.org/RTMAAI/CO600-Musical-Analysis)
 [![BCH compliance](https://bettercodehub.com/edge/badge/andrewmumblebee/CO600-Musical-Analysis?branch=master)](https://bettercodehub.com/)
 
-![Logo](./assets/RTMALOGO.png "RTMA")
-
-# Authors
+## Authors
 
 * Laurent Baeriswyl
 * Ralph Jacob Raule
 * Andrew Harris
 
-# Description
+## Description
 
 RTMA is a Python library that allows you to monitor live music and create audio-responsive software!
 
@@ -44,7 +44,7 @@ The hierarchy has been designed to be flexible, so nodes can be removed and adde
 
 ### Why Use This Library
 
-For example, imagine you were writing a video game which had a beautiful soundtrack, but you felt like the soundtrack doesn't match the gameplay.
+Imagine you were writing a video game which had a beautiful soundtrack, but you felt like the soundtrack doesn't match the gameplay.
 
 You could use our library to analyse the soundtrack, listening to the BPM, speeding up enemy movement based on the current average.
 
@@ -62,7 +62,7 @@ You can turn off our 'Merge_Channels' setting to analyse each channel on it's ow
 
 The possibilities are endless and our library provides you the means to extend these possibilities!
 
-# Getting Started
+## Getting Started
 
 ## Windows
 
@@ -132,7 +132,8 @@ If this script fails to run, please open an issue with any errors you encountere
 Our rewind controls don't control playback of an audio source (As you can't rewind live audio.).
 
 If you pause the analysis, you can rewind through the last 50 metrics that were analysed, seeing exactly when a beat occured for example.
-# Usage
+
+## Usage
 
 ## Prerequisites
 
@@ -218,7 +219,7 @@ analyser.add_node('CustomCoordinator')
 
 For detailed information on how to develop your own analysis task/hierarchy, please see our **Custom Hierarchy** section.
 
-# Configuring Audio Source
+## Configuring Audio Source
 
 Our library supports both live audio analysis and audio file analysis.
 
@@ -256,7 +257,7 @@ This will print out the input devices on your system along with their IDs.
 
 ![input_devices](./assets/input_devices.png "input_devices")
 
-# Tasks
+## Tasks
 
 We offer a number of built in tasks, each analysing different aspects of a signal.
 
@@ -320,7 +321,7 @@ For example, you can analyse how much of the signal is bass frequencies, making 
 
 **Signal Returns** 'Bands' -> dict
 
-# Config
+## Config
 
 There are a variety of configuration options for the library that can help to tune performance and accuracy if correctly configured.
 
@@ -380,7 +381,13 @@ analyser.set_config(**conf)
 
 The merge channels setting controls whether analysis should be done against each channel in the audio source, or a single combined channel.
 
-**Please note that analysing multiple channels raises the computational cost by a factor of N, where N is the number of channels! Be wary of disabling this.**
+![Multi-channel analysis](./assets/hierarchy_channels.png "Multi-channel analysis")
+
+Referring to our hierarchy diagram, this in effect duplicates all the nodes underneath the 'Root' Coordinator.
+
+Each channel analysed will then have its own sub-hierarchy underneath the 'Root' Coordinator, and the root coordinator will extract each channel signal and send it down its respective hierarchy.
+
+**Please note that analysing multiple channels raises the computational cost by a factor of N, where N is the number of channels! Be wary of enabling this feature.**
 
 Disabling tasks that aren't needed can help to reduce this cost, if you do want to analyse different audio interface channels, i.e. a Bassist seperately from a Guitarist.
 
@@ -532,7 +539,7 @@ analyser = rtmaii.Rtmaii(config=conf)
 
 Note: **If you are adding your own custom nodes, please note that our Coordinators may be removed if they have no peers**
 
-# API
+## API
 
 There are a variety of methods available on our analysis object, any that aren't covered above are covered in the following sections.
 
@@ -651,7 +658,7 @@ If you want to see more detailed logging, then please input a [logging level](ht
 analyser = rtmaii.Rtmaii(mode='DEBUG')
 ```
 
-# Custom Hierarchy
+## Custom Hierarchy
 
 Our hierarchy can be manipulated to your will. If you don't like any of the tasks we offer, then you can create your own Workers and Coordinators.
 
@@ -687,7 +694,7 @@ For a detailed rundown of what our different node types are and how to make your
 
 If you find that the development is too restrictive, please raise an issue and we'll look at improving this feature!
 
-# Benchmarking
+## Benchmarking
 
 Our library has been developed on a variety of systems, however, we can't assure that the analysis will remain realtime.
 
@@ -696,7 +703,7 @@ For this purpose we have developed a benchmarking script, that is included with 
 To test the average response time of our tasks, run the code below in your cloned folder.
 
 ```powershell
-   python ./rtma-benchmarker.py
+   python ./rtma_benchmarker.py
 ```
 
 This will run a number of benchmarks on our nodes against your system.
@@ -714,14 +721,30 @@ Running ```python .\rtma-benchmarker.py -h``` will return all the parameters tha
 For example, if the pitch response was too slow, you could try use the zero-crossings method, by supplying the script with the -p param.
 
 ```powershell
-   python ./rtma-benchmarker.py -p 'zc'
+   python ./rtma_benchmarker.py -p 'zc'
 ```
 
 Careful tuning of the system can allow the library to run at realtime on lower spec systems.
 
+Parameters such as bands and tasks should be provided as a dictionary. Be aware that on some operating systems, you will need to escape quotes.
+
+This is because the cmdline might already escape the quotes for you, so the dictionary will be invalid when parsed through JSON.
+
+```powershell
+   python ./rtma_benchmarker.py -t '{\"pitch\": false}' # As we're parsing the dicts as JSON all bools must be lowercase.
+```
+
+```powershell
+   python ./rtma_benchmarker.py -b '{\"low_band\": [0, 200], \"high_band\": [2000, 3000]}' # Changing the bands analysed.
+```
+
+```powershell
+   python ./rtma_benchmarker.py -m # This will make the benchmarker, create a seperate hierarchy for each channel.
+```
+
 Making sure to disable unused systems will also save a huge amount of CPU cycles.
 
-# Testing the library
+## Testing the library
 
 Our tests are contained within the library itself so can be run at anytime to check for issues.
 
