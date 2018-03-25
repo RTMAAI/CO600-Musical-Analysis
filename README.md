@@ -28,6 +28,8 @@ Our library's tasks are built as a hierarchy of threaded workers, we sample audi
 
 This sampled audio data is sent down through our hierarchy to each our nodes in the hierarchy.
 
+Each node has it's own processing queue (WorkQueue). When an item is added, the thread will process the data, and either raise an event signal and/or send the processed data to other nodes in the Hierarchy.
+
 ![Hierarchy](./assets/hierarchy.png "Hierarchy")
 
 Some of the nodes in our hierarchy will raise event signals (Shown by the **!** in the image above.)
@@ -37,6 +39,8 @@ Any function can be set up to receive these signals, meaning any time a signal i
 This is achieved through Pydispatcher, which is an implementation of the Observer pattern.
 
 By hooking up a function to an event, you can use to function to retrieve any metric we analyse and do any further processing.
+
+The hierarchy has been designed to be flexible, so nodes can be removed and added with ease. You can even develop your own node!
 
 ### Why Use This Library
 
@@ -51,6 +55,10 @@ Maybe you want to find out the genre of a song, use our classification, and chan
 Perhaps you are creating a runner game, you could create platforms on the fly based on the fundamental pitch of the song.
 
 Making steps higher as the pitch rises, and steps lower as it drops.
+
+Have an audio interface connected to your machine, analysing each musicians audio?
+
+You can turn off our 'Merge_Channels' setting to analyse each channel on it's own, finding metrics for each musician.
 
 The possibilities are endless and our library provides you the means to extend these possibilities!
 
@@ -401,6 +409,36 @@ Estimate pitch by finding the peak bin value of the frequency spectrum.
 
 ## Bands
 
+```python
+"bands": { #Default
+        "sub-bass":[20, 60], # Specified as [min, max] of range.
+        "bass":[60, 250],
+        "low-mid":[250, 500],
+        "mid":[500, 2000],
+        "upper-mid":[2000, 4000],
+        "presence":[4000, 6000],
+        "brilliance":[6000, 20000]
+}
+```
+
+The bands setting controls the frequency bands you would like to find the presence of.
+
+![Audio Spectrum](./assets/spectrum.png "Audio Spectrum")
+
+When analysing an audio signal, we perform a fourier transform to extract the frequency bins of a windowed signal.
+
+This results in a list containing the values shown in the graph above.
+
+The spectrum retrieved gives the sine wave coefficients that can be used to recreate the complex signal.
+
+Our bands analysis, will take the configured bands of interest and find how much of the signal was made up by that band.
+
+![Bands](./assets/bands.png "Frequency Bands")
+
+The value retrieved is a normalized value between 0-1 and shows the overall power of that band proportional to the power of the entire spectrum.
+
+Use this setting to analyse frequency ranges you are interested in learning more about.
+
 ## Frames per buffer
 
 ## Frequency Resolution
@@ -462,15 +500,8 @@ To run the tests open the folder containing the library and run:
     python -m unittest discover
 ```
 
-## TODOs:
-* Add rewind functionality to debugger
-* Add source configuration to debugger
-* Fix HPS
-* Update hierarchy
-* Tinker with configurable settings
+## Future
 
-        **Advantages**:
-            - This method is good at finding the true fundamental frequency even if it has a weak power or is missing.
-              The technique amplifies the frequency that the harmonics are a multiple of.
-        **Disadvantages**:
-            - Slower than using a naive FFT peak detection and requires a fourier transform, which can be computationally expensive.
+* Nodes have to be added to each 'Channel Hierarchy', would be nice to add a beat detection to just a drum channel, etc.
+* Further documentation on development and making pull requests
+* As always try to optimize each node further, and reduce memory leakage.
