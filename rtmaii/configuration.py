@@ -48,8 +48,8 @@ class Config(object):
             },
             # Size of sample to take before performing pitch tasks
             # (Higher = More accurate, but more computationally expensive.)
-            "frequency_resolution": 20480,
-            "pitch_algorithm": "auto-correlation",
+            "frequency_resolution": 16384, # Power of 2 for efficiency.
+            "pitch_algorithm": "ac",
             "frames_per_sample": 1024,
         }
 

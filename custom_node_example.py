@@ -151,7 +151,7 @@ def main():
     }
 
     analyser = rtmaii.Rtmaii([{'function': custom_node_callback, 'signal':'custom'}],
-                             track=r'./test_data/spectogramTest.wav',
+                             source=r'./test_data/spectogramTest.wav',
                              mode='DEBUG',
                              custom_nodes=custom_hierarchy)
 

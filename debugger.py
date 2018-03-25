@@ -92,7 +92,7 @@ class Listener(threading.Thread):
 
         self.analyser = rtmaii.Rtmaii(callbacks,
                                       mode='INFO',
-                                      track=r'./test_data/bpmDemo.wav',
+                                      source=r'./test_data/bpmDemo.wav',
                                      )
 
         self.state['spectrum'].append(arange(self.analyser.config.get_config('frequency_resolution')
