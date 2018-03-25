@@ -32,7 +32,7 @@ class Rtmaii(object):
 
         Args:
             - Callbacks: List of dicts with a callback and the signal to will trigger it.
-            - Track: The path of a track to be played, defaults to microphone input.
+            - Source: The path of a track to be played, defaults to microphone input.
             - Config: Dict of settings to change. (See our Readme for a list of options.)
             - Custom_Nodes: List of custom nodes to add to Hierarchy. (See Readme for details.)
 
@@ -41,7 +41,7 @@ class Rtmaii(object):
 
         Example:
             ```python
-                track = r'.\\Tracks\\LetItGo.wav'
+                source = r'.\\Tracks\\LetItGo.wav'
                 callbacks = [{'function': callback_function, 'signal':'frequency'}]
                 config = {
                     "bands": {
@@ -55,20 +55,20 @@ class Rtmaii(object):
                     'Node1': {'class_name': 'NewWorker', 'parent': 'SpectrumCoordinator',
                               'args': (), 'kwargs':{}}
                 }
-                analyser = rtmaii.Rtmaii(callbacks, track, config, custom_nodes)
+                analyser = rtmaii.Rtmaii(callbacks, source, config, custom_nodes)
                 analyser.start()
 
                 while analyser.is_active():
                     pass #Keep main thread running.
             ```
     """
-    def __init__(self, callbacks: list = (), track: str = None,
+    def __init__(self, callbacks: list = (), source: str = None,
                  config: dict = None, custom_nodes: dict = None, **kwargs):
 
         self.config = Config()
         self.audio = pyaudio.PyAudio()
         self.stream = None
-        self.set_source(track)
+        self.set_source(source)
         self.set_callbacks(callbacks)
         if config:
             self.config.set_config(**config)
