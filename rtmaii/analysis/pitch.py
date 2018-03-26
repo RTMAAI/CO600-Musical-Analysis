@@ -8,7 +8,7 @@
     OUTPUTS:
         Pitch (Fundamental Frequency): the pitch of the input.
 """
-from numpy import argmax, mean, diff, real
+from numpy import argmax, mean, diff
 from scipy.signal import decimate
 
 def pitch_from_fft(spectrum: list, sampling_rate: int) -> float:
