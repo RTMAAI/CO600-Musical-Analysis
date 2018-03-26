@@ -132,7 +132,9 @@ class Rtmaii(object):
         """
         self.config.set_config(**kwargs)
         if hasattr(self, 'hierarchy'):
-            if 'merge_channels' in kwargs:
+            # As these changes require a change in the Hierarchy.
+            # We simply recreate the Hierarchy, which is currently quite expensive.
+            if 'merge_channels' in kwargs or 'tasks' in kwargs:
                 self.hierarchy.reset_hierarchy()
             else:
                 self.hierarchy.update_nodes()
