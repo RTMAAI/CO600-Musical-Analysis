@@ -111,12 +111,12 @@ class TestSuite(unittest.TestCase):
         """ Test that frequency config throws error when invalid type is supplied. """
         self.assertRaises(TypeError, self.config.set_config, **{'block_size': None})
 
-    def test_merge_channels_valid(self):
+    def __test_merge_channels_valid__(self):
         """ Test that merge_channels is correctly set when a valid setting is used. """
         arguments = {'merge_channels': False}
         self.config.set_config(**arguments)
         self.assertEqual(self.config.get_config('merge_channels'), arguments['merge_channels'])
 
-    def test_merge_channels_type_error(self):
+    def __test_merge_channels_type_error__(self):
         """ Test that merge_channels config throws error when invalid type is supplied. """
         self.assertRaises(TypeError, self.config.set_config, **{'merge_channels': None})
