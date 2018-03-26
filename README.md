@@ -12,7 +12,7 @@
 
 ## Description
 
-RTMA is a Python library that allows you to monitor live music and create audio-responsive software!
+> RTMA is a Python library that allows you to monitor live music and create audio-responsive software!
 
 ## Features
 
@@ -391,7 +391,7 @@ Each channel analysed will then have its own sub-hierarchy underneath the 'Root'
 
 Disabling tasks that aren't needed can help to reduce this cost, if you do want to analyse different audio interface channels, i.e. a Bassist seperately from a Guitarist.
 
-## Pitch method
+## Pitch Algorithm
 
 There are multiple pitch detection methods available in the library, each with their own advantages in different environments.
 
@@ -527,7 +527,7 @@ Setting this to too high of a value, might slow down the response time, so there
     "genre": True,
     "beat": True,
     "bands": True,
-    "exporter": True
+    "export_spectrograms": True
 }
 ```
 
@@ -535,7 +535,7 @@ Any of our tasks can be disabled, so that you can only focus on metrics you requ
 
 ```python
 conf = { # Focus only on the beat and BPM.
-'tasks': {'pitch': False, 'genre': False, 'exporter': False, 'bands' : False}
+'tasks': {'pitch': False, 'genre': False, 'export_spectrograms': False, 'bands' : False}
 }
 analyser = rtmaii.Rtmaii(config=conf)
 ```
@@ -605,7 +605,7 @@ analyser.remove_callbacks(callbacks)
 
 ## Analysis Controls
 
-### Start
+### Start()
 
 This starts the analysis, grabbing samples from Pyaudio and feeding them into our Hierarchy for analysis.
 
@@ -613,7 +613,7 @@ This starts the analysis, grabbing samples from Pyaudio and feeding them into ou
 analyser.start()
 ```
 
-### Pause
+### Pause()
 
 If you are analysing an audio file, this will pause the analysis, and restart the analysis from where you left off, if you start again.
 
@@ -624,7 +624,7 @@ analyser.start() # Picks up where you left off.
 
 This has the same effect as stop for live audio.
 
-### Stop
+### Stop()
 
 If you are analysing an audio file, this will stop the analysis, and return the analysis to the beginning of the audio file.
 
@@ -632,7 +632,7 @@ If you are analysing an audio file, this will stop the analysis, and return the 
 analyser.stop()
 ```
 
-### Is_Active
+### Is_Active()
 
 This returns a bool, stating whether the analysis is still running or not.
 
@@ -706,7 +706,7 @@ For this purpose we have developed a benchmarking script, that is included with 
 To test the average response time of our tasks, run the code below in your cloned folder.
 
 ```powershell
-   python ./rtma_benchmarker.py
+python ./rtma_benchmarker.py
 ```
 
 This will run a number of benchmarks on our nodes against your system.
@@ -724,7 +724,7 @@ Running ```python .\rtma-benchmarker.py -h``` will return all the parameters tha
 For example, if the pitch response was too slow, you could try use the zero-crossings method, by supplying the script with the -p param.
 
 ```powershell
-   python ./rtma_benchmarker.py -p 'zc'
+python ./rtma_benchmarker.py -p 'zc'
 ```
 
 Careful tuning of the system can allow the library to run at realtime on lower spec systems.
@@ -733,16 +733,26 @@ Parameters such as bands and tasks should be provided as a dictionary. Be aware 
 
 This is because the cmdline might already escape the quotes for you, so the dictionary will be invalid when parsed through JSON.
 
+> 'error: argument -t/--tasks: invalid loads value: '{genre: false, beat: false, bands: false}''
+
+If you see the above error, then you will need to escape the dictionary keys.
+
+### Examples
+
 ```powershell
-   python ./rtma_benchmarker.py -t '{\"pitch\": false}' # As we're parsing the dicts as JSON all bools must be lowercase.
+# As we're parsing the dicts as JSON all bools must be lowercase.
+python ./rtma_benchmarker.py -t '{\"pitch\": false}'
 ```
 
 ```powershell
-   python ./rtma_benchmarker.py -b '{\"low_band\": [0, 200], \"high_band\": [2000, 3000]}' # Changing the bands analysed.
+# Changing the bands analysed.
+python ./rtma_benchmarker.py -b '{\"low_band\": [0, 200], \"high_band\": [2000, 3000]}' # Escaped
+python ./rtma_benchmarker.py -b '{"low_band": [0, 200], "high_band": [2000, 3000]}' # Unescaped
 ```
 
 ```powershell
-   python ./rtma_benchmarker.py -m # This will make the benchmarker, create a seperate hierarchy for each channel.
+# This will make the benchmarker, create a seperate hierarchy for each channel.
+python ./rtma_benchmarker.py -m
 ```
 
 Making sure to disable unused systems will also save a huge amount of CPU cycles.
