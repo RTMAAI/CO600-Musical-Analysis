@@ -10,6 +10,7 @@
 from scipy.signal import butter, lfilter, fftconvolve, get_window
 from scipy.fftpack import fft
 from numpy import absolute, sum, power, log10
+from numpy.linalg import norm
 
 def butter_bandpass(low_cut_off: int, high_cut_off: int,
                     sampling_rate: int, order: int = 5) -> dict:
@@ -86,7 +87,7 @@ def spectrum(signal: list,
     frequency_spectrum = spectrum_transform(filtered_signal)
     return frequency_spectrum
 
-def normalizor(signal: list) -> list:
+def normalizorFFT(fft: list) -> list:
     """ Return the frequency spectrum of an input signal.
 
         Args
@@ -95,7 +96,12 @@ def normalizor(signal: list) -> list:
             - bp_filter: the bandpass filter polynomial coefficents to apply to the signal.
                 In the form of {'numerator': list, 'denominator': list}
     """
-    pass
+    normalised_ftt = norm(fft)
+    if normalised_ftt == 0:
+        return fft
+    else:
+        fft = fft / normalised_ftt
+        return fft
 
 def convertingMagnitudeToDecibel(ffts: list, window: list) -> list:
     """ Return the frequency spectrum of an input signal.

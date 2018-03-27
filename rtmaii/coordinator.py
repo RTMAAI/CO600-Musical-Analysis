@@ -9,7 +9,6 @@ from rtmaii.analysis import spectral, bpm
 from pydispatch import dispatcher
 from numpy import mean, int16, pad, hanning, column_stack, absolute, power, log10, arange, sum
 from numpy.fft import fft as numpyFFT
-from numpy.linalg import norm
 
 LOGGER = logging.getLogger()
 class Coordinator(threading.Thread):
@@ -205,12 +204,7 @@ class FFTSCoordinator(Coordinator):
             fft = self.queue.get()
             if fft is not None:
                 fft = spectral.spectrum(fft, self.window, None)
-
-                normalised_ftt = norm(fft)
-                if normalised_ftt == 0:
-                    pass
-                else:
-                    fft = fft / normalised_ftt
+                fft = spectral.normalizorFFT(fft)
 
                 if fft is None:
                     self.message_peers(None)
