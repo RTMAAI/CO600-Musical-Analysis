@@ -260,7 +260,8 @@ class SignalPlotter(threading.Thread):
         self.start()
 
     def run(self):
-        signal = zeros(1024 * SIGNAL_COUNT)
+        graph_length = len(self.line.get_ydata())
+        signal = zeros(graph_length)
         min_power = 8000
         while True:
             new_data = self.queue.get()
@@ -271,7 +272,8 @@ class SignalPlotter(threading.Thread):
             # If mainly noise in signal use min_power as graph max/min.
             y_max = signal_max if signal_max > min_power else min_power
             self.plot.set_ylim([-y_max, y_max])
-            self.line.set_ydata(resample(signal, 1024 // DOWNSAMPLE_RATE))
+            # Resample signal to graph's length, to reduce processing time.
+            self.line.set_ydata(resample(signal, graph_length))
 
 class SpectrumPlotter(threading.Thread):
     """ Retrieves signal data, downsamples and sets new Y data and limits. """
@@ -285,9 +287,11 @@ class SpectrumPlotter(threading.Thread):
         self.start()
 
     def run(self):
+        graph_length = len(self.line.get_ydata())
         while True:
             spectrum = self.queue.get()
-            downsampled_spectrum = resample(spectrum, len(spectrum) // DOWNSAMPLE_RATE)
+            # Resample spectrum to graph's length, to reduce processing time.
+            downsampled_spectrum = resample(spectrum, graph_length)
             self.plot.set_ylim([0, max(downsampled_spectrum) * (1 + GY_PADDING)])
             self.line.set_ydata(downsampled_spectrum)
 
