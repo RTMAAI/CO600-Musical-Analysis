@@ -289,9 +289,8 @@ def node_factory(node_class: str, *args: list, **kwargs: dict):
             - *args: positional arguments to pass to node instantiation.
             - **kwargs: kwargs to pass to node instatiation
     """
-    coordinators = {subclass.__name__ : subclass for subclass in Coordinator.__subclasses__()}
-    workers = {subclass.__name__ : subclass for subclass in Worker.__subclasses__()}
-    nodes = {**coordinators, **workers}
+    nodes = {subclass.__name__ : subclass for subclass in Worker.__subclasses__()}
+    nodes.update({subclass.__name__ : subclass for subclass in Coordinator.__subclasses__()})
     if node_class in nodes:
         return nodes[node_class](*args, **kwargs)
     else:
