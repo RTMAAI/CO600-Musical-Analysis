@@ -17,9 +17,10 @@ threshold = 0
 descrate = 100
 LOGGER = logging.getLogger(__name__)
 
-def beatdetection(data):
+def beatdetectiondeprecated(data):
     """
     Takes data as input and returns true for when a beat occurs
+
     :param data: raw, high-pass or low-pass music info
     :return: true or false depending on if there was a beat
     """
@@ -44,10 +45,12 @@ def beatdetection(data):
     else:
         return False
 
-def beatdetectionnew(data, threshold):
+def beatdetection(data, threshold):
     """
     Takes data as input and returns true for when a beat occurs
-    :param data: raw, high-pass or low-pass music info
+
+    :param data: raw, high-pass or low-pass chunk of music data
+    :param threshold: value of the most recent peak
     :return: true or false depending on if there was a beat
     """
     amp = audioop.rms(data, 2)

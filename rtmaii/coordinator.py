@@ -308,7 +308,8 @@ class BPMCoordinator(Coordinator):
         self.beats = []
         self.hbeats = []
         self.timelast = time.clock()
-        LOGGER.info('BPM Initialized.')
+        self.descrate = self.config.get_config('beat_desc_rate')
+        LOGGER.info('BPM Initialized. Descrate:' + str(self.descrate))
 
     def reset_attributes(self):
         self.beats = []
@@ -320,12 +321,12 @@ class BPMCoordinator(Coordinator):
         #hbeats = [] # placeholder
         #timelast = time.clock()
         threshold = 0
-        descrate = 100
+        #descrate = 100
 
         while True:
-            threshold -= descrate
+            threshold -= self.descrate
             data = self.queue.get()
-            beat = bpm.beatdetectionnew(data, threshold)
+            beat = bpm.beatdetection(data, threshold)
             if(beat != False):
                 beattime = time.clock()
                 self.beats.append(beattime - self.timelast)

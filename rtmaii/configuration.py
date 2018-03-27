@@ -50,6 +50,7 @@ class Config(object):
             # (Higher = More accurate, but more computationally expensive.)
             "block_size": 16384, # Power of 2 for efficiency.
             "pitch_algorithm": "ac",
+            "beat_desc_rate": 100,
             "frames_per_sample": 1024,
         }
 
@@ -91,6 +92,8 @@ class Config(object):
                         self.__validate_type__(key, setting)
                         if key == 'pitch_algorithm':
                             self.__validate_pitch__(setting)
+                        if key == 'beat_desc_rate':
+                            self.__validate_beat__(setting)
                     self.settings[key] = setting
             else:
                 raise KeyError("{} is not a valid configuration setting".format(key))
@@ -174,6 +177,11 @@ class Config(object):
         pitch_methods = ['zc', 'fft', 'ac', 'hps']
         if not setting in pitch_methods:
             raise ValueError("The pitch method {} set doesn't exist".format(setting))
+
+    def __validate_beat__(setting):
+        if setting <= 0:
+            raise ValueError("The beat threshold descenscion rate can't be lower or equal to 0")
+
 
     def __validate_type__(self, key, value):
         """ Perform type validation on supplied setting.
