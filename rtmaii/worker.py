@@ -44,18 +44,20 @@ class GenrePredictorWorker(Worker):
             - channel_id: id of channel being analysed.
 
         Attributes:
-            - bands_of_interest: dictionary of frequency bands to analyse.
-            - sampling_rate: sampling_rate of source being analysed.
+            - exporter
+            - 
     """
     def __init__(self, exporter: object, **kwargs: dict):
         Worker.__init__(self, kwargs['config'], kwargs['channel_id'])
         self.exporter = exporter
+        
         self.predict_fn = predictor.from_saved_model(os.path.join(os.path.dirname(__file__), 'model'))
-        self.dict = {}
-        self.dict[1] = 'Folk'
-        self.dict[2] = 'Hip-Hop'
-        self.dict[0] = 'Rock'
-        self.dict[3] = 'Electric'
+        
+        self.genredict = {}
+        self.genredict[0] = 'Rock'
+        self.genredict[1] = 'Folk'
+        self.genredict[2] = 'Hip-Hop'
+        self.genredict[3] = 'Electric'
 
     def run(self):
         
@@ -63,14 +65,14 @@ class GenrePredictorWorker(Worker):
             spectrogram = self.queue.get()
             spectrodata = spectrogram[2]
 
-            testPhoto = array(spectrodata)
-            testPhoto = testPhoto.astype('float32')          
+            testphoto = array(spectrodata)
+            testphoto = testphoto.astype('float32')          
             
             try:
-                testPhoto = reshape(testPhoto, (1,128,128,1))
-                predictions = self.predict_fn({'x': testPhoto})
-                predictionClass = predictions['classes'][0]
-                prediction = self.dict[predictionClass]
+                testphoto = reshape(testphoto, (1,128,128,1))
+                predictions = self.predict_fn({'x': testphoto})
+                predictionclass = predictions['classes'][0]
+                prediction = self.genredict[predictionclass]
                 export_data = [spectrodata,prediction]
                 self.exporter.queue.put(export_data)
             except:
