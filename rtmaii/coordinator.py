@@ -179,57 +179,66 @@ class SpectrumCoordinator(Coordinator):
             dispatcher.send(signal='spectrum', sender=self.channel_id, data=frequency_spectrum)
 
 class FFTSCoordinator(Coordinator):
-    def __init__(self, **kwargs: dict):
-        Coordinator.__init__(self, kwargs['config'], kwargs['channel_id'])
-        self.window = hanning(1024)
+    """ FFTS coordinator responsible for creating and collect 128 spectrums for creating a spectrogram.
 
-    def normalize(self, v):
-        """TODO: Move this to seperate module or just inline."""
-        Norm = norm(v)
-        #print(norm)
-        if Norm == 0:
-            return v
-        return v / Norm
+        Attributes:
+            - channel_id (int): The ID of the channel being analysed. (Inherited)
+            - peer_list (list): List of peer threads to communicate processed data with. (Inherited)
+            - config (obj): Configuration object to fetch analysis settings from. (Inherited)
+            - window (list): pre-processing smoothing window to apply to signal.
+            - spectrogram_resolution (int): 
+
+        Notes:
+            - Peers created are dependent on configured tasks and algorithms.
+    """
+
+    def __init__(self, **kwargs: dict):
+        """ Reset object attributes, to latest config values. """
+        Coordinator.__init__(self, kwargs['config'], kwargs['channel_id'])
+        self.window = spectral.new_window(1024, 'hanning')
+        self.spectrogram_resolution = 128
 
     def run(self):
-        spectrum_list = []
-        spectrogram_resolution = 10
+        """ Reset object attributes, to latest config values. """
         ffts = []
-        spectrogram_resolution = 128
-        
-            
         while True:
             fft = self.queue.get()
             if fft is not None:
-                fft = numpyFFT(fft * self.window)[:1024//2]
+                fft = spectral.spectrum(fft, self.window, None)
 
-                fft = self.normalize(fft)
-                #print("bar")
+                normalised_ftt = norm(fft)
+                if normalised_ftt == 0:
+                    pass
+                else:
+                    fft = fft / normalised_ftt
+
                 if fft is None:
                     self.message_peers(None)
                     break
 
                 ffts.append(fft)
-                if len(ffts) >= spectrogram_resolution:
+                ffts = ffts[-self.spectrogram_resolution:]
+                if len(ffts) ==  self.spectrogram_resolution:
 
-                    ffts = ffts[-spectrogram_resolution:]            
-                    self.message_peers(ffts)
-                    
+                    self.message_peers(ffts)       
                     dispatcher.send(signal='spectrogram', sender='spectrogram', data=ffts)
 
-                # Also need to remove previous set of FFTs once there is enough data
-                #dispatcher.send(signal='spectrogram', sender='spectrogram', data=ffts)
-                # Create spectrogram when enough FFTs generated
-
 class SpectrogramCoordinator(Coordinator):
-    """ Coordinator responsible for creating spectograms ... .
+    """ Spectrogram coordinator responsible for creating a spectrogram.
 
-        Args:
-            - sampling_rate: sampling_rate of source being analysed.
-            - channel_id: id of channel being analysed.
+        Attributes:
+            - channel_id (int): The ID of the channel being analysed. (Inherited)
+            - peer_list (list): List of peer threads to communicate processed data with. (Inherited)
+            - config (obj): Configuration object to fetch analysis settings from. (Inherited)
+            - sampling_rate (int): Sampling rate of audio source (Hz)
+            - window (list): pre-processing smoothing window to apply to signal.
+
+        Notes:
+            - Peers created are dependent on configured tasks and algorithms.
     """
     def __init__(self, **kwargs: dict):
         Coordinator.__init__(self, kwargs['config'], kwargs['channel_id'])
+        self.window = 1024
 
     def reset_attributes(self):
         self.sampling_rate = self.config.get_config('sampling_rate')
@@ -238,54 +247,29 @@ class SpectrogramCoordinator(Coordinator):
         while True:
             ffts = self.queue.get()
             if ffts is None:
-                break # No more data so cleanup and end thread.
+                break 
             
-            self.window = 1024
             ffts = column_stack(ffts)
-            ffts = absolute(ffts) * 2.0 / sum(self.window)
-            ffts = ffts / power(2.0, 8* 0)
-            ffts = (20 * log10(ffts)).clip(-120)
-            #print(ffts)
-
-            time = arange(0, ffts.shape[1], dtype=float) * self.window / self.sampling_rate / 2
+            ffts = spectral.convertingMagnitudeToDecibel(ffts, self.window)          
+            
+            time = arange(0, 128, dtype=float) * self.window / self.sampling_rate / 2
             frequecy = arange(0, self.window / 2, dtype=float) * self.sampling_rate / self.window
             
-            smallerFFTS = []
-            smallerF = []
+            smallerffts = []
+            smallerfreq = []
 
             for i in range(0, len(ffts), 4):
-                if i + 4 > len(ffts):
+                if i + 4 > len(ffts) and len(smallerffts) == 128:
                     break
                 
-                meanFreq = (frequecy[i] + frequecy[i+1] + frequecy[i + 2] + frequecy[i + 3])
+                meanfreq = (frequecy[i] + frequecy[i+1] + frequecy[i + 2] + frequecy[i + 3])
                 meanffts = (ffts[i] + ffts[i+1] + ffts[i+2] + ffts[i+3])/4
-                smallerFFTS.append(meanffts)
-                smallerF.append(meanFreq)
-                #print(meanffts)
+                smallerffts.append(meanffts)
+                smallerfreq.append(meanfreq)
 
-            
-
-            # for i in range(0, len(ffts), 4):
-            #     if i + 4 > len(ffts):
-            #         break
-
-            #     meanF = 0
-            #     meanFFTS = 0
-
-            #     for j in range(i , i + 3):
-            #         meanF = meanF + frequecy[j] 
-            #         meanFFTS = meanFFTS + ffts[j]
-
-            #     meanF = meanF + frequecy[j]/4 
-            #     meanFFTS = meanFFTS + ffts[j]/4
-            #     #print(meanFFTS)
-
-            #     smallerF.append(meanF)
-            #     smallerFFTS.append(meanFFTS)
-
-            spectroData = [time, smallerF, smallerFFTS]
-            self.message_peers(spectroData)
-            dispatcher.send(signal='spectogramData', sender=self.channel_id, data=spectroData)
+            spectrodata = [time, smallerfreq, smallerffts]
+            self.message_peers(spectrodata)
+            dispatcher.send(signal='spectogramData', sender=self.channel_id, data=spectrodata)
 
 
 class BPMCoordinator(Coordinator):
@@ -314,7 +298,7 @@ class BPMCoordinator(Coordinator):
                 timelast = beattime
                 beatdata = [beats, hbeats]
                 self.message_peers(beatdata)
-                threshold = beat;
+                threshold = beat
                 dispatcher.send(signal='beats', sender=self, data=True)
             else:
                 dispatcher.send(signal='beats', sender=self, data=False)

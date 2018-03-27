@@ -37,11 +37,15 @@ class Worker(threading.Thread):
         pass
 
 class GenrePredictorWorker(Worker):
-    """ Worker responsible for creating spectograms ... .
+    """ Worker responsible for analysing Spectrogram intensities for a genre.
 
-        Args:
-            - sampling_rate: sampling_rate of source being analysed.
+        Kwargs:
+            - config (Config): Configuration options to use.
             - channel_id: id of channel being analysed.
+
+        Attributes:
+            - bands_of_interest: dictionary of frequency bands to analyse.
+            - sampling_rate: sampling_rate of source being analysed.
     """
     def __init__(self, exporter: object, **kwargs: dict):
         Worker.__init__(self, kwargs['config'], kwargs['channel_id'])
@@ -59,25 +63,19 @@ class GenrePredictorWorker(Worker):
             spectrogram = self.queue.get()
             spectrodata = spectrogram[2]
 
-            #print(spectrodata[0])
-
             testPhoto = array(spectrodata)
-            testPhoto = testPhoto.astype('float32')
-
-            prediction = "N/A"
+            testPhoto = testPhoto.astype('float32')          
             
             try:
                 testPhoto = reshape(testPhoto, (1,128,128,1))
                 predictions = self.predict_fn({'x': testPhoto})
-                #print(predictions)
                 predictionClass = predictions['classes'][0]
-                print(predictionClass)
                 prediction = self.dict[predictionClass]
-                print(predictions['probabilities'])
                 export_data = [spectrodata,prediction]
                 self.exporter.queue.put(export_data)
             except:
                 pass
+        
             
             spectrogram = []
 
