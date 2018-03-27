@@ -1,5 +1,13 @@
 """ COORDINATOR MODULE
-  TODO: Fill in docstring.
+
+    - This module contains our inbuilt Coordinators and the base Coordinator.
+
+    All Coordinators inherit the Coordinator base class.
+
+    Users wanting to create their own custom coordinator, should inherit from Coordinator.
+
+    For detailed information on Coordinators, please see our Readme on our Github.
+    https://github.com/RTMAAI/CO600-Musical-Analysis
 """
 import threading
 import logging
@@ -9,6 +17,7 @@ from rtmaii.analysis import spectral, bpm
 from pydispatch import dispatcher
 from numpy import mean, int16, pad, hanning, column_stack, absolute, power, log10, arange, sum
 from numpy.fft import fft as numpyFFT
+from numpy.linalg import norm
 
 LOGGER = logging.getLogger()
 class Coordinator(threading.Thread):
@@ -21,6 +30,8 @@ class Coordinator(threading.Thread):
             - peer_list (list): List of peer threads to communicate processed data with.
             - channel_id (int): id of channel being analysed.
             - config (Config): Configuration object of library to fetch analysis values from.
+
+        Args:
             - queue_length (int): Maximum length of a coordinator's queue, helps to cull items.
     """
     def __init__(self, config: object = None, channel_id: int = None, queue_length: int = None):
@@ -122,7 +133,7 @@ class FrequencyCoordinator(Coordinator):
             - peer_list (list): List of peer threads to communicate processed data with. (Inherited)
             - config (obj): Configuration object to fetch analysis settings from. (Inherited)
             - extended_signal (list): Aggregated signal samples over time.
-            - frequency_resolution (int): Threshold of extended_signal length, before messaging.
+            - block_size (int): Threshold of extended_signal length, before messaging.
 
         Notes:
             - Peers created are dependent on configured tasks and algorithms.
@@ -133,7 +144,7 @@ class FrequencyCoordinator(Coordinator):
 
     def reset_attributes(self):
         """ Reset object attributes, to latest config values. """
-        self.frequency_resolution = self.config.get_config('frequency_resolution')
+        self.frequency_resolution = self.config.get_config('block_size')
         self.extended_signal = []
 
     def run(self):
@@ -164,7 +175,7 @@ class SpectrumCoordinator(Coordinator):
 
     def reset_attributes(self):
         """ Reset object attributes, to latest config values. """
-        frequency_resolution = self.config.get_config('frequency_resolution')
+        frequency_resolution = self.config.get_config('block_size')
         self.sampling_rate = self.config.get_config('sampling_rate')
         self.window = spectral.new_window(frequency_resolution, 'hanning')
         self.filter = spectral.butter_bandpass(60, 18000, self.sampling_rate, 5)
@@ -205,7 +216,7 @@ class FFTSCoordinator(Coordinator):
             if fft is not None:
                 fft = spectral.spectrum(fft, self.window, None)
                 fft = spectral.normalizorFFT(fft)
-
+                
                 if fft is None:
                     self.message_peers(None)
                     break
@@ -273,26 +284,27 @@ class BPMCoordinator(Coordinator):
     """
     def __init__(self, **kwargs: dict):
         Coordinator.__init__(self, kwargs['config'], kwargs['channel_id'])
-        LOGGER.info('BPM Initialized.')
+        LOGGER.info('BPM Initialized. Descrate:' + str(self.descrate))
+
+    def reset_attributes(self):
+        self.descrate = self.config.get_config('beat_desc_rate')
+        self.beats = []
+        self.hbeats = []
+        self.timelast = time.clock()
+        self.threshold = 0
 
     def run(self):
-        beats = [] # List of beat intervals
-        hbeats = [] # placeholder
-        timelast = time.clock()
-        threshold = 0
-        descrate = 100
-
         while True:
-            threshold -= descrate
+            self.threshold -= self.descrate
             data = self.queue.get()
-            beat = bpm.beatdetectionnew(data, threshold)
+            beat = bpm.beatdetection(data, self.threshold)
             if(beat != False):
                 beattime = time.clock()
-                beats.append(beattime - timelast)
-                timelast = beattime
-                beatdata = [beats, hbeats]
+                self.beats.append(beattime - self.timelast)
+                self.timelast = beattime
+                beatdata = [self.beats, self.hbeats]
                 self.message_peers(beatdata)
-                threshold = beat
+                self.threshold = beat;
                 dispatcher.send(signal='beats', sender=self, data=True)
             else:
                 dispatcher.send(signal='beats', sender=self, data=False)
