@@ -33,6 +33,7 @@ FRAME_DELAY = 50 # How long between each frame update (ms)
 # ---- GRAPH/ANALYSIS CONSTANTS ---- #
 SAMPLING_RATE = 44100 # Default sampling rate 44.1 khz
 DOWNSAMPLE_RATE = 4 # Denominator to downsample graph by (Should be set according to system specs.)
+SPECTROGRAM_DOWNSAMPLE = 2 # Seperate downsampling ratio for spectrogram data.
 GY_PADDING = 0.3 # Amount to pad the maximum Y value of a graph by. (% i.e. 0.1 = 10% padding.)
 STATE_COUNT = 50 # Amount of states to store that can be moved through.
 SPECTRO_DELAY = 2 # Seconds to wait between each spectrogram plot.
@@ -236,7 +237,7 @@ class SpectrogramCompression(threading.Thread):
     def run(self):
         while True:
             data = self.queue.get()
-            compr_length = len(data[0]) // 2
+            compr_length = len(data[0]) // SPECTROGRAM_DOWNSAMPLE
             color_resample = resample(resample(data[2], compr_length), compr_length, axis=1)
             x_resample = resample(data[0], compr_length)
             y_resample = resample(data[1], compr_length)
