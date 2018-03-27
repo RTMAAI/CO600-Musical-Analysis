@@ -305,35 +305,27 @@ class BPMCoordinator(Coordinator):
     """
     def __init__(self, **kwargs: dict):
         Coordinator.__init__(self, kwargs['config'], kwargs['channel_id'])
-        self.beats = []
-        self.hbeats = []
-        self.timelast = time.clock()
-        self.descrate = self.config.get_config('beat_desc_rate')
         LOGGER.info('BPM Initialized. Descrate:' + str(self.descrate))
 
     def reset_attributes(self):
+        self.descrate = self.config.get_config('beat_desc_rate')
         self.beats = []
         self.hbeats = []
         self.timelast = time.clock()
+        self.threshold = 0
 
     def run(self):
-        #beats = [] # List of beat intervals
-        #hbeats = [] # placeholder
-        #timelast = time.clock()
-        threshold = 0
-        #descrate = 100
-
         while True:
-            threshold -= self.descrate
+            self.threshold -= self.descrate
             data = self.queue.get()
-            beat = bpm.beatdetection(data, threshold)
+            beat = bpm.beatdetection(data, self.threshold)
             if(beat != False):
                 beattime = time.clock()
                 self.beats.append(beattime - self.timelast)
                 self.timelast = beattime
                 beatdata = [self.beats, self.hbeats]
                 self.message_peers(beatdata)
-                threshold = beat;
+                self.threshold = beat;
                 dispatcher.send(signal='beats', sender=self, data=True)
             else:
                 dispatcher.send(signal='beats', sender=self, data=False)
