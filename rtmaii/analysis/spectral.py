@@ -88,7 +88,7 @@ def spectrum(signal: list,
     return frequency_spectrum
 
 def normalizorFFT(fft: list) -> list:
-    """ Return the frequency spectrum of an input signal.
+    """ Returns a normalised frequency spectrum .
 
         Args
             - signal: the temporal signal to be converted to a spectrum.
@@ -104,7 +104,7 @@ def normalizorFFT(fft: list) -> list:
         return fft
 
 def convertingMagnitudeToDecibel(ffts: list, window: list) -> list:
-    """ Return the frequency spectrum of an input signal.
+    """ Returns a converts the contents of spectrums to change values that represent magnitidues to power (decibels) .
 
         Args
             - ffts: a collection of spectrums.
