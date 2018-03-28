@@ -52,7 +52,9 @@ class Config(object):
             "pitch_algorithm": "ac",
             #beat algorithm is either ed=energydetect or dc=descendingthreshold
             "beat_algorithm": "dc",
-            "beat_desc_rate": 100,
+            "beat_desc_rate": 20,
+            "beat_low_cut": 60,
+            "beat_low_pass": 1000,
             "frames_per_sample": 1024,
         }
 
