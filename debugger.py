@@ -93,7 +93,7 @@ class Listener(threading.Thread):
 
         self.analyser = rtmaii.Rtmaii(callbacks,
                                       mode='INFO',
-                                      source=r'./test_data/bpmDemo.wav',
+                                      source=r'./test_data/spectogramTest.wav',
                                      )
 
         self.state['spectrum'].append(arange(self.analyser.config.get_config('block_size')

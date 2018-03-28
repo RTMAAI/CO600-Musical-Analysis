@@ -15,6 +15,7 @@ import time
 from rtmaii.workqueue import WorkQueue
 from rtmaii.analysis import spectral, bpm
 from pydispatch import dispatcher
+from scipy.signal import resample
 from numpy import mean, int16, pad, hanning, column_stack, absolute, power, log10, arange, sum
 from numpy.fft import fft as numpyFFT
 from numpy.linalg import norm
@@ -196,7 +197,7 @@ class FFTSCoordinator(Coordinator):
             - peer_list (list): List of peer threads to communicate processed data with. (Inherited)
             - config (obj): Configuration object to fetch analysis settings from. (Inherited)
             - window (list): pre-processing smoothing window to apply to signal.
-            - spectrogram_resolution (int): 
+            - spectrogram_resolution (int): this governs the x axis of the spectrogram
 
         Notes:
             - Peers created are dependent on configured tasks and algorithms.
@@ -205,7 +206,9 @@ class FFTSCoordinator(Coordinator):
     def __init__(self, **kwargs: dict):
         """ Reset object attributes, to latest config values. """
         Coordinator.__init__(self, kwargs['config'], kwargs['channel_id'])
-        self.window = spectral.new_window(1024, 'hanning')
+        frame_size = self.config.get_config('frames_per_sample')
+        print(frame_size)
+        self.window = spectral.new_window(frame_size, 'hanning')
         self.spectrogram_resolution = 128
 
     def run(self):
@@ -243,7 +246,8 @@ class SpectrogramCoordinator(Coordinator):
     """
     def __init__(self, **kwargs: dict):
         Coordinator.__init__(self, kwargs['config'], kwargs['channel_id'])
-        self.window = 1024
+        frame_size = self.config.get_config('frames_per_sample')
+        self.window = frame_size
 
     def reset_attributes(self):
         self.sampling_rate = self.config.get_config('sampling_rate')
@@ -263,6 +267,9 @@ class SpectrogramCoordinator(Coordinator):
             smallerffts = []
             smallerfreq = []
 
+            ffts = resample(ffts, 512)
+            frequecy = resample(frequecy, 512)
+
             for i in range(0, len(ffts), 4):
                 if i + 4 > len(ffts) and len(smallerffts) == 128:
                     break
@@ -271,6 +278,8 @@ class SpectrogramCoordinator(Coordinator):
                 meanffts = (ffts[i] + ffts[i+1] + ffts[i+2] + ffts[i+3])/4
                 smallerffts.append(meanffts)
                 smallerfreq.append(meanfreq)
+
+
 
             spectrodata = [time, smallerfreq, smallerffts]
             self.message_peers(spectrodata)

@@ -16,8 +16,6 @@ class Exporter(threading.Thread):
         self.setDaemon(True)
         self.start()
         self.spectrumCollection = []
-        #open(r'C:\Users\RalphRaulePC\Documents\FinalYearProject\CO600-Musical-Analysis\CNN\save.p', 'w').close()
-
 
     def run(self):
         while True:
@@ -26,8 +24,6 @@ class Exporter(threading.Thread):
             with open(os.path.join(os.path.dirname(__file__),'../CNN/save.p'), "wb")  as output_file:  
                 pickle.dump(self.spectrumCollection, output_file)
             
-            #pickle.dump(spectrumCollection, open(os.path.join(os.path.dirname(__file__), 'CNN/save.p'), "wb" ))
-        
     
         
 

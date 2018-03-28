@@ -51,7 +51,7 @@ class Config(object):
             "block_size": 16384, # Power of 2 for efficiency.
             "pitch_algorithm": "ac",
             "beat_desc_rate": 100,
-            "frames_per_sample": 1024,
+            "frames_per_sample": 512,
         }
 
         self.settings = self.defaults
