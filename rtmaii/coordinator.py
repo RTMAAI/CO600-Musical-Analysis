@@ -314,9 +314,10 @@ class BPMCoordinator(Coordinator):
                 beattime = time.clock()
                 self.beats.append(beattime - self.timelast)
                 self.timelast = beattime
-                beatdata = [self.beats, self.hbeats]
+                beatdata = [self.beats]
                 self.message_peers(beatdata)
-                self.threshold = beat;
+                self.threshold = beat
+                LOGGER.info('BEAT:' + str(self.threshold))
                 dispatcher.send(signal='beats', sender=self, data=True)
             else:
                 dispatcher.send(signal='beats', sender=self, data=False)

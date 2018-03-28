@@ -114,9 +114,10 @@ def bpmsimple(beatlist):
             #LOGGER.info(dif)
 
         avg = total/length
+        return 2
         return 60/avg
     else:
-        return 0
+        return 39
 
 #beatlist validation methods
 def cleanbeatarray(beatlist):
