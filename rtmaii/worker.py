@@ -77,7 +77,6 @@ class GenrePredictorWorker(Worker):
             spectrogram = self.queue.get()
             spectrodata = spectrogram[2]
             spectrodata = resample(spectrodata,128)
-            print(len(spectrodata[1]))
             testphoto = array(spectrodata)
             testphoto = testphoto.astype('float32')    
             

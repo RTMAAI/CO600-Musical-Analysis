@@ -6,12 +6,16 @@ from pydispatch import dispatcher
 import pickle
 
 
-
 class Exporter(threading.Thread):
+    """ Exporter responsible for creating an output file that users can use for future spectrogram data.
+
+        Attributes:
+            - queue (WorkQueue): Queue for incoming spectrograms data
+            - spectrumCollection (list): Stores received spectrograms for export
+    """
 
     def __init__(self, queue_length: int = 1):
         threading.Thread.__init__(self, args=(), kwargs=None)
-        print("Exporter Created")
         self.queue = WorkQueue(queue_length)
         self.setDaemon(True)
         self.start()
