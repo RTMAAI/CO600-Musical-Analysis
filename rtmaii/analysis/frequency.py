@@ -28,7 +28,7 @@ def normalize_dict(dictionary: dict, dict_sum: float) -> dict:
             - dictionary: the dictionary to be normalized.
             - dict_sum: the sum value to normalize with.
     """
-    return {key: real(value)/dict_sum if dict_sum > 0 else 0 for key, value in dictionary.items()}
+    return {key: value/dict_sum if dict_sum > 0 else 0 for key, value in dictionary.items()}
 
 def get_band_power(spectrum: list, bands: dict) -> dict:
     """ Get the summed power of each frequency range provided by bands.
@@ -49,9 +49,9 @@ def frequency_bands(spectrum: list, bands: dict, sampling_rate: int) -> dict:
             - sampling_rate: sampling rate of signal used to create spectrum.
     """
     matched_bands = frequency_bands_to_bins(spectrum, bands, sampling_rate)
-    filtered_spectrum = remove_noise(spectrum, 5)
+    filtered_spectrum = real(remove_noise(spectrum, 5))
     band_power = get_band_power(filtered_spectrum, matched_bands)
-    normalized_presence = normalize_dict(band_power, real(sum(filtered_spectrum)))
+    normalized_presence = normalize_dict(band_power, sum(filtered_spectrum))
 
     return normalized_presence
 
