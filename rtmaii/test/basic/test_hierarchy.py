@@ -58,7 +58,7 @@ class TestSuite(unittest.TestCase):
 
     def test_coordinator_removal(self):
         """ Test that hierarchy removed disabled task coordinators, when initialized. """
-        self.assertIn('BPMCoordinator', self.hierarchy.root['channels'][0])
+        self.assertIn('EnergyBPMCoordinator', self.hierarchy.root['channels'][0])
         self.assertNotIn('FrequencyCoordinator', self.hierarchy.root['channels'][0])
         self.assertNotIn('SpectrumCoordinator', self.hierarchy.root['channels'][0])
 
@@ -83,16 +83,16 @@ class TestSuite(unittest.TestCase):
 
     def test_add_custom_node_parent(self):
         """ Test that adding a custom node to a parent thread works. """
-        self.hierarchy.add_custom_node(CustomCoordinator.__name__, parent_id='BPMCoordinator')
+        self.hierarchy.add_custom_node(CustomCoordinator.__name__, parent_id='EnergyBPMCoordinator')
         thread = self.hierarchy.root['channels'][0][CustomCoordinator.__name__]['thread']
-        parent = self.hierarchy.root['channels'][0]['BPMCoordinator']['thread']
+        parent = self.hierarchy.root['channels'][0]['EnergyBPMCoordinator']['thread']
         self.assertIn(thread, parent.get_peer_list())
         self.hierarchy.remove_node(CustomCoordinator.__name__) # Cleanup.
 
     def test_unique_node(self):
         """ Test that adding and removing by a unique ID to a node correctly assigns/removes it."""
         uid = 'electricboogalo'
-        self.hierarchy.add_custom_node(CustomCoordinator.__name__, uid, parent_id='BPMCoordinator')
+        self.hierarchy.add_custom_node(CustomCoordinator.__name__, uid, parent_id='EnergyBPMCoordinator')
         self.assertIn(uid, self.hierarchy.custom_nodes)
         self.hierarchy.remove_node(uid) # Cleanup.
         self.assertNotIn(uid, self.hierarchy.custom_nodes)
@@ -100,7 +100,7 @@ class TestSuite(unittest.TestCase):
     def test_unique_node_error(self):
         """ Test that node added has a unique ID in the hierarchy. """
         self.assertRaises(AttributeError, self.hierarchy.add_custom_node,
-                          CustomCoordinator.__name__, 'BPMCoordinator')
+                          CustomCoordinator.__name__, 'EnergyBPMCoordinator')
 
     def test_add_node(self):
         """ Test that adding a custom node to the library works.
@@ -146,7 +146,7 @@ class TestSuite(unittest.TestCase):
         """ Test that removing a node removes the thread from the parent node. """
         thread = self.hierarchy.root['channels'][0]['BPMWorker']['thread']
         self.hierarchy.remove_node('BPMWorker')
-        parent_thread = self.hierarchy.root['channels'][0]['BPMCoordinator']['thread']
+        parent_thread = self.hierarchy.root['channels'][0]['EnergyBPMCoordinator']['thread']
         self.assertNotIn('BPMWorker', self.hierarchy.root['channels'][0])
         self.assertNotIn(thread, parent_thread.get_peer_list())
 
