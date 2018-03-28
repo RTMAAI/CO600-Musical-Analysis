@@ -331,3 +331,35 @@ class BPMCoordinator(Coordinator):
                 dispatcher.send(signal='beats', sender=self, data=False)
             #       add timeinterval from previous occurence of a beat to beats list.
             #       bpm = calculate average time interval
+
+class EnergyBPMCoordinator(Coordinator):
+    """Coordinator responsible for finding beats and estimating bpm
+
+   """
+    def __init__(self, **kwargs: dict):
+        Coordinator.__init__(self, kwargs['config'], kwargs['channel_id'])
+        LOGGER.info('Energy BPM Initialized.')
+
+    def reset_attributes(self):
+        self.descrate = self.config.get_config('beat_desc_rate')
+        self.energyhistory = []
+        self.beats = []
+        self.timelast = time.clock()
+        self.threshold = 0
+
+    def run(self):
+        while True:
+            data = self.queue.get()
+            beat = bpm.beatdetection(data, self.threshold)
+            if(beat != False):
+                beattime = time.clock()
+                self.beats.append(beattime - self.timelast)
+                self.timelast = beattime
+                beatdata = [self.beats, self.hbeats]
+                self.message_peers(beatdata)
+                self.threshold = beat;
+                dispatcher.send(signal='beats', sender=self, data=True)
+            else:
+                dispatcher.send(signal='beats', sender=self, data=False)
+            #       add timeinterval from previous occurence of a beat to beats list.
+            #       bpm = calculate average time interval
