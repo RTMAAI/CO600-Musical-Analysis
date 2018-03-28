@@ -15,7 +15,22 @@ screen = pygame.display.set_mode((screen_size, screen_size))
 pygame.display.set_caption("Example RTMA")
 
 
-class Circle(object):
+class Box(object):
+    """ Circle Class for creating an output file that users can use for future spectrogram data.
+
+        Attributes:
+            - id (int): Unique Id for a box
+            - neighbours (list): All the other boxes within the screen
+            - y (int): The y co-odrinate of the box
+            - x (int): The x co-odrinate of the box
+            - width (int): The width of the box
+            - height (int): The height of the box
+            - speedX (int): The speed of the box in x-axis
+            - speedY (int): The speed of the box in y-axis
+            - colour (list): The RGB values of the boxes colour
+            - bkgColour (list): THe background colour
+    """
+
     def __init__(self, id, otherObjs):
         self.id = id
         self.neighbours = otherObjs
@@ -25,7 +40,6 @@ class Circle(object):
         self. height = 50
         self.speedX = random.randint(1, 2)
         self.speedY = random.randint(1, 2)
-        self.spring = 0.05
         self.colour = (0,0,0)
         self.bkgColour = (255,255,255)
 
@@ -33,6 +47,11 @@ class Circle(object):
         self.rect =  pygame.rect.Rect((self.x, self.y, self.width, self.height))
 
     def untangle(self):
+    """ 
+    
+    This function untangles boxes which become intertwined and makes boxes opposite directions
+
+    """
         for i in range(0, len(self.neighbours)):
             if(self.rect.contains(self.neighbours[i])):
                 self.speedY = self.speedY * -1
@@ -42,6 +61,11 @@ class Circle(object):
 
     
     def collision(self):
+    """ 
+    
+    This function detects collision between boxes and makes respective boxes move opposite directions
+
+    """
         for i in range(0, len(self.neighbours)):
             if(self.rect.colliderect(self.neighbours[i])):
                 self.speedY = self.speedY * -1
@@ -50,6 +74,11 @@ class Circle(object):
                 self.neighbours[i].speedX = self.neighbours[i].speedX * -1
 
     def move(self):
+    """ 
+    
+    This function updates the coordinates of the boxes
+
+    """
         self.y = self.y + self.speedY
         self.x = self.x + self.speedX
 
@@ -62,16 +91,6 @@ class Circle(object):
 
     def update(self, screen, boxColour):
         self.colour = boxColour
-        #screen.fill(backgroundColour)
-
-
-        #pitch = listener.get_item('key')
-        #print(pitch)
-
-        #self.colour = self.pitchDict[pitch]
-        pass
-        #genre = listener.get_item('spectogramData')[3]
-        
 
     def draw(self, surface, backgroundColour):
         pygame.draw.rect(screen, self.colour, self.rect)
@@ -85,7 +104,7 @@ class Listener(threading.Thread):
 
         self.state = {
             'pitch': 0,
-            'key': "A",
+            'note': {'note':"A"},
             'genre': "N/A",
             'spectogramData':numpy.zeros([128,128,128])}
 
@@ -122,6 +141,8 @@ class Listener(threading.Thread):
     def callback(self, data, **kwargs):
         """ Set data for signal event. """
         signal = kwargs['signal']
+        if signal == 'genre':
+            print(data)
         self.state[signal] = data
 
     def get_item(self, item):
@@ -130,10 +151,10 @@ class Listener(threading.Thread):
 
 
 pygame.init()
-circleNumbers = 7
+boxNumbers = 7
 listener = Listener()
 listener.start_analysis()
-circles = []
+boxes = []
 
 pitchDict = {'C' : (202,21,116), 
                     'C#/Db' : (16,170,110), 
@@ -155,8 +176,8 @@ genreDict = {'Rock' : (10,21,116),
                     'N/A': (255,255,255)}
 
 
-for i in range(0, circleNumbers):
-    circles.append(Circle(i, circles))
+for i in range(0, boxNumbers):
+    boxes.append(Box(i, boxes))
 
 clock = pygame.time.Clock()
 running = True
@@ -167,28 +188,21 @@ while running:
         if event.type == pygame.QUIT:
             break
             running = False
-
-    #screen.fill((255, 255, 255))
-
-    pitch = listener.get_item('key')
+    pitch = listener.get_item('note')['note']
     newColour = pitchDict[pitch]
     genre = listener.get_item('genre')
     newBKGColour = genreDict[genre]
 
     screen.fill(newBKGColour)
-    #pygame.display.update()
 
 
-    for circle in circles:
+    for box in boxes:
         
-        circle.draw(screen, newBKGColour)
-        circle.update(screen, newColour)
-        circle.untangle()
-        circle.collision()
-        circle.move()
+        box.draw(screen, newBKGColour)
+        box.update(screen, newColour)
+        box.untangle()
+        box.collision()
+        box.move()
           
     pygame.display.update()
     clock.tick(200)
-
-    #clock.tick(80)
-    #running = False
