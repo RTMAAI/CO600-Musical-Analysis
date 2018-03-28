@@ -12,7 +12,7 @@ from scipy.signal import resample
 from scipy.fftpack import fftfreq
 from rtmaii import rtmaii # Replace with just import rtmaii in actual implementation.
 from rtmaii.workqueue import WorkQueue
-from numpy import arange, zeros, append, concatenate
+from numpy import arange, zeros, append, concatenate, real
 import matplotlib
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
@@ -290,10 +290,11 @@ class SpectrumPlotter(threading.Thread):
     def run(self):
         graph_length = len(self.line.get_ydata())
         while True:
-            spectrum = self.queue.get()
+            spectrum = real(self.queue.get())
             # Resample spectrum to graph's length, to reduce processing time.
             downsampled_spectrum = resample(spectrum, graph_length)
             self.plot.set_ylim([0, max(downsampled_spectrum) * (1 + GY_PADDING)])
+            # Discard imaginary part to avoid numpy warning
             self.line.set_ydata(downsampled_spectrum)
 
 class LabelHandler(threading.Thread):
