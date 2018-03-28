@@ -13,6 +13,7 @@ import threading
 import os
 import logging
 from rtmaii.workqueue import WorkQueue
+from scipy.signal import resample
 from rtmaii.analysis import frequency, pitch, key, spectral, bpm
 from pydispatch import dispatcher
 from numpy import reshape, array
@@ -47,41 +48,51 @@ class Worker(threading.Thread):
         pass
 
 class GenrePredictorWorker(Worker):
-    """ Worker responsible for creating spectograms ... .
+    """ Worker responsible for analysing Spectrogram intensities for a genre.
 
-        Args:
-            - sampling_rate: sampling_rate of source being analysed.
+        Kwargs:
+            - config (Config): Configuration options to use.
             - channel_id: id of channel being analysed.
+
+        Attributes:
+            - exporter: Exports spectrograms to an external file for use future training set
+            - predict_fn: Loads the 'predict' function of trained tensorflow model 
+            - genredict: The dictionary from converting the number labels of predicted genre
     """
     def __init__(self, exporter: object, **kwargs: dict):
         Worker.__init__(self, kwargs['config'], kwargs['channel_id'])
         self.exporter = exporter
+        
         self.predict_fn = predictor.from_saved_model(os.path.join(os.path.dirname(__file__), 'model'))
-        self.dict = {}
-        self.dict[1] = 'Folk'
-        self.dict[2] = 'Hip-Hop'
-        self.dict[0] = 'Rock'
-        self.dict[3] = 'Electric'
+        self.accuracyChecker = []
+        self.genredict = {}
+        self.genredict[0] = 'Rock'
+        self.genredict[1] = 'Folk'
+        self.genredict[2] = 'Hip-Hop'
+        self.genredict[3] = 'Electric'
 
     def run(self):
         
         while True:
             spectrogram = self.queue.get()
             spectrodata = spectrogram[2]
-
-            #print(spectrodata[0])
-
-            testPhoto = array(spectrodata)
-            testPhoto = testPhoto.astype('float32')
-
-            prediction = "N/A"
+            spectrodata = resample(spectrodata,128)
+            testphoto = array(spectrodata)
+            testphoto = testphoto.astype('float32')    
             
             try:
-                testPhoto = reshape(testPhoto, (1,128,128,1))
-                predictions = self.predict_fn({'x': testPhoto})
-                #print(predictions)
-                predictionClass = predictions['classes'][0]
-                prediction = self.dict[predictionClass]
+                testphoto = reshape(testphoto, (1,128,128,1))
+                predictions = self.predict_fn({'x': testphoto})
+                predictionclass = predictions['classes'][0]
+                prediction = self.genredict[predictionclass]
+                self.accuracyChecker.append(prediction)
+                print("pre",len(self.accuracyChecker))
+                if(len(self.accuracyChecker) > 10):
+                    self.accuracyChecker.pop(0)
+                    print(self.accuracyChecker)
+                    print("post",len(self.accuracyChecker))
+                    prediction = max(set(self.accuracyChecker), key=self.accuracyChecker.count)
+
                 export_data = [spectrodata,prediction]
                 self.exporter.queue.put(export_data)
             except:

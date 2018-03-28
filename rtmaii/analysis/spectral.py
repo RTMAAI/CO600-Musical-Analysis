@@ -9,6 +9,8 @@
 """
 from scipy.signal import butter, lfilter, fftconvolve, get_window
 from scipy.fftpack import fft
+from numpy import absolute, sum, power, log10
+from numpy.linalg import norm
 
 def butter_bandpass(low_cut_off: int, high_cut_off: int,
                     sampling_rate: int, order: int = 5) -> dict:
@@ -84,3 +86,35 @@ def spectrum(signal: list,
         bp_filter['denominator'])
     frequency_spectrum = spectrum_transform(filtered_signal)
     return frequency_spectrum
+
+def normalizorFFT(fft: list) -> list:
+    """ Returns a normalised frequency spectrum .
+
+        Args
+            - signal: the temporal signal to be converted to a spectrum.
+            - window: the smoothing window to be applied.
+            - bp_filter: the bandpass filter polynomial coefficents to apply to the signal.
+                In the form of {'numerator': list, 'denominator': list}
+    """
+    normalised_ftt = norm(fft)
+    if normalised_ftt == 0:
+        return fft
+    else:
+        fft = fft / normalised_ftt
+        return fft
+
+def convertingMagnitudeToDecibel(ffts: list, window: list) -> list:
+    """ Returns a converts the contents of spectrums to change values that represent magnitidues to power (decibels) .
+
+        Args
+            - ffts: a collection of spectrums.
+            - window: the smoothing window to be applied.
+    """
+    ffts = absolute(ffts) * 2.0 / sum(window)
+    ffts = ffts / power(2.0, 8* 0)
+    try:
+        loggedffts = log10(ffts)
+    except:
+        loggedffts = 0
+    ffts = (20 * loggedffts).clip(-120)
+    return ffts
