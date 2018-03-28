@@ -50,7 +50,11 @@ class Config(object):
             # (Higher = More accurate, but more computationally expensive.)
             "block_size": 16384, # Power of 2 for efficiency.
             "pitch_algorithm": "ac",
-            "beat_desc_rate": 100,
+            #beat algorithm is either ed=energydetect or dc=descendingthreshold
+            "beat_algorithm": "ed",
+            "beat_desc_rate": 20,
+            "beat_low_cut": 60,
+            "beat_low_pass": 1000,
             "frames_per_sample": 1024,
         }
 

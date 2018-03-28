@@ -16,9 +16,7 @@ from rtmaii.workqueue import WorkQueue
 from rtmaii.analysis import spectral, bpm
 from pydispatch import dispatcher
 from scipy.signal import resample
-from numpy import mean, int16, pad, hanning, column_stack, absolute, power, log10, arange, sum
-from numpy.fft import fft as numpyFFT
-from numpy.linalg import norm
+from numpy import mean, int16, pad, column_stack, arange
 
 LOGGER = logging.getLogger()
 class Coordinator(threading.Thread):
@@ -190,14 +188,20 @@ class SpectrumCoordinator(Coordinator):
             dispatcher.send(signal='spectrum', sender=self.channel_id, data=frequency_spectrum)
 
 class FFTSCoordinator(Coordinator):
-    """ FFTS coordinator responsible for creating and collect 128 spectrums for creating a spectrogram.
+    """ FFTS coordinator responsible for creating and collect 128 spectrums
+    for creating a spectrogram.
 
         Attributes:
-            - channel_id (int): The ID of the channel being analysed. (Inherited)
-            - peer_list (list): List of peer threads to communicate processed data with. (Inherited)
-            - config (obj): Configuration object to fetch analysis settings from. (Inherited)
-            - window (list): pre-processing smoothing window to apply to signal.
-            - spectrogram_resolution (int): this governs the x axis of the spectrogram
+            - channel_id (int): The ID of the channel being analysed.
+                (Inherited)
+            - peer_list (list): List of peer threads to communicate processed
+                data with. (Inherited)
+            - config (obj): Configuration object to fetch analysis settings
+                from. (Inherited)
+            - window (list): pre-processing smoothing window to apply to
+                signal.
+            - spectrogram_resolution (int): this governs the x axis of the
+                spectrogram
 
         Notes:
             - Peers created are dependent on configured tasks and algorithms.
@@ -221,7 +225,6 @@ class FFTSCoordinator(Coordinator):
             if fft is not None:
                 fft = spectral.spectrum(fft, self.window, None)
                 fft = spectral.normalizorFFT(fft)
-
                 ffts.append(fft)
                 ffts = ffts[-self.spectrogram_resolution:]
                 self.timer = self.timer + 1
@@ -254,26 +257,21 @@ class SpectrogramCoordinator(Coordinator):
     def run(self):
         while True:
             ffts = self.queue.get()
-            
             ffts = column_stack(ffts)
-            ffts = spectral.convertingMagnitudeToDecibel(ffts, self.window)          
-            
-            time = arange(0, 128, dtype=float) * self.window / self.sampling_rate / 2
+            ffts = spectral.convertingMagnitudeToDecibel(ffts, self.window)
+            stime = arange(0, 128, dtype=float) * self.window / self.sampling_rate / 2
             frequecy = arange(0, self.window / 2, dtype=float) * self.sampling_rate / self.window
-            
             smallerffts = []
             smallerfreq = []
-
             for i in range(0, len(ffts), 4):
                 if i + 4 > len(ffts) and len(smallerffts) == 128:
                     break
-                
                 meanfreq = (frequecy[i] + frequecy[i+1] + frequecy[i + 2] + frequecy[i + 3])
                 meanffts = (ffts[i] + ffts[i+1] + ffts[i+2] + ffts[i+3])/4
                 smallerffts.append(meanffts)
                 smallerfreq.append(meanfreq)
+            spectrodata = [stime, smallerfreq, smallerffts]
 
-            spectrodata = [time, smallerfreq, smallerffts]
             self.message_peers(spectrodata)
             dispatcher.send(signal='spectogramData', sender=self.channel_id, data=spectrodata)
 
@@ -286,26 +284,35 @@ class BPMCoordinator(Coordinator):
     def __init__(self, **kwargs: dict):
         Coordinator.__init__(self, kwargs['config'], kwargs['channel_id'])
         LOGGER.info('BPM Initialized. Descrate:' + str(self.descrate))
+        self.threshold = 0
+        self.timelast = time.clock()
+
 
     def reset_attributes(self):
         self.descrate = self.config.get_config('beat_desc_rate')
+        self.sampling_rate = self.config.get_config('sampling_rate')
+        self.low_cut = self.config.get_config('beat_low_cut')
+        self.low_pass = self.config.get_config('beat_low_pass')
         self.beats = []
         self.hbeats = []
         self.timelast = time.clock()
         self.threshold = 0
+        self.filter = bpm.lowpass(self.low_cut, self.low_pass, self.sampling_rate)
 
     def run(self):
         while True:
             self.threshold -= self.descrate
-            data = self.queue.get()
+            rawdata = self.queue.get()
+            data = bpm.applylowpass(rawdata, self.filter['num'], self.filter['denom'])
             beat = bpm.beatdetection(data, self.threshold)
-            if(beat != False):
+            if beat != False:
                 beattime = time.clock()
                 self.beats.append(beattime - self.timelast)
                 self.timelast = beattime
-                beatdata = [self.beats, self.hbeats]
+                beatdata = [self.beats]
                 self.message_peers(beatdata)
-                self.threshold = beat;
+                self.threshold = beat
+                LOGGER.info('BEAT:' + str(self.threshold))
                 dispatcher.send(signal='beats', sender=self, data=True)
             else:
                 dispatcher.send(signal='beats', sender=self, data=False)
@@ -319,6 +326,9 @@ class EnergyBPMCoordinator(Coordinator):
     def __init__(self, **kwargs: dict):
         Coordinator.__init__(self, kwargs['config'], kwargs['channel_id'])
         LOGGER.info('Energy BPM Initialized.')
+        self.threshold = 0
+        self.timelast = time.clock()
+        self.energyhistory = []
 
     def reset_attributes(self):
         self.descrate = self.config.get_config('beat_desc_rate')
@@ -330,16 +340,16 @@ class EnergyBPMCoordinator(Coordinator):
     def run(self):
         while True:
             data = self.queue.get()
-            beat = bpm.beatdetection(data, self.threshold)
-            if(beat != False):
-                beattime = time.clock()
-                self.beats.append(beattime - self.timelast)
-                self.timelast = beattime
-                beatdata = [self.beats, self.hbeats]
-                self.message_peers(beatdata)
-                self.threshold = beat;
-                dispatcher.send(signal='beats', sender=self, data=True)
-            else:
-                dispatcher.send(signal='beats', sender=self, data=False)
-            #       add timeinterval from previous occurence of a beat to beats list.
-            #       bpm = calculate average time interval
+            #as soon as there is enough energy history, start the analysis
+            newamp = bpm.getrmsamp(data)
+            if len(self.energyhistory) >= 43:
+                #LOGGER.info('Enough samples')
+                beat = bpm.energydetect(newamp, self.energyhistory)
+                if beat != False:
+                    beattime = time.clock()
+                    self.beats.append(beattime - self.timelast)
+                    self.timelast = beattime
+                    beatdata = [self.beats]
+                    self.message_peers(beatdata)
+                dispatcher.send(signal='beats', sender=self, data=beat)
+            self.energyhistory = bpm.shiftenergyhistory(newamp, self.energyhistory)
