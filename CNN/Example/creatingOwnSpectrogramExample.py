@@ -30,6 +30,7 @@ def findGenre(fileName : str):
         return 3
 
 def normalize(ffts):
+    ''' '''
 
     norm_ffts = np.linalg.norm(ffts)
     if norm_ffts == 0:

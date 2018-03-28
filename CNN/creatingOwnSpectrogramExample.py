@@ -4,11 +4,10 @@ import scipy.io.wavfile
 from random import shuffle
 import pickle
 import wave
+import os
 
-''' Please look at the example before using this script'''
-''' This script creates datasets from audio audio files provided to create the cnn model'''
 
-# Genre lists
+# Genre lists - Insert Extra genres if you require
 rock_set = []
 folk_set = []
 hiphop_set = []
@@ -19,8 +18,6 @@ spectrogram_evalu = []
 
 
 def findGenre(fileName : str):
-    
-''' '''
     
     if "rock" in fileName:
         return 0
@@ -77,28 +74,52 @@ def converterMusicToData(file , listToAppendTo):
             
             Y = []
 
+print("Creating Rock Set ")
 
-''' Insert converterMusicToData functions with music files you would like to use to train a model '''
+converterMusicToData(os.path.join(os.path.dirname(__file__),"Example_Music/rock_example.wav"), rock_set)
+
+shuffle(rock_set)
+
+print("Rock set made")
+
+print("Creating Electronic Set ")
+
+converterMusicToData(os.path.join(os.path.dirname(__file__),"Example_Music/electric_example.wav"), electronic_set)
+
+shuffle(electronic_set)
+
+print("Creating Folk Set ")
+
+converterMusicToData(os.path.join(os.path.dirname(__file__),"Example_Music/folk_example.wav"), folk_set)
+
+
+shuffle(folk_set)
+print("Folk set made")
+print("Creating Hip Hop Set ")
+
+converterMusicToData(os.path.join(os.path.dirname(__file__),"Example_Music/hiphop_example.wav"), hiphop_set)
+
+shuffle(hiphop_set)
+print("Hip Hop set made")
 
 print("Available Spectrograms ")
+print("Number of Rock Spectrograms: ", len(rock_set))
+print("Number of Folk Spectrograms: ", len(folk_set))
+print("Number of Hip Hop Spectrograms: ", len(hiphop_set))
+print("Number of Electronic Spectrograms: ", len(electronic_set))
 
-
-''' Insert converterMusicToData functions with music files you would like to use to train a model '''
-
-
-#typically comment out code below to see how many spectrograms you have when readed all 
 
 print("Creating Training Dataset....")
-spectrogram_traning.extend(rock_set[0:0])
-spectrogram_traning.extend(folk_set[0:0])
-spectrogram_traning.extend(hiphop_set[0:0])
-spectrogram_traning.extend(electronic_set[0:0])
+spectrogram_traning.extend(rock_set[0:250])
+spectrogram_traning.extend(folk_set[0:250])
+spectrogram_traning.extend(hiphop_set[0:250])
+spectrogram_traning.extend(electronic_set[0:250])
 
 print("Creating Evalution Dataset....")
-spectrogram_evalu.extend(rock_set[0:0])
-spectrogram_evalu.extend(folk_set[0:0])
-spectrogram_evalu.extend(hiphop_set[0:0])
-spectrogram_evalu.extend(electronic_set[0:0])
+spectrogram_evalu.extend(rock_set[250:350])
+spectrogram_evalu.extend(folk_set[250:350])
+spectrogram_evalu.extend(hiphop_set[250:350])
+spectrogram_evalu.extend(electronic_set[250:350])
 
 print("Shuffling Data")
 
@@ -113,16 +134,16 @@ spectrogram_evaluX, spectrogram_evaluY = zip(*spectrogram_evalu)
 
 print("Saving Dataset")
 
-with open('spectrogram_traningX', 'wb') as f:
+with open(os.path.join(os.path.dirname(__file__),"Training_Dataset/spectrogram_traningX"), 'wb') as f:
      pickle.dump(spectrogram_traningX, f)
 
-with open('spectrogram_traningY', 'wb') as f:
+with open(os.path.join(os.path.dirname(__file__),"Training_Dataset/spectrogram_traningY"), 'wb') as f:
     pickle.dump(spectrogram_traningY, f)
 
-with open('spectrogram_evaluX', 'wb') as f:
+with open(os.path.join(os.path.dirname(__file__),"Evaluator_Dataset/spectrogram_evaluX"), 'wb') as f:
     pickle.dump(spectrogram_evaluX, f)
 
-with open('spectrogram_evaluY', 'wb') as f:
+with open(os.path.join(os.path.dirname(__file__),"Evaluator_Dataset/spectrogram_evaluY"), 'wb') as f:
     pickle.dump(spectrogram_evaluY, f)
 
 

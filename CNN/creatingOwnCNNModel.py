@@ -1,11 +1,3 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-''' Uses this model uses Tensorflow's MNIST Tutorial as a foundation '''
-'''  '''
-
-#Imports
 import config
 import os
 import numpy as np
@@ -13,6 +5,12 @@ import tensorflow as tf
 from random import shuffle
 import pickle
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
+''' Uses this model uses Tensorflow's MNIST Tutorial as a foundation '''
+''' This is the CNN model used to create the trained model for the genre predictor '''
 
 tf.logging.set_verbosity(tf.logging.INFO)
 
@@ -58,19 +56,10 @@ def genre_cnn_model_fn(features, labels, mode):
         activation=tf.nn.relu)
     pool4 = tf.layers.max_pooling2d(inputs=conv4, pool_size=[2, 2], strides=2)
 
-    # Convolutional Layer #3 and Pooling Layer #3
-    conv5 = tf.layers.conv2d(
-        inputs=pool4,
-        filters=1024,
-        kernel_size=[2, 2],
-        padding="same",
-        activation=tf.nn.relu)
-    pool5 = tf.layers.max_pooling2d(inputs=conv5, pool_size=[2, 2], strides=2)
-
     # Dense Layer
     pool5_flat = tf.contrib.layers.flatten(pool5)
     print(pool5_flat.get_shape())
-    dense = tf.layers.dense(inputs=pool5_flat, units=2048, activation=tf.nn.relu)
+    dense = tf.layers.dense(inputs=pool5_flat, units=1024, activation=tf.nn.relu)
     dropout = tf.layers.dropout(inputs=dense, rate=config.dropoutProbability, training=mode == tf.estimator.ModeKeys.TRAIN)
 
     # Logits Layer
@@ -170,7 +159,6 @@ def main(mode):
                 print("spectrogram_evaluX File within Evaluator_Dataset Folder does not exist. Please run creatingOwnDpectrogram.py ")
                 break
 
-
             print ("Success")
 
             correct_choice = False
@@ -190,6 +178,17 @@ def main(mode):
                 input_fn=train_input_fn,
                 steps=config.numberOfSteps,
                 hooks=[logging_hook])
+
+            eval_input_fn = tf.estimator.inputs.numpy_input_fn(
+                x={"x": eval_data},
+                y=eval_labels,
+                num_epochs=1,
+                shuffle=False)
+
+            eval_results = genre_classifier.evaluate(input_fn=eval_input_fn)
+            print(eval_results)
+            full_model_dir = genre_classifier.export_savedmodel(export_dir_base=os.path.join(os.path.dirname(__file__), "New_Model_Exported/model" ), serving_input_receiver_fn=serving_input_receiver_fn)
+    
 
         elif choice == 'E' or choice == 'e':
             correct_choice = False
