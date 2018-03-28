@@ -32,7 +32,8 @@ FRAME_DELAY = 50 # How long between each frame update (ms)
 
 # ---- GRAPH/ANALYSIS CONSTANTS ---- #
 SAMPLING_RATE = 44100 # Default sampling rate 44.1 khz
-DOWNSAMPLE_RATE = 4 # Denominator to downsample graph by (Should be set according to system specs.)
+GRAPH_RESOLUTION = 1024 # Max resolution of graphs. This forces data points to a max length.
+SPECTROGRAM_DOWNSAMPLE = 2 # Seperate downsampling ratio for spectrogram data.
 GY_PADDING = 0.3 # Amount to pad the maximum Y value of a graph by. (% i.e. 0.1 = 10% padding.)
 STATE_COUNT = 50 # Amount of states to store that can be moved through.
 SPECTRO_DELAY = 2 # Seconds to wait between each spectrogram plot.
@@ -236,7 +237,7 @@ class SpectrogramCompression(threading.Thread):
     def run(self):
         while True:
             data = self.queue.get()
-            compr_length = len(data[0]) // 2
+            compr_length = len(data[0]) // SPECTROGRAM_DOWNSAMPLE
             color_resample = resample(resample(data[2], compr_length), compr_length, axis=1)
             x_resample = resample(data[0], compr_length)
             y_resample = resample(data[1], compr_length)
@@ -260,7 +261,8 @@ class SignalPlotter(threading.Thread):
         self.start()
 
     def run(self):
-        signal = zeros(1024 * SIGNAL_COUNT)
+        graph_length = len(self.line.get_ydata())
+        signal = zeros(graph_length * SIGNAL_COUNT)
         min_power = 8000
         while True:
             new_data = self.queue.get()
@@ -271,7 +273,8 @@ class SignalPlotter(threading.Thread):
             # If mainly noise in signal use min_power as graph max/min.
             y_max = signal_max if signal_max > min_power else min_power
             self.plot.set_ylim([-y_max, y_max])
-            self.line.set_ydata(resample(signal, 1024 // DOWNSAMPLE_RATE))
+            # Resample signal to graph's length, to reduce processing time.
+            self.line.set_ydata(resample(signal, graph_length))
 
 class SpectrumPlotter(threading.Thread):
     """ Retrieves signal data, downsamples and sets new Y data and limits. """
@@ -285,9 +288,11 @@ class SpectrumPlotter(threading.Thread):
         self.start()
 
     def run(self):
+        graph_length = len(self.line.get_ydata())
         while True:
             spectrum = self.queue.get()
-            downsampled_spectrum = resample(spectrum, len(spectrum) // DOWNSAMPLE_RATE)
+            # Resample spectrum to graph's length, to reduce processing time.
+            downsampled_spectrum = resample(spectrum, graph_length)
             self.plot.set_ylim([0, max(downsampled_spectrum) * (1 + GY_PADDING)])
             self.line.set_ydata(downsampled_spectrum)
 
@@ -429,13 +434,11 @@ class Debugger(tk.Tk):
 
     def setup(self):
         """Create UI elements and assign configurable elements. """
-        chunk_size = self.listener.analyser.config.get_config('frames_per_sample')
-        frequency_length = self.listener.analyser.config.get_config('block_size')
-        frequencies = fftfreq(frequency_length, 1 / SAMPLING_RATE)[::DOWNSAMPLE_RATE]
+        frequencies = fftfreq(GRAPH_RESOLUTION, 1 / SAMPLING_RATE)
         self.uic['frequencies'] = frequencies[:len(frequencies)//2]
 
         # --- INIT SETUP --- #
-        self.uic['timeframe'] = arange(0, chunk_size, DOWNSAMPLE_RATE)
+        self.uic['timeframe'] = arange(0, GRAPH_RESOLUTION)
         self.title("RTMAAI VISUALIZER")
         self.__setup_control_panel__()
         self.__setup_left_frame__()
