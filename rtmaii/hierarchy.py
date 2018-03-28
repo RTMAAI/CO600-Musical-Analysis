@@ -78,18 +78,25 @@ class Hierarchy(object):
         """ Create hierarchy tree based on task config provided with the library. """
         LOGGER.debug('Adding inbuilt nodes based on tasks configured.')
         pitch_algorithm = self.config.get_config('pitch_algorithm')
+        beat_algorithm = self.config.get_config('beat_algorithm')
         tasks = self.config.get_config('tasks') # The tasks that have been enabled.
 
         ## COORDINATORS ##
         self.add_node('FrequencyCoordinator')
         self.add_node('SpectrumCoordinator', parent_id='FrequencyCoordinator')
-        self.add_node('BPMCoordinator')
+        if beat_algorithm=='ed':
+            self.add_node('EnergyBPMCoordinator')
+        elif beat_algorithm=='dc':
+            self.add_node('BPMCoordinator')
         self.add_node('FFTSCoordinator')
         self.add_node('SpectrogramCoordinator', parent_id='FFTSCoordinator')
 
         ## WORKERS ##
         if tasks['beat']:
-            self.add_node('BPMWorker', parent_id='BPMCoordinator')
+            if beat_algorithm=='ed':
+                self.add_node('BPMWorker', parent_id='EnergyBPMCoordinator')
+            elif beat_algorithm=='dc':
+                self.add_node('BPMWorker', parent_id='BPMCoordinator')
         if tasks['bands']:
             self.add_node('BandsWorker', parent_id='SpectrumCoordinator')
         if tasks['pitch']:

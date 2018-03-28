@@ -34,7 +34,15 @@ def beatdetection(data, threshold):
     else:
         return False
 
-def energydetect(data, energyhistory):
+def energydetect(amp, energyhistory):
+    """
+
+    :param amp:
+    :param energyhistory:
+    :return:
+    """
+    if(amp > getAverageEnergy(energyhistory)*1.3):
+        return True
     return False
 
 #Helper methods
@@ -49,9 +57,36 @@ def getRMSAmp(data):
     #audioop takes the sample width as its second parameter where 1=8bit 2=16bit and 4=32bit
     return audioop.rms(data, 2)
 
+def shiftEnergyHistory(amp, energyhistory):
+    """
+    Moves the list of energy history so that the newest 42 chunks of music are being used
+
+    :param amp: the newest amplitude
+    :param energyhistory: the list of collected amplitudes
+    :return: the new list
+    """
+    while(len(energyhistory)>=43):
+        energyhistory.pop(0)
+    energyhistory.append(amp)
+    return energyhistory
+
+def getAverageEnergy(energyhistory):
+    """
+    Gets the average local energy on the current energyhistory
+
+    :param energyhistory: the list of collected amplitudes
+    :return: the average local energy
+    """
+    avg = 0
+    for amp in energyhistory:
+       avg += amp
+    return avg/len(energyhistory)
+
+def getEnergyVariance(energyhistory):
+    pass
 
 #BPM Methods
-def bpmsimple(beatlist, hbeatarray):
+def bpmsimple(beatlist):
     """
     computes bpm based on low-passed and high-passed beat times
     :param beatarray: array of low-passed beats

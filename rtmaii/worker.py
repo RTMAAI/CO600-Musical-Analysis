@@ -272,9 +272,10 @@ class BPMWorker(Worker):
         while True:
             data = self.queue.get()
             beats = data[0]
-            hbeats = data[1]
+            if(len(data)>1):
+                hbeats = data[1]
             beats = bpm.cleanbeatarray(beats)
-            bpmestimate = bpm.bpmsimple(beats,hbeats)
+            bpmestimate = bpm.bpmsimple(beats)
 
             dispatcher.send(signal='bpm', sender=self.channel_id, data=bpmestimate)
             #self.analyse_bpm(timedif, self.channel_id)

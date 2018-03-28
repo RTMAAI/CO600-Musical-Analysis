@@ -349,6 +349,5 @@ class EnergyBPMCoordinator(Coordinator):
                     self.timelast = beattime
                     beatdata = [self.beats]
                     self.message_peers(beatdata)
-
-            dispatcher.send(signal='beats', sender=self, data=beat)
-            self.energyhistory = bpm.shiftenergyhistory(newamp,self.energyhistory)
+                dispatcher.send(signal='beats', sender=self, data=beat)
+            self.energyhistory = bpm.shiftEnergyHistory(newamp,self.energyhistory)
