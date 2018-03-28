@@ -51,7 +51,7 @@ class Config(object):
             "block_size": 16384, # Power of 2 for efficiency.
             "pitch_algorithm": "ac",
             #beat algorithm is either ed=energydetect or dc=descendingthreshold
-            "beat_algorithm": "dc",
+            "beat_algorithm": "ed",
             "beat_desc_rate": 20,
             "beat_low_cut": 60,
             "beat_low_pass": 1000,
