@@ -165,7 +165,9 @@ def main():
     tracker.wait_for_signals()
 
     if tasks['genre']: # Genre only runs once every 128 frames.
-        tracker.add_signal('genre')
+        print('[Warning] Genre is not currently supported for benchmarks.')
+        # This would increase the timings of benchmarks substantially, so have currently disabled.
+        #tracker.add_signal('genre')
 
     print("Running tests...")
     # Run the analysis N times.
