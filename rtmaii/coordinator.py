@@ -341,7 +341,7 @@ class EnergyBPMCoordinator(Coordinator):
             #as soon as there is enough energy history, start the analysis
             newamp = bpm.getRMSAmp(data)
             if(len(self.energyhistory)>=43):
-                LOGGER.info('Enough samples')
+                #LOGGER.info('Enough samples')
                 beat = bpm.energydetect(newamp, self.energyhistory)
                 if (beat != False):
                     beattime = time.clock()
