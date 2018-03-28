@@ -109,6 +109,7 @@ class NewWorker(Worker):
         """ Run loop of the node, keep all processing logic within here. """
         # while True: <- would normally be used, to keep thread alive.
         data = self.queue.get()
+        # Use the awesome module Pydispatcher to send signals with the resulting data.
         dispatcher.send(signal='custom', sender=self.channel_id, data=data)
 
 class NewCoordinator(Coordinator):
