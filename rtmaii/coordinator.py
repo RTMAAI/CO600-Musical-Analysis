@@ -297,15 +297,18 @@ class BPMCoordinator(Coordinator):
 
     def reset_attributes(self):
         self.descrate = self.config.get_config('beat_desc_rate')
+        self.sampling_rate = self.config.get_config('sampling_rate')
         self.beats = []
         self.hbeats = []
         self.timelast = time.clock()
         self.threshold = 0
+        self.filter = bpm.lowpass(60,200,self.sampling_rate)
 
     def run(self):
         while True:
             self.threshold -= self.descrate
-            data = self.queue.get()
+            rawdata = self.queue.get()
+            data = bpm.applylowpass(rawdata, self.filter['num'], self.filter['denom'])
             beat = bpm.beatdetection(data, self.threshold)
             if(beat != False):
                 beattime = time.clock()

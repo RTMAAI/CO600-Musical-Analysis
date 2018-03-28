@@ -8,6 +8,7 @@ import audioop
 import time
 import logging
 import numpy
+from scipy.signal import butter, lfilter
 
 LOGGER = logging.getLogger(__name__)
 
@@ -212,21 +213,23 @@ def approx_equal(x, y, dev):
 
 
 
-def lowpass(data):
+def lowpass(low_cut, low_pass, sampling_rate):
     """
-    Placeholder to get minimum implementation working
-    :param data:
-    :return:
-    """
-    LOGGER.info('Lowpasshere')
+    This is technically a bandpass filter, although it just cuts out noise at the bottom
 
-def highpass(data):
-    """
-    Placeholder to get minimum implementation working
     :param data:
     :return:
     """
-    LOGGER.info('Highpasshere')
+    ny = sampling_rate/2
+    l = low_cut/ny
+    h = low_pass/ny
+    a,b = butter(5, [l,h], btype='bandpass')
+    LOGGER.info('Created Lowpassfilter')
+    return {'num':a,'denom':b}
+
+def applylowpass(data, num, denom):
+    lowpassed = lfilter(num, denom, data)
+    return lowpassed
 
 #
 # Deprecated methods under here.
