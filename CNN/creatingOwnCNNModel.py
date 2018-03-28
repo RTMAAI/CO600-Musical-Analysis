@@ -56,10 +56,19 @@ def genre_cnn_model_fn(features, labels, mode):
         activation=tf.nn.relu)
     pool4 = tf.layers.max_pooling2d(inputs=conv4, pool_size=[2, 2], strides=2)
 
+    # Convolutional Layer #3 and Pooling Layer #3
+    conv5 = tf.layers.conv2d(
+        inputs=pool4,
+        filters=1024,
+        kernel_size=[2, 2],
+        padding="same",
+        activation=tf.nn.relu)
+    pool5 = tf.layers.max_pooling2d(inputs=conv5, pool_size=[2, 2], strides=2)
+
     # Dense Layer
     pool5_flat = tf.contrib.layers.flatten(pool5)
     print(pool5_flat.get_shape())
-    dense = tf.layers.dense(inputs=pool5_flat, units=1024, activation=tf.nn.relu)
+    dense = tf.layers.dense(inputs=pool5_flat, units=2048, activation=tf.nn.relu)
     dropout = tf.layers.dropout(inputs=dense, rate=config.dropoutProbability, training=mode == tf.estimator.ModeKeys.TRAIN)
 
     # Logits Layer

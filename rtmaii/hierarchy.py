@@ -163,7 +163,7 @@ class Hierarchy(object):
                 - class_name: class_name to instantiate as a string.
                 - node_id: unique id to give the node in hierarchy.
                 - parent_id: id of parent node to attach to.
-                - *args: positional arguments to pass to node instantiation.
+                - *init_args: positional arguments to pass to node instantiation.
                 - **kwargs: kwargs to pass to node instatiation
         """
         uid = node_id if node_id else class_name
@@ -179,14 +179,14 @@ class Hierarchy(object):
         self.add_node(class_name, node_id, parent_id, *init_args, **kwargs)
 
     def add_node(self, class_name: str, node_id: str = None,
-                 parent_id: str = 'root', *args: list, **kwargs: dict):
+                 parent_id: str = 'root', *init_args: list, **kwargs: dict):
         """ Add a new node to the hierarchy on each channel tree.
 
             Args:
                 - class_name: class_name to instantiate as a string.
                 - node_id: unique id to give the node in hierarchy.
                 - parent_id: id of parent node to attach to.
-                - *args: positional arguments to pass to node instantiation.
+                - *init_args: positional arguments to pass to node instantiation.
                 - **kwargs: kwargs to pass to node instatiation
         """
         uid = node_id if node_id else class_name
@@ -194,7 +194,7 @@ class Hierarchy(object):
         for channel in range(self.channels):
             kwargs['channel_id'] = channel
             kwargs['config'] = self.config
-            node_thread = node_factory(class_name, *args, **kwargs)
+            node_thread = node_factory(class_name, *init_args, **kwargs)
             channel_hierarchy = self.root['channels'][channel]
             channel_hierarchy[uid] = {
                 'thread': node_thread

@@ -399,6 +399,10 @@ There are multiple pitch detection methods available in the library, each with t
 "pitch_algorithm": "ac" | "zc" | "hps" | "fft"
 ```
 
+When choosing a Pitch algorithm you might experience issues with the accuracy, this is largely dependent on the **Block Size** config setting.
+
+Try to increase the **Block Size** setting to see if the accuracy improves, if there is no improvement feel free to submit an issue with details on what audio source you are using.
+
 ### AutoCorrelation (AC)
 
 Estimate pitch using the [autocorrelation](https://cnx.org/contents/i5AAkZCP@2/Pitch-Detection-Algorithms) method.

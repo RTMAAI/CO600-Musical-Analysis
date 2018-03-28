@@ -214,23 +214,24 @@ class FFTSCoordinator(Coordinator):
         print(frame_size)
         self.window = spectral.new_window(frame_size, 'hanning')
         self.spectrogram_resolution = 128
+        self.timer = 0
 
     def run(self):
         """ Reset object attributes, to latest config values. """
         ffts = []
         while True:
+            
             fft = self.queue.get()
             if fft is not None:
                 fft = spectral.spectrum(fft, self.window, None)
                 fft = spectral.normalizorFFT(fft)
-                if fft is None:
-                    self.message_peers(None)
-                    break
                 ffts.append(fft)
                 ffts = ffts[-self.spectrogram_resolution:]
-                if len(ffts) == self.spectrogram_resolution:
-                    self.message_peers(ffts)
+                self.timer = self.timer + 1
+                if self.timer ==  self.spectrogram_resolution:      
+                    self.message_peers(ffts.copy())       
                     dispatcher.send(signal='spectrogram', sender='spectrogram', data=ffts)
+                    self.timer = 0
 
 class SpectrogramCoordinator(Coordinator):
     """ Spectrogram coordinator responsible for creating a spectrogram.
@@ -256,16 +257,12 @@ class SpectrogramCoordinator(Coordinator):
     def run(self):
         while True:
             ffts = self.queue.get()
-            if ffts is None:
-                break
             ffts = column_stack(ffts)
             ffts = spectral.convertingMagnitudeToDecibel(ffts, self.window)
             stime = arange(0, 128, dtype=float) * self.window / self.sampling_rate / 2
             frequecy = arange(0, self.window / 2, dtype=float) * self.sampling_rate / self.window
             smallerffts = []
             smallerfreq = []
-            ffts = resample(ffts, 512)
-            frequecy = resample(frequecy, 512)
             for i in range(0, len(ffts), 4):
                 if i + 4 > len(ffts) and len(smallerffts) == 128:
                     break
@@ -273,10 +270,8 @@ class SpectrogramCoordinator(Coordinator):
                 meanffts = (ffts[i] + ffts[i+1] + ffts[i+2] + ffts[i+3])/4
                 smallerffts.append(meanffts)
                 smallerfreq.append(meanfreq)
-
-
-
             spectrodata = [stime, smallerfreq, smallerffts]
+
             self.message_peers(spectrodata)
             dispatcher.send(signal='spectogramData', sender=self.channel_id, data=spectrodata)
 

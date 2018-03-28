@@ -20,8 +20,6 @@ spectrogram_evalu = []
 
 def findGenre(fileName : str):
     
-''' '''
-    
     if "rock" in fileName:
         return 0
     elif "folk" in fileName:
