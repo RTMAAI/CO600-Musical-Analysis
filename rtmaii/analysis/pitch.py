@@ -71,7 +71,7 @@ def pitch_from_zero_crossings(signal: list, sampling_rate: int) -> float:
         if (signal[i - 1] > 0) and (signal[i] < 0):
             indices.append(i)
     # Linear interpolation, gives a more accurate result, to a few decimal places.
-    crossings = [i - signal[i] / (signal[i + 1] - signal[i]) for i in indices]
+    crossings = [i - signal[i] / (signal[i - 1] - signal[i]) for i in indices]
 
     return sampling_rate / mean(diff(crossings)) # Convert to Hz
 
