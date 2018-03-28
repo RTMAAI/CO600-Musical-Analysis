@@ -116,5 +116,6 @@ def convertingMagnitudeToDecibel(ffts: list, window: list) -> list:
         loggedffts = log10(ffts)
     except:
         loggedffts = 0
+
     ffts = (20 * loggedffts).clip(-120)
     return ffts
