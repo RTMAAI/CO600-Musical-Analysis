@@ -338,16 +338,17 @@ class EnergyBPMCoordinator(Coordinator):
     def run(self):
         while True:
             data = self.queue.get()
-            beat = bpm.beatdetection(data, self.threshold)
-            if(beat != False):
-                beattime = time.clock()
-                self.beats.append(beattime - self.timelast)
-                self.timelast = beattime
-                beatdata = [self.beats, self.hbeats]
-                self.message_peers(beatdata)
-                self.threshold = beat;
-                dispatcher.send(signal='beats', sender=self, data=True)
-            else:
-                dispatcher.send(signal='beats', sender=self, data=False)
-            #       add timeinterval from previous occurence of a beat to beats list.
-            #       bpm = calculate average time interval
+            #as soon as there is enough energy history, start the analysis
+            newamp = bpm.getRMSAmp(data)
+            if(len(self.energyhistory)>=43):
+                LOGGER.info('Enough samples')
+                beat = bpm.energydetect(newamp, self.energyhistory)
+                if (beat != False):
+                    beattime = time.clock()
+                    self.beats.append(beattime - self.timelast)
+                    self.timelast = beattime
+                    beatdata = [self.beats]
+                    self.message_peers(beatdata)
+
+            dispatcher.send(signal='beats', sender=self, data=beat)
+            self.energyhistory = bpm.shiftenergyhistory(newamp,self.energyhistory)
