@@ -70,37 +70,36 @@ class GenrePredictorWorker(Worker):
         self.genredict[1] = 'Folk'
         self.genredict[2] = 'Hip-Hop'
         self.genredict[3] = 'Electric'
+        self.prediction = 'N/A'
 
     def run(self):
         
         while True:
             spectrogram = self.queue.get()
             spectrodata = spectrogram[2]
-            spectrodata = resample(spectrodata,128)
             testphoto = array(spectrodata)
-            testphoto = testphoto.astype('float32')    
+            testphoto = testphoto.astype('float32')   
             
             try:
                 testphoto = reshape(testphoto, (1,128,128,1))
                 predictions = self.predict_fn({'x': testphoto})
                 predictionclass = predictions['classes'][0]
-                prediction = self.genredict[predictionclass]
-                self.accuracyChecker.append(prediction)
-                print("pre",len(self.accuracyChecker))
-                if(len(self.accuracyChecker) > 10):
+                self.prediction = self.genredict[predictionclass]
+                self.accuracyChecker.append(self.prediction)
+               
+                if(len(self.accuracyChecker) > 3):
                     self.accuracyChecker.pop(0)
                     print(self.accuracyChecker)
-                    print("post",len(self.accuracyChecker))
-                    prediction = max(set(self.accuracyChecker), key=self.accuracyChecker.count)
+                    self.prediction = max(set(self.accuracyChecker), key=self.accuracyChecker.count)
 
-                export_data = [spectrodata,prediction]
+                export_data = [spectrodata,self.prediction]
                 self.exporter.queue.put(export_data)
             except:
                 pass
             
             spectrogram = []
 
-            dispatcher.send(signal='genre', sender=self.channel_id, data=prediction)
+            dispatcher.send(signal='genre', sender=self.channel_id, data=self.prediction)
 
 class BandsWorker(Worker):
     """ Worker responsible for analysing interesting frequency bands.

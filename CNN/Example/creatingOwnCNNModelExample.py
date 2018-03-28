@@ -1,4 +1,3 @@
-import config
 import os
 import numpy as np
 import tensorflow as tf
@@ -56,14 +55,23 @@ def genre_cnn_model_fn(features, labels, mode):
         activation=tf.nn.relu)
     pool4 = tf.layers.max_pooling2d(inputs=conv4, pool_size=[2, 2], strides=2)
 
+    # Convolutional Layer #3 and Pooling Layer #3
+    conv5 = tf.layers.conv2d(
+        inputs=pool4,
+        filters=1024,
+        kernel_size=[2, 2],
+        padding="same",
+        activation=tf.nn.relu)
+    pool5 = tf.layers.max_pooling2d(inputs=conv5, pool_size=[2, 2], strides=2)
+
     # Dense Layer
     pool5_flat = tf.contrib.layers.flatten(pool5)
     print(pool5_flat.get_shape())
-    dense = tf.layers.dense(inputs=pool5_flat, units=1024, activation=tf.nn.relu)
-    dropout = tf.layers.dropout(inputs=dense, rate=config.dropoutProbability, training=mode == tf.estimator.ModeKeys.TRAIN)
+    dense = tf.layers.dense(inputs=pool5_flat, units=2048, activation=tf.nn.relu)
+    dropout = tf.layers.dropout(inputs=dense, rate=0.5, training=mode == tf.estimator.ModeKeys.TRAIN)
 
     # Logits Layer
-    logits = tf.layers.dense(inputs=dropout , units=config.numberOfGenres)
+    logits = tf.layers.dense(inputs=dropout , units=4)
 
     # Generate predictions (for PREDICT and EVAL mode)
     predictions = {
@@ -78,12 +86,12 @@ def genre_cnn_model_fn(features, labels, mode):
         return tf.estimator.EstimatorSpec(mode=mode, predictions= predictions, export_outputs=export_outputs)
 
     # Calculate Loss (for both TRAIN and EVAL modes)
-    onehot_labels = tf.one_hot(indices=tf.cast(labels, tf.int32), depth=config.numberOfGenres)
+    onehot_labels = tf.one_hot(indices=tf.cast(labels, tf.int32), depth=4)
     loss = tf.losses.softmax_cross_entropy(onehot_labels=onehot_labels, logits=logits)
 
     # Configure the Training Op (for TRAIN mode)
     if mode == tf.estimator.ModeKeys.TRAIN:
-        optimizer = tf.train.RMSPropOptimizer(learning_rate=config.learningRate)
+        optimizer = tf.train.RMSPropOptimizer(learning_rate=0.001)
         train_op = optimizer.minimize(
             loss=loss,
             global_step=tf.train.get_global_step())
@@ -171,12 +179,12 @@ def main(mode):
             train_input_fn = tf.estimator.inputs.numpy_input_fn(
                 x={"x": train_data},
                 y=train_labels,
-                batch_size=config.batchsize,
+                batch_size=1,
                 num_epochs=None,
                 shuffle=True)
             genre_classifier.train(
                 input_fn=train_input_fn,
-                steps=config.numberOfSteps,
+                steps=10000,
                 hooks=[logging_hook])
 
             eval_input_fn = tf.estimator.inputs.numpy_input_fn(
