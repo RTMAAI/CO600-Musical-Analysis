@@ -35,7 +35,7 @@ class TestSuite(unittest.TestCase):
         self.assertEqual(pitch.pitch_from_zero_crossings(self.sin_wave, self.sampling_rate), 5)
 
     def test_stubbed_auto_correlation(self):
-        """ Test that auto-corellation works on a stub list. """
+        """ Test that auto-correlation works on a stub list. """
         conv_signal = zeros(20)
         conv_signal[0] = 1
         conv_signal[10] = 1
