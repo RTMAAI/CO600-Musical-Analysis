@@ -7,6 +7,7 @@
 import audioop
 import time
 import logging
+import numpy
 
 LOGGER = logging.getLogger(__name__)
 
@@ -41,7 +42,7 @@ def energydetect(amp, energyhistory):
     :param energyhistory:
     :return:
     """
-    if(amp > getAverageEnergy(energyhistory)*1.3):
+    if(amp > getAverageEnergy(energyhistory)*getAdjustedDeviation(energyhistory)):
         return True
     return False
 
@@ -82,8 +83,18 @@ def getAverageEnergy(energyhistory):
        avg += amp
     return avg/len(energyhistory)
 
-def getEnergyVariance(energyhistory):
-    pass
+def getAdjustedDeviation(energyhistory):
+    variance = numpy.var(energyhistory)
+    if(variance>=200):
+        return 1.1
+    elif(variance>=150):
+        return 1.2
+    elif(variance>=100):
+        return 1.3
+    elif(variance>=50):
+        return 1.4
+    else:
+        return 1.5
 
 #BPM Methods
 def bpmsimple(beatlist):
