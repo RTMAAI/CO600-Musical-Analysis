@@ -32,7 +32,7 @@ FRAME_DELAY = 50 # How long between each frame update (ms)
 
 # ---- GRAPH/ANALYSIS CONSTANTS ---- #
 SAMPLING_RATE = 44100 # Default sampling rate 44.1 khz
-DOWNSAMPLE_RATE = 4 # Denominator to downsample graph by (Should be set according to system specs.)
+GRAPH_RESOLUTION = 1024 # Max resolution of graphs. This forces data points to a max length.
 SPECTROGRAM_DOWNSAMPLE = 2 # Seperate downsampling ratio for spectrogram data.
 GY_PADDING = 0.3 # Amount to pad the maximum Y value of a graph by. (% i.e. 0.1 = 10% padding.)
 STATE_COUNT = 50 # Amount of states to store that can be moved through.
@@ -262,7 +262,7 @@ class SignalPlotter(threading.Thread):
 
     def run(self):
         graph_length = len(self.line.get_ydata())
-        signal = zeros(graph_length)
+        signal = zeros(graph_length * SIGNAL_COUNT)
         min_power = 8000
         while True:
             new_data = self.queue.get()
@@ -434,13 +434,11 @@ class Debugger(tk.Tk):
 
     def setup(self):
         """Create UI elements and assign configurable elements. """
-        chunk_size = self.listener.analyser.config.get_config('frames_per_sample')
-        frequency_length = self.listener.analyser.config.get_config('block_size')
-        frequencies = fftfreq(frequency_length, 1 / SAMPLING_RATE)[::DOWNSAMPLE_RATE]
+        frequencies = fftfreq(GRAPH_RESOLUTION, 1 / SAMPLING_RATE)
         self.uic['frequencies'] = frequencies[:len(frequencies)//2]
 
         # --- INIT SETUP --- #
-        self.uic['timeframe'] = arange(0, chunk_size, DOWNSAMPLE_RATE)
+        self.uic['timeframe'] = arange(0, GRAPH_RESOLUTION)
         self.title("RTMAAI VISUALIZER")
         self.__setup_control_panel__()
         self.__setup_left_frame__()
