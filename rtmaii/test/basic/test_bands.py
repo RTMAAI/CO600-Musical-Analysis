@@ -60,3 +60,15 @@ class TestSuite(unittest.TestCase):
                                                   {'full_range': [0, 100]},
                                                   len(spectrum) * 2)
         self.assertEqual({'full_range': [0, 100]}, bands)
+
+    def test_frequency_bands_closest(self):
+        """ Tests that the bin method finds the closest index values,
+            when the spectrum hasn't got a high enough resolution.
+        """
+        spectrum = arange(0, 102, 1)
+        bands = frequency.frequency_bands_to_bins(spectrum,
+                                                  {'full_range': [0, 100]},
+                                                  len(spectrum)* 4)
+        # Len(spectrum) * 4 means the spectrum captures 1/2 of the frequency bins.
+        # As the nyquist frequency dictates, that the spectrum captures half the sampling_rate.
+        self.assertEqual({'full_range': [0, 50]}, bands)

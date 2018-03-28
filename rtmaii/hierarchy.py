@@ -9,6 +9,10 @@
     KNOWN LIMITATIONS OF CURRENT IMPLEMENTATION.
     - A node HAS to added to each channel hierarchy for each channel that is being analysed.
     - The root node is fixed, and can't be removed.
+    - Debugging the structure isn't easy atm, as the structure is dumped out as a string.
+
+    For detailed information on configuring the Hierachy, please see our Readme on our Github.
+    https://github.com/RTMAAI/CO600-Musical-Analysis
 """
 import logging
 from rtmaii.coordinator import Coordinator
@@ -25,9 +29,20 @@ class Hierarchy(object):
     """
     def __init__(self, config: object, custom_nodes: list):
         self.config = config
-         # Custom node config, when the hierarchy is recreated,
-         # we will re-add any nodes in the custom_node dictionary.
-        self.custom_nodes = custom_nodes if custom_nodes else {}
+        """ Custom node config, when the hierarchy is recreated,
+            we will re-add any nodes in the custom_nodes dictionary.
+        """
+        self.custom_nodes = {}
+        if custom_nodes:
+            for key, value in custom_nodes.items():
+                # Prepare custom node data.
+                self.custom_nodes[key] = {
+                    'class_name': value['class_name'],
+                    'parent': value['parent'] if 'parent' in value else 'root',
+                    'init_args': value['init_args'] if 'init_args' in value else (),
+                    'kwargs': value['kwargs'] if 'kwargs' in value else {},
+                }
+                __validate_node__(self.custom_nodes[key])
         self.reset_hierarchy()
 
     def reset_hierarchy(self):
@@ -37,6 +52,7 @@ class Hierarchy(object):
             This method is mainly reserved for changes with amount of channels
             being analysed and initial creation of the hierarchy.
         """
+        LOGGER.debug('Creating new hierarchy.')
         self.root = {
             'channels': []
         }
@@ -52,12 +68,15 @@ class Hierarchy(object):
 
         self.default_hierarchy()
         for key, value in self.custom_nodes.items():
-            self.add_node(value['class_name'], key, value['parent'], **value['kwargs'])
+            self.add_node(value['class_name'], key, value['parent'],
+                          *value['init_args'], **value['kwargs'])
         # Cleanup Hierarchy, removing any of our Coordinators that didn't have a child attached.
         self.clean_hierarchy()
+        LOGGER.debug('Created hierarchy with config: %s', self.root)
 
     def default_hierarchy(self):
         """ Create hierarchy tree based on task config provided with the library. """
+        LOGGER.debug('Adding inbuilt nodes based on tasks configured.')
         pitch_algorithm = self.config.get_config('pitch_algorithm')
         tasks = self.config.get_config('tasks') # The tasks that have been enabled.
 
@@ -76,7 +95,7 @@ class Hierarchy(object):
         if tasks['pitch']:
             if pitch_algorithm == 'hps':
                 self.add_node('HPSWorker', parent_id='SpectrumCoordinator')
-            elif pitch_algorithm == 'zero-crossings':
+            elif pitch_algorithm == 'zc':
                 self.add_node('ZeroCrossingWorker', parent_id='FrequencyCoordinator')
             elif pitch_algorithm == 'fft':
                 self.add_node('FFTWorker', parent_id='SpectrumCoordinator')
@@ -89,6 +108,7 @@ class Hierarchy(object):
 
     def clean_hierarchy(self):
         """ Removes any coordinators without peers from the hierarchy, saving processing time. """
+        LOGGER.debug('Removing inbuilt coordinators without any peers.')
         node_removed = True
         while node_removed:
             node_removed = self.remove_empty_coordinators()
@@ -112,6 +132,7 @@ class Hierarchy(object):
                         if len(node['thread'].get_peer_list()) <= 0:
                             self.remove_node(node_id)
                             return True
+        LOGGER.debug('Finished removing inbuilt coordinators without any peers.')
         return False # No nodes were removed this iteration.
 
     def update_nodes(self):
@@ -124,7 +145,7 @@ class Hierarchy(object):
                     peer['thread'].reset_attributes()
 
     def add_custom_node(self, class_name: str, node_id: str = None,
-                        parent_id: str = None, init_args: list = (), **kwargs: dict):
+                        parent_id: str = 'root', *init_args: list, **kwargs: dict):
         """ API Based method, stores custom nodes in list,
             so they can be readded if the hierarchy is reset.
 
@@ -143,14 +164,15 @@ class Hierarchy(object):
             raise AttributeError('Node id {} already exists in hierarchy, please use a unique ID.'
                                  .format(uid))
 
-        self.custom_nodes[uid] = {'class': class_name,
+        self.custom_nodes[uid] = {'class_name': class_name,
                                   'parent': parent_id,
                                   'init_args': init_args,
                                   'kwargs': kwargs}
+        __validate_node__(self.custom_nodes[uid])
         self.add_node(class_name, node_id, parent_id, *init_args, **kwargs)
 
     def add_node(self, class_name: str, node_id: str = None,
-                 parent_id: str = None, *args: list, **kwargs: dict):
+                 parent_id: str = 'root', *args: list, **kwargs: dict):
         """ Add a new node to the hierarchy on each channel tree.
 
             Args:
@@ -170,7 +192,7 @@ class Hierarchy(object):
             channel_hierarchy[uid] = {
                 'thread': node_thread
             }
-            if parent_id:
+            if parent_id != 'root':
                 if parent_id in channel_hierarchy:
                     try:
                         channel_hierarchy[parent_id]['thread'].add_peer(
@@ -183,8 +205,9 @@ class Hierarchy(object):
                     raise KeyError('Could not find specified parent node {} in hierarchy.'
                                    .format(parent_id))
             else:
-                channel_hierarchy['root']['peer_list'].append(channel_hierarchy[uid]['thread'])
+                channel_hierarchy[parent_id]['peer_list'].append(channel_hierarchy[uid]['thread'])
                 channel_hierarchy[uid]['parent'] = 'root'
+        LOGGER.debug('Added node %s to hierarchy with node parent %s.', uid, parent_id)
 
     def remove_node(self, node_id: str):
         """ Remove a node from the hierarchy tasks.
@@ -234,6 +257,29 @@ class Hierarchy(object):
         """
         self.root['thread'].queue.put(data)
 
+def __validate_node__(node: dict):
+    """ Validate that a given nodes parameters are valid.
+
+        Expected signature:
+            {'class_name': 'NewWorker', 'parent': 'SpectrumCoordinator',
+            'args': (), 'kwargs':{}}
+
+        Args:
+            - node: node signature to validate.
+    """
+    if not isinstance(node['class_name'], str):
+        raise TypeError('Class name given {} is not type str.'
+                        .format(node['class_name']))
+    if not isinstance(node['parent'], str):
+        raise TypeError('Parent given {} is not of type str.'
+                        .format(node['parent']))
+    if not isinstance(node['init_args'], (list, tuple)):
+        raise TypeError('Init_args {} is not of type list or tuple.'
+                        .format(node['init_args']))
+    if not isinstance(node['kwargs'], dict):
+        raise TypeError('Kwargs {} is not of type dict.'
+                        .format(node['kwargs']))
+
 def node_factory(node_class: str, *args: list, **kwargs: dict):
     """ Create a new node of the given type.
         The node must inherit from either a worker or coordinator base class.
@@ -243,9 +289,8 @@ def node_factory(node_class: str, *args: list, **kwargs: dict):
             - *args: positional arguments to pass to node instantiation.
             - **kwargs: kwargs to pass to node instatiation
     """
-    coordinators = {subclass.__name__ : subclass for subclass in Coordinator.__subclasses__()}
-    workers = {subclass.__name__ : subclass for subclass in Worker.__subclasses__()}
-    nodes = {**coordinators, **workers}
+    nodes = {subclass.__name__ : subclass for subclass in Worker.__subclasses__()}
+    nodes.update({subclass.__name__ : subclass for subclass in Coordinator.__subclasses__()})
     if node_class in nodes:
         return nodes[node_class](*args, **kwargs)
     else:

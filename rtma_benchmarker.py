@@ -90,9 +90,9 @@ PARSER.add_argument("-s", "--samplingrate",
 PARSER.add_argument("-f", "--framespersample",
                     help="Frames per buffer sample, default is 1024",
                     type=int, default=1024)
-PARSER.add_argument("-r", "--frequencyresolution",
-                    help="Resolution of signal before performing frequency analysis.",
-                    type=int, default=20480)
+PARSER.add_argument("-r", "--blocksize",
+                    help="Size of signal before performing frequency based analysis.",
+                    type=int, default=16384)
 PARSER.add_argument("-t", "--tasks", help="Analysis Tasks to run.",
                     type=json.loads, default=TASKS)
 PARSER.add_argument("-p", "--pitchmethod",
@@ -104,9 +104,11 @@ PARSER.add_argument("-n", "--noruns",
 PARSER.add_argument("-c", "--channelcount",
                     help="Number of channels to mimic being analysed.",
                     type=int, default=1)
-PARSER.add_argument("-m", "--mergechannels",
-                    help="Whether channel data should be analysed as one channel.",
+PARSER.add_argument('-mc', "--mergechannels", dest='mergechannels',
+                    help="Merge channel data into one thread.",
                     type=bool, default=True)
+PARSER.add_argument("-m", "--multichannelanalysis", dest='mergechannels',
+                    help="Toggle multi channel analysis", action='store_false')
 ARGS = PARSER.parse_args()
 
 def main():
@@ -132,7 +134,8 @@ def main():
            'frames_per_sample': ARGS.framespersample,
            'pitch_algorithm': ARGS.pitchmethod,
            'merge_channels': ARGS.mergechannels,
-           'tasks': ARGS.tasks
+           'tasks': ARGS.tasks,
+           'block_size': ARGS.blocksize
           }
         )
     config.set_source(
@@ -145,10 +148,10 @@ def main():
     signals.append('signal')
     tasks = config.get_config('tasks')
     if tasks['pitch']:
-        signals.append('spectrum')
         signals.append('pitch')
         signals.append('note')
     if tasks['bands']:
+        signals.append('spectrum') # Used by both tasks.
         signals.append('bands')
     if tasks['beat']:
         signals.append('bpm')

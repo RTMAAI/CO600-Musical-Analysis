@@ -1,5 +1,8 @@
 exclude:
 - .*/example_implementation\.py
+- .*/custom_node_example\.py
+- .*/circles\.py
+- .*/rtma_benchmarker\.py
 languages:
 - python
-component_depth: 6
+component_depth: 8

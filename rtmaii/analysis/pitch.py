@@ -8,7 +8,7 @@
     OUTPUTS:
         Pitch (Fundamental Frequency): the pitch of the input.
 """
-from numpy import argmax, mean, diff, real
+from numpy import argmax, mean, diff
 from scipy.signal import decimate
 
 def pitch_from_fft(spectrum: list, sampling_rate: int) -> float:
@@ -36,12 +36,12 @@ def pitch_from_auto_correlation(convolved_signal: list, sampling_rate: int) -> f
             - convolved_spectrum: the convolved frequency bin to analyze.
             - sampling_rate: the sampling rate of the audio source.
 
-        Advantages
+        Advantages:
             - Good for repetitive wave forms, i.e. sine waves/saw tooths.
             - Represents a pitch closer to what humans hear.
 
         Disadvantages:
-            - Requires an FFT which can be expensive.
+            - Requires a convolution to be applied which can be expensive.
             - Not great with inharmonics i.e. Guitars/Pianos.
     """
     signal_distances = diff(convolved_signal)
@@ -82,16 +82,24 @@ def pitch_from_hps(spectrum: list, sampling_rate: int, max_harmonics: int) -> fl
             - spectrum: the frequency bin to analyze.
             - sampling_rate: the sampling rate of the audio source.
             - max_framonics the sampling rate of the audio source.
+
+        Advantages:
+            This method is good at finding the true fundamental frequency
+            even if it has a weak power or is missing.
+            The technique amplifies the frequency that the harmonics are a multiple of.
+
+        Disadvantages:
+            Slower than using a naive FFT peak detection and requires a fourier transform,
+            which can be computationally expensive.
+
     """
-    harmonic_spectrum = spectrum
+    harmonic_spectrum = spectrum.copy()
 
     for harmonic_level in range(2, max_harmonics):
-        # Shallow copy, allowing values to be changed in original array.
-        spectrum_c = harmonic_spectrum.copy()
         # Downsample using anti-aliasing, = better results
         downsampled_spectrum = decimate(spectrum, harmonic_level)
         # Amplify any frequencies based on harmonics.
-        spectrum_c[:len(downsampled_spectrum)] *= downsampled_spectrum
+        harmonic_spectrum[:len(downsampled_spectrum)] *= downsampled_spectrum
 
     pitch = argmax(harmonic_spectrum)
 
@@ -104,7 +112,7 @@ def interpolate_peak(spectrum: list, peak: int) -> float:
 
         Args:
             - spectrum: the frequency bin to analyze.
-            - peak: the location of the estimated peak into the spectrum list.
+            - peak: the location of the estimated peak in the spectrum list.
 
         Based off: https://ccrma.stanford.edu/~jos/sasp/Quadratic_Interpolation_Spectral_Peaks.html
     """
@@ -113,4 +121,4 @@ def interpolate_peak(spectrum: list, peak: int) -> float:
     peak_value = spectrum[peak]
     estimated_peak = (next_neighbour
                       - prev_neighbour) / (2 * peak_value - prev_neighbour - next_neighbour) + peak
-    return real(estimated_peak)
+    return abs(estimated_peak) # Only return real component.

@@ -1,5 +1,13 @@
 """ WORKER MODULE
-  TODO: Fill in docstring.
+
+    - This module contains our inbuilt Workers and the base Worker.
+
+    All Workers inherit the Worker base class.
+
+    Users wanting to create their own custom Worker, should inherit from Worker.
+
+    For detailed information on Workers, please see our Readme on our Github.
+    https://github.com/RTMAAI/CO600-Musical-Analysis
 """
 import threading
 import os
@@ -17,6 +25,8 @@ class Worker(threading.Thread):
         Attributes:
             - queue: queue of data to be processed by a worker.
             - channel_id: id of channel being analysed.
+
+        Args:
             - queue_length: length of queue structure. [Default = 1]
                 Workers are greedy and will only consider the latest item.
     """
@@ -69,10 +79,18 @@ class GenrePredictorWorker(Worker):
             testphoto = testphoto.astype('float32')          
             
             try:
+<<<<<<< HEAD
                 testphoto = reshape(testphoto, (1,128,128,1))
                 predictions = self.predict_fn({'x': testphoto})
                 predictionclass = predictions['classes'][0]
                 prediction = self.genredict[predictionclass]
+=======
+                testPhoto = reshape(testPhoto, (1,128,128,1))
+                predictions = self.predict_fn({'x': testPhoto})
+                #print(predictions)
+                predictionClass = predictions['classes'][0]
+                prediction = self.dict[predictionClass]
+>>>>>>> d6c4b6a10a493b76bde4b2bd0df673ece5855d57
                 export_data = [spectrodata,prediction]
                 self.exporter.queue.put(export_data)
             except:
@@ -213,7 +231,7 @@ class FFTWorker(Worker, Key):
         Attributes:
             - sampling_rate: sampling_rate of source being analysed.
     """
-    def __init__(self, kwargs: dict):
+    def __init__(self, **kwargs: dict):
         Worker.__init__(self, kwargs['config'], kwargs['channel_id'])
 
     def reset_attributes(self):
