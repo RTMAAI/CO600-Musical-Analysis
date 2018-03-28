@@ -79,18 +79,10 @@ class GenrePredictorWorker(Worker):
             testphoto = testphoto.astype('float32')          
             
             try:
-<<<<<<< HEAD
                 testphoto = reshape(testphoto, (1,128,128,1))
                 predictions = self.predict_fn({'x': testphoto})
                 predictionclass = predictions['classes'][0]
                 prediction = self.genredict[predictionclass]
-=======
-                testPhoto = reshape(testPhoto, (1,128,128,1))
-                predictions = self.predict_fn({'x': testPhoto})
-                #print(predictions)
-                predictionClass = predictions['classes'][0]
-                prediction = self.dict[predictionClass]
->>>>>>> d6c4b6a10a493b76bde4b2bd0df673ece5855d57
                 export_data = [spectrodata,prediction]
                 self.exporter.queue.put(export_data)
             except:
