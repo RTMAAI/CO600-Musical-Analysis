@@ -130,6 +130,7 @@ def main():
         print('\t{}: {}'.format(key, value))
     print('On average {} buffer samples will be retrieved from the audio source a second.'
           .format(ARGS.samplingrate // ARGS.framespersample))
+    print('[Warning] This is only an approximation.')
 
     time_step = arange(ARGS.framespersample * ARGS.channelcount, dtype=int16)
     stub_wave = (generate_sine(ARGS.samplingrate, time_step) * 1000).tobytes()
