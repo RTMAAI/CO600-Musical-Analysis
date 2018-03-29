@@ -84,18 +84,16 @@ class Hierarchy(object):
         ## COORDINATORS ##
         self.add_node('FrequencyCoordinator')
         self.add_node('SpectrumCoordinator', parent_id='FrequencyCoordinator')
-        if beat_algorithm=='ed':
-            self.add_node('EnergyBPMCoordinator')
-        elif beat_algorithm=='dc':
-            self.add_node('BPMCoordinator')
         self.add_node('FFTSCoordinator')
         self.add_node('SpectrogramCoordinator', parent_id='FFTSCoordinator')
+        self.add_node('EnergyBPMCoordinator')
+        self.add_node('BPMCoordinator')
 
         ## WORKERS ##
         if tasks['beat']:
-            if beat_algorithm=='ed':
+            if beat_algorithm == 'ed':
                 self.add_node('BPMWorker', parent_id='EnergyBPMCoordinator')
-            elif beat_algorithm=='dc':
+            elif beat_algorithm == 'dc':
                 self.add_node('BPMWorker', parent_id='BPMCoordinator')
         if tasks['bands']:
             self.add_node('BandsWorker', parent_id='SpectrumCoordinator')
