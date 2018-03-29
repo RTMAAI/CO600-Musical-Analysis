@@ -130,11 +130,12 @@ def main():
         print('\t{}: {}'.format(key, value))
     print('On average {} buffer samples will be retrieved from the audio source a second.'
           .format(ARGS.samplingrate // ARGS.framespersample))
-    print('[Warning] This is only an approximation.')
+    print('[Warning] This is only an approximation, Python can take a while to warm up.')
 
     time_step = arange(ARGS.framespersample * ARGS.channelcount, dtype=int16)
     stub_wave = (generate_sine(ARGS.samplingrate, time_step) * 1000).tobytes()
     stub_count = 127 # Amount needed to start genre predictions.
+    ARGS.tasks['genre'] = False # Currently disabled, needs rework in order for benchmark to work
 
     config = configuration.Config(
         **{'bands': ARGS.bands,
