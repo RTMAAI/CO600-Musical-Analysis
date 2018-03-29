@@ -211,7 +211,6 @@ class FFTSCoordinator(Coordinator):
         """ Reset object attributes, to latest config values. """
         Coordinator.__init__(self, kwargs['config'], kwargs['channel_id'])
         frame_size = self.config.get_config('frames_per_sample')
-        print(frame_size)
         self.window = spectral.new_window(frame_size, 'hanning')
         self.spectrogram_resolution = 128
         self.timer = 0
@@ -220,7 +219,7 @@ class FFTSCoordinator(Coordinator):
         """ Reset object attributes, to latest config values. """
         ffts = []
         while True:
-            
+
             fft = self.queue.get()
             if fft is not None:
                 fft = spectral.spectrum(fft, self.window, None)
