@@ -81,7 +81,7 @@ def pitch_from_hps(spectrum: list, sampling_rate: int, max_harmonics: int) -> fl
         Args:
             - spectrum: the frequency bin to analyze.
             - sampling_rate: the sampling rate of the audio source.
-            - max_framonics the sampling rate of the audio source.
+            - max_harmonics the sampling rate of the audio source.
 
         Advantages:
             This method is good at finding the true fundamental frequency
