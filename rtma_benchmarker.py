@@ -23,7 +23,7 @@ class Tracker(object):
     """
     def __init__(self, signals: list):
         dispatcher.connect(self.set_switch, sender=0) # Catch any signal from channel 0.
-        # This could be extended to monitor the delay of each channel when multi-channel analysis is enabled.
+        # Could be extended to monitor delay of each channel when multi-channel analysis is enabled.
         self.reset = {key: None for key in signals}
         self.tracker = self.reset.copy()
         self.time_taken = {key: [] for key in signals}
@@ -114,7 +114,7 @@ ARGS = PARSER.parse_args()
 
 def generate_sine(sampling_rate, time_step):
     """ Generates a basic sine wave to send as a stub to hierarchy. """
-    return sin(2 * pi * 10 * time_step / sampling_rate) * 1000
+    return sin(2 * pi * 440 * time_step / sampling_rate)
 
 def main():
     """ BENCHMARKING PROCESS
@@ -132,7 +132,7 @@ def main():
           .format(ARGS.samplingrate // ARGS.framespersample))
 
     time_step = arange(ARGS.framespersample * ARGS.channelcount, dtype=int16)
-    stub_wave = generate_sine(ARGS.samplingrate, time_step).tobytes()
+    stub_wave = (generate_sine(ARGS.samplingrate, time_step) * 1000).tobytes()
     stub_count = 127 # Amount needed to start genre predictions.
 
     config = configuration.Config(
@@ -182,7 +182,7 @@ def main():
         tracker.reset_tracker()
         start_time = time.time()
         # The root conversion time is taken into account.
-        root.put(frombuffer(stub_wave, dtype=int16))
+        root.put(frombuffer(stub_wave))
         tracker.wait_for_signals()
         tracker.store_times(start_time)
     tracker.print_times()
