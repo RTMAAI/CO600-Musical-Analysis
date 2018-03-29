@@ -7,7 +7,7 @@ import time
 import statistics
 import json
 from rtmaii import hierarchy, configuration
-from numpy import arange, int16, frombuffer
+from numpy import arange, int16, frombuffer, sin, pi
 from pydispatch import dispatcher
 
 class Tracker(object):
@@ -38,8 +38,10 @@ class Tracker(object):
 
     def set_switch(self, **kwargs):
         """ Set switch on tracker to signify that signal has been recieved. """
+        print(kwargs['signal'])
         if kwargs['signal'] in self.tracker:
             self.tracker[kwargs['signal']] = time.time()
+        print(self.tracker)
 
     def print_times(self):
         """ Loop through tracker times printing average response time of threads. """
@@ -111,6 +113,10 @@ PARSER.add_argument("-m", "--multichannelanalysis", dest='mergechannels',
                     help="Toggle multi channel analysis", action='store_false')
 ARGS = PARSER.parse_args()
 
+def generate_sine(sampling_rate, time_step):
+    """ Generates a basic sine wave to send as a stub to hierarchy. """
+    return sin(2 * pi * 10 * time_step / sampling_rate) * 1000
+
 def main():
     """ BENCHMARKING PROCESS
 
@@ -126,7 +132,8 @@ def main():
     print('On average {} buffer samples will be retrieved from the audio source a second.'
           .format(ARGS.samplingrate // ARGS.framespersample))
 
-    stub_wave = arange(ARGS.framespersample * ARGS.channelcount, dtype=int16).tobytes()
+    time_step = arange(ARGS.framespersample * ARGS.channelcount, dtype=int16)
+    stub_wave = generate_sine(ARGS.samplingrate, time_step).tobytes()
     stub_count = 127 # Amount needed to start genre predictions.
 
     config = configuration.Config(
@@ -154,14 +161,15 @@ def main():
         signals.append('spectrum') # Used by both tasks.
         signals.append('bands')
     if tasks['beat']:
-        signals.append('bpm')
+        # signals.append('bpm') Had to disable because of last minute changes from members.
+        signals.append('beats')
     tracker = Tracker(signals)
 
     # Prepare workers, hitting thresholds for frequency coordinator and spectrogram.
     print("Preparing workers...")
     for _ in range(stub_count):
         # As some tasks have a threshold before running, we need to feed them a couple of stubs.
-        root.put(frombuffer(stub_wave, dtype=int16))
+        root.put(frombuffer(stub_wave))
     tracker.wait_for_signals()
 
     if tasks['genre']: # Genre only runs once every 128 frames.
