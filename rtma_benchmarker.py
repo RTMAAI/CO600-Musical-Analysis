@@ -22,7 +22,8 @@ class Tracker(object):
             time_taken (dict): Stores response times over numerous runs for statisitical analysis.
     """
     def __init__(self, signals: list):
-        dispatcher.connect(self.set_switch, sender=0) # Catch any signal.
+        dispatcher.connect(self.set_switch, sender=0) # Catch any signal from channel 0.
+        # This could be extended to monitor the delay of each channel when multi-channel analysis is enabled.
         self.reset = {key: None for key in signals}
         self.tracker = self.reset.copy()
         self.time_taken = {key: [] for key in signals}
@@ -38,10 +39,8 @@ class Tracker(object):
 
     def set_switch(self, **kwargs):
         """ Set switch on tracker to signify that signal has been recieved. """
-        print(kwargs['signal'])
         if kwargs['signal'] in self.tracker:
             self.tracker[kwargs['signal']] = time.time()
-        print(self.tracker)
 
     def print_times(self):
         """ Loop through tracker times printing average response time of threads. """
