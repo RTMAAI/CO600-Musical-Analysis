@@ -313,9 +313,9 @@ class BPMCoordinator(Coordinator):
                 self.message_peers(beatdata)
                 self.threshold = beat
                 LOGGER.info('BEAT:' + str(self.threshold))
-                dispatcher.send(signal='beats', sender=self, data=True)
+                dispatcher.send(signal='beats', sender=self.channel_id, data=True)
             else:
-                dispatcher.send(signal='beats', sender=self, data=False)
+                dispatcher.send(signal='beats', sender=self.channel_id, data=False)
             #       add timeinterval from previous occurence of a beat to beats list.
             #       bpm = calculate average time interval
 
@@ -343,7 +343,7 @@ class EnergyBPMCoordinator(Coordinator):
             #as soon as there is enough energy history, start the analysis
             newamp = bpm.getrmsamp(data)
             if len(self.energyhistory) >= 43:
-                #LOGGER.info('Enough samples')
+                LOGGER.info('Enough samples')
                 beat = bpm.energydetect(newamp, self.energyhistory)
                 if beat != False:
                     beattime = time.clock()
@@ -351,5 +351,5 @@ class EnergyBPMCoordinator(Coordinator):
                     self.timelast = beattime
                     beatdata = [self.beats]
                     self.message_peers(beatdata)
-                dispatcher.send(signal='beats', sender=self, data=beat)
+                dispatcher.send(signal='beats', sender=self.channel_id, data=beat)
             self.energyhistory = bpm.shiftenergyhistory(newamp, self.energyhistory)
