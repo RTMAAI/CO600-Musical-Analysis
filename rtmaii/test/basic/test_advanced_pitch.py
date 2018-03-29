@@ -51,11 +51,11 @@ class TestSuite(unittest.TestCase):
         difference = abs(self.fundamental_freq - fundamental)
         self.assertLessEqual(difference, 2)
 
-    # def test_advanced_auto_correlation(self):
-    #     """ Test that the auto-correlation algorithm can detect the pitch for a basic sine wave. """
-    #     fundamental = pitch.pitch_from_auto_correlation(self.conv_spectrum, self.sampling_rate)
-    #     difference = abs(self.fundamental_freq - fundamental)
-    #     self.assertLessEqual(difference, 2)
+# def test_advanced_auto_correlation(self):
+#     """ Test that the auto-correlation algorithm can detect the pitch for a basic sine wave. """
+#     fundamental = pitch.pitch_from_auto_correlation(self.conv_spectrum, self.sampling_rate)
+#     difference = abs(self.fundamental_freq - fundamental)
+#     self.assertLessEqual(difference, 2)
 
     def test_advanced_fft(self):
         """ Test that the fft algorithm can detect the pitch for a basic sine wave. """

@@ -92,7 +92,8 @@ class TestSuite(unittest.TestCase):
     def test_unique_node(self):
         """ Test that adding and removing by a unique ID to a node correctly assigns/removes it."""
         uid = 'electricboogalo'
-        self.hierarchy.add_custom_node(CustomCoordinator.__name__, uid, parent_id='EnergyBPMCoordinator')
+        self.hierarchy.add_custom_node(CustomCoordinator.__name__, uid,
+                                       parent_id='EnergyBPMCoordinator')
         self.assertIn(uid, self.hierarchy.custom_nodes)
         self.hierarchy.remove_node(uid) # Cleanup.
         self.assertNotIn(uid, self.hierarchy.custom_nodes)

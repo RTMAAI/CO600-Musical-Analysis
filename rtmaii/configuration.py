@@ -182,10 +182,10 @@ class Config(object):
         if not setting in pitch_methods:
             raise ValueError("The pitch method {} set doesn't exist".format(setting))
 
+    @staticmethod
     def __validate_beat__(setting):
         if setting <= 0:
             raise ValueError("The beat threshold descenscion rate can't be lower or equal to 0")
-
 
     def __validate_type__(self, key, value):
         """ Perform type validation on supplied setting.
